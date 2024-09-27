@@ -4,6 +4,9 @@ import { Container, Typography, Button } from '@mui/material';
 import WelcomePage from './Components/WelcomePage';
 import RegisterPage from './Components/RegisterPage';
 import LoginPage from './Components/LoginPage';
+import SettingPage from './Components/SettingPage';
+import Dashboard from './Components/Dashboard';
+
 
 const App: React.FC = () => {
     return (
@@ -13,6 +16,8 @@ const App: React.FC = () => {
           <Route path="/register" element={<RegisterPage />} />
           <Route path='/login' element={<LoginPage />} />
           {/* <Route path='/register' element={<RegisterPage />} /> */}
+          <Route path="/settings" element={<SettingPage />} /> 
+          <Route path="/dashboard" element={<Dashboard />} />  
         </Routes>
       </Router>
     );
