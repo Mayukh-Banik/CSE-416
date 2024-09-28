@@ -1,15 +1,20 @@
-# Might be deleted later
-FROM python:3.12-slim
-
 # Node 
 FROM node:lts
 
 WORKDIR /client
 
-COPY . .
+COPY package*.json .
 
 RUN npm install
-RUN npm install react
+
+COPY . .
+# COPY . .
+
+# RUN npm install
+# RUN npm install react
+# RUN npm install typescript --save-dev
+
+ENV PORT=3000
 
 EXPOSE 3000
 
