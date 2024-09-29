@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Box,CssBaseline,Drawer,IconButton,List,ListItem,ListItemText
-  , ListItemIcon,Toolbar,Typography,Button
+  , ListItemIcon,Toolbar,Typography,Button,Collapse,TextField
 } from '@mui/material';
 import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import HomeIcon from '@mui/icons-material/Home';
@@ -16,8 +16,12 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { FileCopy } from '@mui/icons-material';
 import { styled, useTheme } from '@mui/material/styles';
 import Divider from '@mui/material/Divider';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
 
-const drawerWidth = 240;
+const drawerWidth = 275;
 
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
@@ -83,23 +87,59 @@ const Sidebar: React.FC = () =>
 {
   const theme = useTheme();
   const [open,setOpen]= React.useState(false);
+  const [dashboardOpen,setDashBoardOpen] = React.useState(false);
+  
 
   const toggleDrawer = (newOpen:boolean) =>
   {
     setOpen(newOpen);
   };
 
+  const toggleDashboard = () =>
+  {
+    setDashBoardOpen(!dashboardOpen);
+  }
+
+
   const drawer = (
     <div>
       <List>
-        <ListItem component = {Link} to = "/">
-          <ListItemIcon><HomeIcon/></ListItemIcon>
-          <ListItemText primary = "home"/>
+        {/*
+        Not sure if this is the intended logic 
+        */}
+       <ListItem component = {Button} onClick={()=>toggleDashboard()}>
+          <ListItemIcon><DashboardIcon /></ListItemIcon>
+          <ListItemText primary={
+      <Typography style={{ textTransform: 'none' }}>
+        Dashboard
+      </Typography>
+    }  />
+          {dashboardOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />} {/* Icon to indicate collapse/expand */}
         </ListItem>
-        <ListItem component = {Link} to ="/dashboard">
-        <ListItemIcon><DashboardIcon/></ListItemIcon>
-        <ListItemText primary = "Dashboard"/>
-        </ListItem>
+
+        <Collapse in = {dashboardOpen} timeout = "auto" unmountOnExit>
+          <List component = "div" disablePadding>
+            <ListItem component = {Link} to = "/overview" sx={{ pl: 4 }} >
+              <ListItemIcon></ListItemIcon>
+              <ListItemText primary = "Overview"></ListItemText>
+            </ListItem>
+
+            <ListItem component = {Link} to = "/notifications" sx={{ pl: 4 }} >
+              <ListItemIcon></ListItemIcon>
+              <ListItemText primary = "Notifications"></ListItemText>
+            </ListItem>
+
+            <ListItem component = {Link} to = "/trade-history" sx={{ pl: 4 }} >
+              <ListItemIcon></ListItemIcon>
+              <ListItemText primary = "Trade History"></ListItemText>
+            </ListItem>
+          </List>
+        </Collapse>
+
+
+        {/*
+        Might need to implement file drop down functionality here too 
+        */}
 
         <ListItem component = {Link} to = "/files">
           <ListItemIcon><FileCopyIcon/></ListItemIcon>
@@ -118,8 +158,11 @@ const Sidebar: React.FC = () =>
 
         <ListItem component = {Link} to = "/settings">
           <ListItemIcon><SettingsIcon/></ListItemIcon>
-          <ListItemText primary = "Files"></ListItemText>
+          <ListItemText primary = "Settings"></ListItemText>
         </ListItem>
+
+        <Divider />
+
       </List>
       </div>
   )
@@ -128,7 +171,7 @@ const Sidebar: React.FC = () =>
   return (
     <Box sx = {{display:'flex'}}>
       <CssBaseline/>
-      <AppBar position = "fixed" open = {open}>
+      <AppBar position = "fixed" open = {open} sx = {{backgroundColor: 'white'}} >
         <Toolbar>
           <IconButton
             color = "inherit"
@@ -144,6 +187,177 @@ const Sidebar: React.FC = () =>
             >
               <MenuIcon />
             </IconButton>
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1,
+            }}>
+            Squid coin
+          </Typography>
+          <IconButton color = "inherit" sx = {{ml:2}}>
+            <DarkModeIcon/>
+          </IconButton>
+
+          <IconButton color = "inherit" component = {Link} to = "/notifications">
+            <NotificationsIcon/>
+          </IconButton>
+
+          <Button 
+            color = "inherit"
+            sx = {{
+              border: '2px solid #808080',
+              borderRadius: '4px',
+              padding: '6px 12px',
+              ml: 2,
+              textDecoration: 'none',
+              color: 'black',
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/login" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              Log in
+            </Typography>
+          </Button>
+
+          <Button 
+            color = "inherit"
+            sx = {{
+              border: '2px solid #808080',
+              borderRadius: '4px',
+              padding: '6px 12px',
+              ml: 2,
+              
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/register" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              Sign up
+            </Typography>
+          </Button>
+
+        </Toolbar>
+        <Divider/>
+        <Toolbar>
+        <Button 
+            color = "inherit"
+            sx = {{
+              padding: '6px 12px',
+              ml: 10,
+              
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/dashboard" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              Home
+            </Typography>
+          </Button>
+
+          <Button 
+            color = "inherit"
+            sx = {{
+              padding: '6px 12px',
+              ml: 4,
+              
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/about" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              About/Info Page
+            </Typography>
+          </Button>
+
+          <Button 
+            color = "inherit"
+            sx = {{
+              padding: '6px 12px',
+              ml: 4,
+              
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/transactionsr" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              Transactions
+            </Typography>
+          </Button>
+
+          <Button 
+            color = "inherit"
+            sx = {{
+              padding: '6px 12px',
+              ml: 4,
+              
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/admin" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              Admin page
+            </Typography>
+          </Button>
+
+          <Button 
+            color = "inherit"
+            sx = {{
+              padding: '6px 12px',
+              ml: 4,
+              
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/faq" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              FAQ
+            </Typography>
+          </Button>
+
+          <Button 
+            color = "inherit"
+            sx = {{
+              padding: '6px 12px',
+              ml: 4,
+              
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/trading" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              Trading
+            </Typography>
+          </Button>
+
+          <Box sx={{ flexGrow: 1 }} /> {/* Pushes the search bar to the right */}
+          <TextField
+            variant="outlined"
+            placeholder="Search…"
+            size="small"
+            sx={{
+              width: '250px',
+              ml: 4,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '4px',
+                borderColor: 'grey',
+
+                '& fieldset':
+                {
+                  borderColor:'grey',
+                },
+
+                '&:hover fieldset':{
+                  borderColor:'darkgrey'
+                }
+              },
+            }}
+          />
         </Toolbar>
       </AppBar>
 
