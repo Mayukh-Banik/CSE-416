@@ -1,0 +1,23 @@
+services:
+  server:
+    build: ./server
+    ports:
+      - "8000:8000"
+  client:
+    build: ./client
+    ports:
+      - "3000:3000"
+  database:
+    image: "mysql"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+    volumes:
+      - ./database:/var/lib/mysql
+
+volumes:
+  database_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /database
