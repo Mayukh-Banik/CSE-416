@@ -1,5 +1,5 @@
 # Node 
-FROM node:lts
+FROM node:20-lts
 
 WORKDIR /client
 
@@ -8,11 +8,6 @@ COPY package*.json .
 RUN npm install
 
 COPY . .
-# COPY . .
-
-# RUN npm install
-# RUN npm install react
-# RUN npm install typescript --save-dev
 
 ENV PORT=3000
 
