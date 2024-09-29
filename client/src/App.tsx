@@ -201,34 +201,10 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<WelcomePage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/login2" element={<LoginPage2 />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/files" element={<FilesPage />} />
-          <Route
-            path="/settings"
-            element={
-              <SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />
-            }
-          />
-          {/* <Route path='/transaction' element={<TransactionPage />} /> */}
-          <Route path="/mining" element={<MiningPage />} />
-
+          <Route path='/login' element={<LoginPage />} />
           {/* <Route path='/register' element={<RegisterPage />} /> */}
-
-          {/* Routes protected by PrivateRoute */}
-          <Route element={<PrivateRoute isAuthenticated={isUserLoggedIn} />}>
-            <Route
-              path="/wallet"
-              element={
-                <WalletPage
-                  walletAddress={walletAddress}
-                  balance={balance}
-                  transactions={transactions}
-                />
-              }
-            />
-          </Route>
+          <Route path="/settings" element={<SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />} />
+          <Route path="/dashboard" element={<Dashboard />} />  
         </Routes>
       </Router>
     </ThemeProvider>
