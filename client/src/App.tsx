@@ -8,6 +8,7 @@ import LoginPage from './Components/LoginPage';
 import LoginPage2 from './Components/LoginPage2';
 import SignupPage from './Components/SignUpPage';
 import SettingPage from './Components/SettingPage';
+import TransactionPage from './Components/TransactionPage';
 
 const App: React.FC = () => {
    const [darkMode, setDarkMode] = useState(false);
@@ -48,6 +49,8 @@ const App: React.FC = () => {
           <Route path='/login2' element={<LoginPage2 />} />
           <Route path='/signup' element={<SignupPage />} />
           <Route path="/settings" element={<SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />} />
+          <Route path='/transaction' element={<TransactionPage />} />
+
           {/* <Route path='/register' element={<RegisterPage />} /> */}
         </Routes>
       </Router>
