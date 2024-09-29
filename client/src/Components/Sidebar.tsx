@@ -21,6 +21,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
+import ReceiptIcon from '@mui/icons-material/Receipt';
 
 const drawerWidth = 275;
 
@@ -145,6 +146,11 @@ const Sidebar: React.FC = () =>
         <ListItem component = {Link} to = "/files">
           <ListItemIcon><FileCopyIcon/></ListItemIcon>
           <ListItemText primary = "Files"></ListItemText>
+        </ListItem>
+
+        <ListItem component = {Link} to = "/transaction">
+          <ListItemIcon><ReceiptIcon/></ListItemIcon>
+          <ListItemText primary = "Transactions"></ListItemText>
         </ListItem>
 
         <ListItem component = {Link} to = "/account">
