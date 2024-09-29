@@ -386,3 +386,5 @@ const Sidebar: React.FC = () =>
     </Box>
   );
 }
+
+export default Sidebar;
