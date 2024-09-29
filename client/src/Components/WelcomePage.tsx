@@ -7,15 +7,16 @@ const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLogin = () => {
-    navigate("/login");
+    navigate("/login2");
   };
 
   const handleSignup = () => {
-    navigate("/register");
+    navigate("/signup");
   };
 
   const handleGuest = () => {
-    navigate("/guest");
+    // navigate("/dashboard");
+    navigate('transaction');
   };
 
   return (
@@ -32,12 +33,10 @@ const WelcomePage: React.FC = () => {
           textAlign: "center",
         }}
       >
-        {/* Increased font size and weight for the Welcome message */}
         <Typography variant="h2" sx={{ fontWeight: 700, mb: 2 }}>
           Welcome to Project Squid
         </Typography>
 
-        {/* Supporting text - slightly smaller */}
         <Typography
           variant="body1"
           sx={{ mb: 4, fontSize: "1.2rem", color: "#666" }}
@@ -45,7 +44,6 @@ const WelcomePage: React.FC = () => {
           Your go-to solution for secure file sharing.
         </Typography>
 
-        {/* Buttons styled to match blue theme */}
         <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
           <Button
             onClick={handleLogin}
