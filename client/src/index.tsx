@@ -7,6 +7,10 @@ import { ThemeProvider } from "@emotion/react";
 import CssBaseline from "@mui/material/CssBaseline";
 import GeneralTheme from "./Stylesheets/GeneralTheme";
 
+import { Buffer } from 'buffer';
+(window as any).Buffer = Buffer;
+
+
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
