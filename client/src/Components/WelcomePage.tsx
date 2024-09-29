@@ -15,7 +15,7 @@ const WelcomePage: React.FC = () => {
   };
 
   const handleGuest = () => {
-    navigate("/guest");
+    navigate("/dashboard");
   };
 
   return (
