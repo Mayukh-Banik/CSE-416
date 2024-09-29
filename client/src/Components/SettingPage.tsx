@@ -4,7 +4,7 @@ import Header from "./Header";
 import { Container, IconButton, Typography } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-
+import DeleteIcon from '@mui/icons-material/Delete';
 
 type SettingPageProps = {
     darkMode: boolean;
@@ -15,7 +15,7 @@ const SettingPage: React.FC<SettingPageProps> = ({ darkMode, toggleTheme }) => {
 
     return (
         <div>
-            {/* <Sidebar /> */}
+            <Sidebar />
             <Header />
             <h1></h1>
             <h2>Identification</h2>
@@ -25,6 +25,8 @@ const SettingPage: React.FC<SettingPageProps> = ({ darkMode, toggleTheme }) => {
             <IconButton onClick={toggleTheme}>
             {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
             </IconButton>
+            <br></br>
+            <IconButton> <DeleteIcon/>  Delete Account</IconButton>
         </div>
 
         </div>

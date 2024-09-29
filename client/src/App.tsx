@@ -46,13 +46,8 @@ const App: React.FC = () => {
           <Route path="/" element={<WelcomePage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path='/login' element={<LoginPage />} />
-<<<<<<< HEAD
-          <Route path='/transaction' element={<TransactionPage />} />
-          <Route path="/settings" element={<SettingPage />} /> 
-=======
           {/* <Route path='/register' element={<RegisterPage />} /> */}
           <Route path="/settings" element={<SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />} />
->>>>>>> 4cec157 (save)
           <Route path="/dashboard" element={<Dashboard />} />  
         </Routes>
       </Router>
