@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'; 
 import GeneralTheme from './Stylesheets/GeneralTheme';
@@ -7,6 +7,7 @@ import RegisterPage from './Components/RegisterPage';
 import LoginPage from './Components/LoginPage';
 import LoginPage2 from './Components/LoginPage2';
 import SignupPage from './Components/SignUpPage';
+import SettingPage from './Components/SettingPage';
 
 const App: React.FC = () => {
    const [darkMode, setDarkMode] = useState(false);
