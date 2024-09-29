@@ -1,12 +1,34 @@
-import React from "react";
+import React, { useState }  from "react";
 import Sidebar from "./Sidebar";
+import Header from "./Header";
+import { Container, IconButton, Typography } from '@mui/material';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import DeleteIcon from '@mui/icons-material/Delete';
 
-const SettingPage: React.FC = () => {
+type SettingPageProps = {
+    darkMode: boolean;
+    toggleTheme: () => void;
+  };
+
+const SettingPage: React.FC<SettingPageProps> = ({ darkMode, toggleTheme }) => {
+
     return (
         <div>
-            <h1>Settings Page</h1>
             <Sidebar />
-            {/* Add more content here */}
+            <Header />
+            <h1></h1>
+            <h2>Identification</h2>
+            Your public key: 
+            <div>
+            <Typography variant="h6">Theme</Typography>
+            <IconButton onClick={toggleTheme}>
+            {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
+            </IconButton>
+            <br></br>
+            <IconButton> <DeleteIcon/>  Delete Account</IconButton>
+        </div>
+
         </div>
     );
 }
