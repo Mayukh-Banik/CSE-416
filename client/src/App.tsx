@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
-import { Container, Typography, Button } from '@mui/material';
+import { Container, Typography, Button, ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+
+import GeneralTheme from './Stylesheets/GeneralTheme';
 import WelcomePage from './Components/WelcomePage';
 import RegisterPage from './Components/RegisterPage';
 import LoginPage from './Components/LoginPage';
+import LoginPage2 from './Components/LoginPage2';
+import SignupPage from './Components/SignUpPage';
+import SettingPage from './Components/SettingPage';
+import TransactionPage from './Components/TransactionPage';
 import WalletPage from './Components/WalletPage';
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
@@ -135,12 +141,43 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated }) => {
 
 
 const App: React.FC = () => {
+  const [darkMode, setDarkMode] = useState(false);
+
+  const lightTheme = createTheme({
+    palette: {
+      mode: 'light',
+    },
+  });
+
+  const darkTheme = createTheme({
+    palette: {
+      mode: 'dark',
+      background: {
+        default: '#121212',
+      },
+      primary: {
+        main: '#f48fb1', // Main color for dark theme
+      },
+      secondary: {
+        main: '#f48fb1', // Secondary color for dark theme
+      },
+    },
+  });
+  
+  const toggleTheme = () => {
+    setDarkMode((prevMode) => !prevMode);
+  };
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<WelcomePage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path='/login' element={<LoginPage />} />
+      <Route path="/" element={<WelcomePage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path='/login' element={<LoginPage />} />
+          <Route path='/login2' element={<LoginPage2 />} />
+          <Route path='/signup' element={<SignupPage />} />
+          <Route path="/settings" element={<SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />} />
+          <Route path='/transaction' element={<TransactionPage />} />
+
         {/* <Route path='/register' element={<RegisterPage />} /> */}
 
         {/* Routes protected by PrivateRoute */}
@@ -161,6 +198,5 @@ const App: React.FC = () => {
     </Router>
   );
 };
-
 
 export default App;
