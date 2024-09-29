@@ -157,11 +157,6 @@ const Sidebar: React.FC = () =>
           <ListItemIcon><AccountCircleIcon/></ListItemIcon>
           <ListItemText primary = "Account"></ListItemText>
         </ListItem>
-
-        <ListItem component = {Link} to = "/transaction">
-          <ListItemIcon><ReceiptIcon/></ListItemIcon>
-          <ListItemText primary = "Transactions"></ListItemText>
-        </ListItem>
         
         <ListItem component = {Link} to = "/support">
           <ListItemIcon><SupportAgentIcon/></ListItemIcon>
