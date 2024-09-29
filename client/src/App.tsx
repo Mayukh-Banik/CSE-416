@@ -1,26 +1,31 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Container, Typography, Button } from '@mui/material';
+import { ThemeProvider } from '@mui/material/styles'; // Import ThemeProvider
+import GeneralTheme from './Stylesheets/GeneralTheme';
 import WelcomePage from './Components/WelcomePage';
 import RegisterPage from './Components/RegisterPage';
 import LoginPage from './Components/LoginPage';
-import SettingPage from './Components/SettingPage';
-import Dashboard from './Components/Dashboard';
-import TransactionPage from './Components/TransactionPage';
+import LoginPage2 from './Components/LoginPage2';
+import SignupPage from './Components/SignUpPage';
 
 const App: React.FC = () => {
-    return (
+  return (
+    <ThemeProvider theme={GeneralTheme}>  {/* Wrap your app in ThemeProvider */}
       <Router>
         <Routes>
           <Route path="/" element={<WelcomePage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path='/login' element={<LoginPage />} />
-          <Route path='/transaction' element={<TransactionPage />} />
-          <Route path="/settings" element={<SettingPage />} /> 
-          <Route path="/dashboard" element={<Dashboard />} />  
+          <Route path='/login2' element={<LoginPage2 />} />
+          <Route path='/signup' element={<SignupPage />} />
+          {/* <Route path='/register' element={<RegisterPage />} /> */}
         </Routes>
       </Router>
-    );
-  };
+    </ThemeProvider>
+  );
+};
 
 export default App;
+
+  
+
