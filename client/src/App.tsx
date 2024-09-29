@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, {useState}, { useState } from "react";
 // Replace the BrowserRouter import with HashRouter
 
 // import {
@@ -8,6 +8,7 @@ import React, { useState } from "react";
 //   Outlet,
 //   Navigate,
 // } from "react-router-dom";
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'; // Import CssBaseline here
 import {
   Container,
   Typography,
