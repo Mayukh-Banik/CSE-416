@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Box,CssBaseline,Drawer,IconButton,List,ListItem,ListItemText
@@ -385,5 +386,3 @@ const Sidebar: React.FC = () =>
     </Box>
   );
 }
-
-export default Sidebar;
