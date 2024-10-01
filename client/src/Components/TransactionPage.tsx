@@ -13,6 +13,10 @@ import {
 import TransactionTable from "./TransactionTable";
 import Sidebar from "./Sidebar";
 
+// interface TransactionPageProps {
+//     open: boolean;
+// }
+
 const TransactionPage: React.FC = () => {
     const [search, setSearch] = useState("");
     const [dateFilter, setDateFilter] = useState<string>("all");
