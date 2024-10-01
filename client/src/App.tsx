@@ -11,6 +11,9 @@ import SignupPage from './Components/SignUpPage';
 import SettingPage from './Components/SettingPage';
 import TransactionPage from './Components/TransactionPage';
 import WalletPage from './Components/WalletPage';
+import { Dashboard } from '@mui/icons-material';
+import FilesPage from './Components/FilesPage';
+import MiningPage from './Components/MiningPage';
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
@@ -167,6 +170,7 @@ const App: React.FC = () => {
   const toggleTheme = () => {
     setDarkMode((prevMode) => !prevMode);
   };
+
   return (
     <Router>
       <Routes>
@@ -175,8 +179,10 @@ const App: React.FC = () => {
           <Route path='/login' element={<LoginPage />} />
           <Route path='/login2' element={<LoginPage2 />} />
           <Route path='/signup' element={<SignupPage />} />
+          <Route path='/files' element={<FilesPage/>} />
           <Route path="/settings" element={<SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />} />
-          <Route path='/transaction' element={<TransactionPage />} />
+          {/* <Route path='/transaction' element={<TransactionPage />} /> */}
+          <Route path='/mining' element={<MiningPage />} />
 
         {/* <Route path='/register' element={<RegisterPage />} /> */}
 
@@ -193,7 +199,6 @@ const App: React.FC = () => {
             }
           />
         </Route>
-
       </Routes>
     </Router>
   );
