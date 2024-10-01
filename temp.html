@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome Page</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Header Component</h1>
+    </header>
+    <div class="container">
+        <h2 class="heading">Welcome to Project Squid</h2>
+        <p class="subtext">Your go-to solution for secure file sharing.</p>
+        <div class="button-container">
+            <button class="button" onclick="handleLogin()">Log In</button>
+            <button class="button" onclick="handleSignup()">Sign Up</button>
+            <button class="button" onclick="handleGuest()">Continue as Guest</button>
+        </div>
+    </div>
+    <script>
+        function handleLogin() {
+            window.location.href = "/login2";
+        }
+
+        function handleSignup() {
+            window.location.href = "/signup";
+        }
+
+        function handleGuest() {
+            window.location.href = "transaction";
+        }
+    </script>
+</body>
+</html>
+
+<style>
+    body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        text-align: center;
+    }
+    .container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 80vh; 
+        text-align: center;
+    }
+    .heading {
+        font-size: 3rem;
+        font-weight: 700;
+        color: #444;
+        margin-bottom: 2rem;
+    }
+    .subtext {
+        font-size: 1.2rem;
+        color: #777;
+        margin-bottom: 4rem;
+    }
+    .button {
+        width: 100%;
+        padding: 15px 0;
+        font-size: 1.2rem;
+        border-radius: 8px;
+        box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        margin-bottom: 3rem; 
+        background-color: #3f51b5; 
+        color: white; 
+        border: none; 
+        cursor: pointer; 
+    }
+    .button:hover {
+        background-color: #95bfe7;
+    }
+</style>

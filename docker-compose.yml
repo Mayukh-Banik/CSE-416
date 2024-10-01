@@ -7,16 +7,16 @@ services:
     build: ./client
     ports:
       - "3000:3000"
-  caddy:
-    build: ./caddy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
-    depends_on:
-      - client
-    restart: unless-stopped
+  # caddy:
+  #   build: ./caddy
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+  #   depends_on:
+  #     - client
+  #   restart: unless-stopped
   # database:
   #   image: "mysql"
   #   environment:

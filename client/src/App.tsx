@@ -4,13 +4,13 @@ import { Container, Typography, Button, ThemeProvider, createTheme, CssBaseline 
 
 import GeneralTheme from './Stylesheets/GeneralTheme';
 import WelcomePage from './Components/WelcomePage';
-import RegisterPage from './Components/RegisterPage';
-import LoginPage from './Components/LoginPage';
-import LoginPage2 from './Components/LoginPage2';
-import SignupPage from './Components/SignUpPage';
-import SettingPage from './Components/SettingPage';
-import TransactionPage from './Components/TransactionPage';
-import WalletPage from './Components/WalletPage';
+// import RegisterPage from './Components/RegisterPage';
+// import LoginPage from './Components/LoginPage';
+// import LoginPage2 from './Components/LoginPage2';
+// import SignupPage from './Components/SignUpPage';
+// import SettingPage from './Components/SettingPage';
+// import TransactionPage from './Components/TransactionPage';
+// import WalletPage from './Components/WalletPage';
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
@@ -135,9 +135,9 @@ interface PrivateRouteProps {
   isAuthenticated: boolean;
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated }) => {
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
-};
+// const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated }) => {
+//   return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+// };
 
 
 const App: React.FC = () => {
@@ -171,17 +171,17 @@ const App: React.FC = () => {
     <Router>
       <Routes>
       <Route path="/" element={<WelcomePage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          {/* <Route path="/register" element={<RegisterPage />} />
           <Route path='/login' element={<LoginPage />} />
           <Route path='/login2' element={<LoginPage2 />} />
           <Route path='/signup' element={<SignupPage />} />
           <Route path="/settings" element={<SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />} />
-          <Route path='/transaction' element={<TransactionPage />} />
+          <Route path='/transaction' element={<TransactionPage />} /> */}
 
         {/* <Route path='/register' element={<RegisterPage />} /> */}
 
         {/* Routes protected by PrivateRoute */}
-        <Route element={<PrivateRoute isAuthenticated={isUserLoggedIn} />}>
+        {/* <Route element={<PrivateRoute isAuthenticated={isUserLoggedIn} />}>
           <Route
             path="/wallet"
             element={
@@ -192,7 +192,7 @@ const App: React.FC = () => {
               />
             }
           />
-        </Route>
+        </Route> */}
 
       </Routes>
     </Router>
