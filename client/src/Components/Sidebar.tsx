@@ -228,7 +228,7 @@ const Sidebar: React.FC = () =>
           />
         </Toolbar>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: '', padding: 2 }}>
 
           <IconButton color = "inherit" sx = {{ml:2}}>
             <DarkModeIcon/>
@@ -245,8 +245,8 @@ const Sidebar: React.FC = () =>
               borderRadius: '4px',
               padding: '6px 12px',
               ml: 2,
-              textDecoration: 'none',
-              color: 'black',
+              // textDecoration: 'none',
+              // color: 'black',
             }}>
             <Typography variant = "h6" component = {Link} to = "/login" 
               style={{ 
