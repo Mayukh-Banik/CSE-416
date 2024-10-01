@@ -3,6 +3,7 @@ import { Box, Typography, Container, List, ListItem, ListItemText, Button } from
 import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 import Header from "./Header";
+import Sidebar from "./Sidebar";
 
 interface Transaction {
     id: string;
@@ -51,7 +52,8 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
 
     return (
         <>
-            <Header />
+            {/* <Header /> */}
+            <Sidebar/>
             <Container maxWidth="md" sx={{ mt: 4 }}>
                 <Typography variant="h4" sx={{ mb: 2 }}>
                     {walletLabel || 'Wallet Details'}
