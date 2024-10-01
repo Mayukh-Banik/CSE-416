@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
+import TransactionTable from "./TransactionTable";
+import TransactionPage from "./TransactionPage";
 
 interface Transaction {
     id: string;
@@ -81,7 +83,7 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                             width: '45%',
                         }}
                     >
-                        <img src="/images/walletBalance.png" alt="Wallet Icon" width="40" />
+                        <img src="/squidcoin.png" alt="Squid Icon" width="40" />
                         <Box sx={{ ml: 2, textAlign: 'left' }}>
                             <Typography variant="h6">Balance</Typography>
                             <Typography variant="body1">{balance} Coins</Typography>
@@ -112,63 +114,9 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                     </Box>
                 </Box>
 
-
-                {/* Transaction History */}
-                <Box sx={{ mb: 4 }}>
-                    <Typography variant="h6">Transaction History</Typography>
-                    <List>
-                        {sortedTransactions.slice(0, itemsToShow).map((tx) => (
-                            <ListItem key={tx.id} sx={{ borderBottom: '1px solid #ccc', padding: 2, flexDirection: 'column', alignItems: 'flex-start' }}>
-                                
-                                {/* Transaction ID as Header */}
-                                <Typography variant="h6" sx={{ mb: 1 }}>
-                                    Transaction ID: {tx.id}
-                                </Typography>
-                                
-                                {/* Transaction Details in Two Columns */}
-                                <Box
-                                    sx={{
-                                        display: 'flex',
-                                        flexDirection: 'row',
-                                        justifyContent: 'flex-start',
-                                        gap: 4, // Gap between the two columns
-                                        width: '100%',
-                                    }}
-                                >
-                                    {/* Left Column: Sender, Receiver, Amount */}
-                                    <Box sx={{ flex: 1 }}>
-                                        <Typography variant="body2">
-                                            <strong>Sender:</strong> {tx.sender}
-                                        </Typography>
-                                        <Typography variant="body2">
-                                            <strong>Receiver:</strong> {tx.receiver}
-                                        </Typography>
-                                        <Typography variant="body2">
-                                            <strong>Amount:</strong> {tx.amount} Coins
-                                        </Typography>
-                                    </Box>
-
-                                    {/* Right Column: Time, Status */}
-                                    <Box sx={{ flex: 1 }}>
-                                        <Typography variant="body2">
-                                            <strong>Time:</strong> {tx.timestamp}
-                                        </Typography>
-                                        <Typography variant="body2">
-                                            <strong>Status:</strong> {tx.status}
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            </ListItem>
-                        ))}
-                    </List>
-
-                    {/* Pagination Buttons */}
-                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                        <Button variant="contained" onClick={() => setItemsToShow(itemsToShow + 5)}>
-                            Show More
-                        </Button>
-                    </Box>
-                </Box>
+                <Typography variant="h6">Transaction History</Typography>
+                <TransactionPage/>
+                
             </Container >
         </>
     );
