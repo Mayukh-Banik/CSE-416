@@ -9,7 +9,6 @@ import LoginPage from './Components/LoginPage';
 import LoginPage2 from './Components/LoginPage2';
 import SignupPage from './Components/SignUpPage';
 import SettingPage from './Components/SettingPage';
-import TransactionPage from './Components/TransactionPage';
 import WalletPage from './Components/WalletPage';
 import { Dashboard } from '@mui/icons-material';
 import FilesPage from './Components/FilesPage';
