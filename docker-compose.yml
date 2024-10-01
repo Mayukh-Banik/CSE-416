@@ -1,23 +1,32 @@
 services:
-  server:
-    build: ./server
-    ports:
-      - "8000:8000"
+  # server:
+  #   build: ./server
+  #   ports:
+  #     - "8000:8000"
   client:
     build: ./client
     ports:
       - "3000:3000"
-  database:
-    image: "mysql"
-    environment:
-      MYSQL_ROOT_PASSWORD: password
+  caddy:
+    build: ./caddy
+    ports:
+      - "2080:2080"
     volumes:
-      - ./database:/var/lib/mysql
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+    depends_on:
+      - client
+    restart: unless-stopped
+  # database:
+  #   image: "mysql"
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: password
+  #   volumes:
+  #     - ./database:/var/lib/mysql
 
-volumes:
-  database_volume:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /database
+# volumes:
+#   database_volume:
+#     driver: local
+#     driver_opts:
+#       type: none
+#       o: bind
+#       device: /database
