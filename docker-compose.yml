@@ -10,7 +10,8 @@ services:
   caddy:
     build: ./caddy
     ports:
-      - "2080:2080"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
     depends_on:

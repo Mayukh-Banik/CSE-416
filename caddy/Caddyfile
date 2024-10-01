@@ -1,3 +1,3 @@
-:2080 {
+cse416squidcoin.xyz {
     reverse_proxy client:3000
 }
