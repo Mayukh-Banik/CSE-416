@@ -22,7 +22,8 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import ReceiptIcon from '@mui/icons-material/Receipt';
-
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import { grey } from '@mui/material/colors';
 const drawerWidth = 275;
 
 
@@ -102,7 +103,6 @@ const Sidebar: React.FC = () =>
     setDashBoardOpen(!dashboardOpen);
   }
 
-
   const drawer = (
     <div>
       <List>
@@ -148,20 +148,36 @@ const Sidebar: React.FC = () =>
           <ListItemText primary = "Files"></ListItemText>
         </ListItem>
 
-        <ListItem component = {Link} to = "/transaction">
+        {/* <ListItem component = {Link} to = "/transaction">
           <ListItemIcon><ReceiptIcon/></ListItemIcon>
           <ListItemText primary = "Transactions"></ListItemText>
+        </ListItem> */}
+
+        <ListItem component = {Link} to = "/wallet">
+          <ListItemIcon><AccountBalanceWalletIcon/></ListItemIcon>
+          <ListItemText primary = "Wallet"></ListItemText>
+        </ListItem>
+
+        <ListItem component = {Link} to = "/mining">
+        <ListItemIcon>
+          <img 
+            src={`${process.env.PUBLIC_URL}/pickaxe.png`} 
+            alt="Pickaxe Icon" 
+            style={{ width: '24px', height: '24px', filter: 'invert'}} 
+          />
+        </ListItemIcon>
+          <ListItemText primary = "Mining"></ListItemText>
         </ListItem>
 
         <ListItem component = {Link} to = "/account">
           <ListItemIcon><AccountCircleIcon/></ListItemIcon>
           <ListItemText primary = "Account"></ListItemText>
         </ListItem>
-        
+{/*         
         <ListItem component = {Link} to = "/support">
           <ListItemIcon><SupportAgentIcon/></ListItemIcon>
           <ListItemText primary = "Support"></ListItemText>
-        </ListItem>
+        </ListItem> */}
 
         <ListItem component = {Link} to = "/settings">
           <ListItemIcon><SettingsIcon/></ListItemIcon>
@@ -196,7 +212,7 @@ const Sidebar: React.FC = () =>
             </IconButton>
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1,
             }}>
-            Squid coin
+            Squid Coin
           </Typography>
           <IconButton color = "inherit" sx = {{ml:2}}>
             <DarkModeIcon/>
@@ -246,7 +262,7 @@ const Sidebar: React.FC = () =>
         </Toolbar>
         <Divider/>
         <Toolbar>
-        <Button 
+        {/* <Button 
             color = "inherit"
             sx = {{
               padding: '6px 12px',
@@ -340,7 +356,7 @@ const Sidebar: React.FC = () =>
                 color: 'black', }}>
               Trading
             </Typography>
-          </Button>
+          </Button> */}
 
           <Box sx={{ flexGrow: 1 }} /> {/* Pushes the search bar to the right */}
           <TextField
@@ -370,7 +386,7 @@ const Sidebar: React.FC = () =>
 
       <Drawer 
         sx={{
-          width: drawerWidth,
+          // width: drawerWidth,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
