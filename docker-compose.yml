@@ -6,6 +6,8 @@ services:
     networks:
       - caddy_network
     container_name: app_client_server
+    # volumes:
+      # - ./Shared:/Shared
 
   caddy:
     build:
@@ -16,6 +18,24 @@ services:
     networks:
       - caddy_network
     restart: unless-stopped
+    # volumes:
+      # - ./Shared:/Shared
+
+  ipfs-server:
+    build: ./IPFS-Server
+    container_name: ipfs_server
+    ports:
+      - "4001:4001"
+      - "5001:5001"
+      - "8080:8080"
+    volumes:
+      - ./ipfs-server-data:/data/ipfs
+      - type: bind
+        source: ./Shared
+        target: /Shared
+        read_only: false
+    networks:
+      - caddy_network
 
 networks:
   caddy_network:
