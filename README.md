@@ -14,7 +14,7 @@
 
 3. Run docker startup command with admin privileges
 
-    Linux
+    Linux/MacOs
 
         sudo docker compose up
 
