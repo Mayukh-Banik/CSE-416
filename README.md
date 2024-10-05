@@ -26,6 +26,8 @@
 This will apply to the docker image as well as on the host machine.
 
 5. Database folder will be located on project's root directory with database only being accesible to the server which will have a reference to it in it's "\database" directory.
+
+6. For server run: sudo docker compose --profile ipfs-server up -d For client run: sudo docker compose --profile ipfs-server up -d, gotta run sudo docker exec ipfs_server cp swarm.key Shared otherwise key doesn't copy over
         
 
 ### Notes
