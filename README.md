@@ -29,9 +29,9 @@ This will apply to the docker image as well as on the host machine.
 
 6. For server run:
    ```
-   sudo docker compose up
-   ```
+   sudo docker compose up --build --detach
    sudo docker exec ipfs_server cp swarm.key Shared 
+   ```
         
 
 ### Notes
