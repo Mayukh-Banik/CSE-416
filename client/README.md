@@ -1,46 +1,44 @@
 # Getting Started with Create React App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# CSE-416
 
-## Available Scripts
+## Installation Instructions:
 
-In the project directory, you can run:
+1. Development Mode
 
-### `npm start`
+    To run your app in development mode (with live reloading):
+    
+    ```
+    npm start
+    ```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+2. Install Docker (Restart System if necessary, follow install prompts)
+    
+        https://docs.docker.com/engine/install/
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+3. Run docker startup command with admin privileges
 
-### `npm test`
+    Linux/MacOs
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+        sudo docker compose up
 
-### `npm run build`
+    Windows - Powershell as Administrator
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+        docker compose up
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+4. The website will be on port 3000 on local system, with server located on port 8000.
+This will apply to the docker image as well as on the host machine.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+5. Database folder will be located on project's root directory with database only being accesible to the server which will have a reference to it in it's "\database" directory.
 
-### `npm run eject`
+6. For server run:
+   ```
+   sudo docker compose up --build --detach
+   sudo docker exec ipfs_server cp swarm.key Shared 
+   ```
+        
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+### Notes
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+Database folder will be populated with a lot of stuff, can be ignored for now, need to figure out database solution

@@ -1,0 +1,29 @@
+appId: com.squidcoin.desktop
+productName: squidcoin-desktop
+directories:
+  buildResources: resources
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+mac:
+  target:
+    - dmg
+  category: public.app-category.utilities
+linux:
+  target:
+    - AppImage
+    - deb
+win:
+  target:
+    - nsis
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+publish:
+  provider: generic
+  url: https://example.com/auto-updates

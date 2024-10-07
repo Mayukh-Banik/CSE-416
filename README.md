@@ -16,11 +16,11 @@
 
     Linux/MacOs
 
-        sudo docker compose up
+        sudo docker compose up --build
 
     Windows - Powershell as Administrator
 
-        docker compose up
+        docker compose up --build
 
 4. The website will be on port 3000 on local system, with server located on port 8000.
 This will apply to the docker image as well as on the host machine.

@@ -1,0 +1,35 @@
+.
+├── App.css
+├── App.test.tsx
+├── App.tsx
+├── Components
+│   ├── Dashboard.tsx
+│   ├── FilesPage.tsx
+│   ├── Header.tsx
+│   ├── LoginPage.tsx
+│   ├── LoginPage2.tsx
+│   ├── MiningPage.tsx
+│   ├── RegisterPage.tsx
+│   ├── SettingPage.tsx
+│   ├── Sidebar.tsx
+│   ├── SignUpPage.tsx
+│   ├── TransactionPage.tsx
+│   ├── TransactionTable.tsx
+│   ├── WalletPage.tsx
+│   └── WelcomePage.tsx
+├── Stylesheets
+│   ├── GeneralTheme.tsx
+│   ├── LoginPageStyles.ts
+│   ├── RegisterPageStyles.ts
+│   ├── SignUpPageStyles.ts
+│   ├── TransactionPageStyles.ts
+│   └── WelcomePageStyles.ts
+├── index.css
+├── index.tsx
+├── logo.svg
+├── react-app-env.d.ts
+├── reportWebVitals.ts
+├── setupTests.ts
+└── structure.txt
+
+3 directories, 30 files
