@@ -78,6 +78,7 @@ const AppBar = styled(MuiAppBar, {
 }));
 
 const DrawerHeader = styled('div')(({ theme }) => ({
+  
   display: 'flex',
   alignItems: 'center',
   padding: theme.spacing(0, 1),
@@ -148,24 +149,19 @@ const Sidebar: React.FC = () =>
           <ListItemText primary = "Files"></ListItemText>
         </ListItem>
 
-        {/* <ListItem component = {Link} to = "/transaction">
-          <ListItemIcon><ReceiptIcon/></ListItemIcon>
-          <ListItemText primary = "Transactions"></ListItemText>
-        </ListItem> */}
-
         <ListItem component = {Link} to = "/wallet">
           <ListItemIcon><AccountBalanceWalletIcon/></ListItemIcon>
           <ListItemText primary = "Wallet"></ListItemText>
         </ListItem>
 
         <ListItem component = {Link} to = "/mining">
-        <ListItemIcon>
-          <img 
-            src={`${process.env.PUBLIC_URL}/pickaxe.png`} 
-            alt="Pickaxe Icon" 
-            style={{ width: '24px', height: '24px', filter: 'invert'}} 
-          />
-        </ListItemIcon>
+          <ListItemIcon>
+            <img 
+              src={`${process.env.PUBLIC_URL}/pickaxe.png`} 
+              alt="Pickaxe Icon" 
+              style={{ width: '24px', height: '24px', filter: 'invert'}} 
+            />
+          </ListItemIcon>
           <ListItemText primary = "Mining"></ListItemText>
         </ListItem>
 
@@ -173,11 +169,6 @@ const Sidebar: React.FC = () =>
           <ListItemIcon><AccountCircleIcon/></ListItemIcon>
           <ListItemText primary = "Account"></ListItemText>
         </ListItem>
-{/*         
-        <ListItem component = {Link} to = "/support">
-          <ListItemIcon><SupportAgentIcon/></ListItemIcon>
-          <ListItemText primary = "Support"></ListItemText>
-        </ListItem> */}
 
         <ListItem component = {Link} to = "/settings">
           <ListItemIcon><SettingsIcon/></ListItemIcon>
@@ -210,154 +201,8 @@ const Sidebar: React.FC = () =>
             >
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1,
-            }}>
-            Squid Coin
-          </Typography>
-          <IconButton color = "inherit" sx = {{ml:2}}>
-            <DarkModeIcon/>
-          </IconButton>
 
-          <IconButton color = "inherit" component = {Link} to = "/notifications">
-            <NotificationsIcon/>
-          </IconButton>
-
-          <Button 
-            color = "inherit"
-            sx = {{
-              border: '2px solid #808080',
-              borderRadius: '4px',
-              padding: '6px 12px',
-              ml: 2,
-              textDecoration: 'none',
-              color: 'black',
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/login" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              Log in
-            </Typography>
-          </Button>
-
-          <Button 
-            color = "inherit"
-            sx = {{
-              border: '2px solid #808080',
-              borderRadius: '4px',
-              padding: '6px 12px',
-              ml: 2,
-              
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/register" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              Sign up
-            </Typography>
-          </Button>
-
-        </Toolbar>
-        <Divider/>
-        <Toolbar>
-        {/* <Button 
-            color = "inherit"
-            sx = {{
-              padding: '6px 12px',
-              ml: 10,
-              
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/dashboard" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              Home
-            </Typography>
-          </Button>
-
-          <Button 
-            color = "inherit"
-            sx = {{
-              padding: '6px 12px',
-              ml: 4,
-              
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/about" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              About/Info Page
-            </Typography>
-          </Button>
-
-          <Button 
-            color = "inherit"
-            sx = {{
-              padding: '6px 12px',
-              ml: 4,
-              
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/transactionsr" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              Transactions
-            </Typography>
-          </Button>
-
-          <Button 
-            color = "inherit"
-            sx = {{
-              padding: '6px 12px',
-              ml: 4,
-              
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/admin" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              Admin page
-            </Typography>
-          </Button>
-
-          <Button 
-            color = "inherit"
-            sx = {{
-              padding: '6px 12px',
-              ml: 4,
-              
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/faq" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              FAQ
-            </Typography>
-          </Button>
-
-          <Button 
-            color = "inherit"
-            sx = {{
-              padding: '6px 12px',
-              ml: 4,
-              
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/trading" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              Trading
-            </Typography>
-          </Button> */}
-
+          <Toolbar>
           <Box sx={{ flexGrow: 1 }} /> {/* Pushes the search bar to the right */}
           <TextField
             variant="outlined"
@@ -382,6 +227,57 @@ const Sidebar: React.FC = () =>
             }}
           />
         </Toolbar>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: '', padding: 2 }}>
+
+          <IconButton color = "inherit" sx = {{ml:2}}>
+            <DarkModeIcon/>
+          </IconButton>
+
+          <IconButton color = "inherit" component = {Link} to = "/notifications">
+            <NotificationsIcon/>
+          </IconButton>
+          
+          <Button 
+            color = "inherit"
+            sx = {{
+              border: '2px solid #808080',
+              borderRadius: '4px',
+              padding: '6px 12px',
+              ml: 2,
+              // textDecoration: 'none',
+              // color: 'black',
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/login" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              Log in
+            </Typography>
+          </Button>
+                
+          <Button 
+            color = "inherit"
+            sx = {{
+              border: '2px solid #808080',
+              borderRadius: '4px',
+              padding: '6px 12px',
+              ml: 2,
+              
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/register" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              Sign up
+            </Typography>
+          </Button>
+          </Box>
+        </Toolbar>
+        <Divider/>
+        
       </AppBar>
 
       <Drawer 
@@ -398,6 +294,10 @@ const Sidebar: React.FC = () =>
         open = {open}
       >
         <DrawerHeader>
+          <img src="/squidcoin.png" alt="Squid Icon" width="30" />
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1}}>
+            Squid Coin
+          </Typography>
           <IconButton onClick ={()=>toggleDrawer(false)}>
             {theme.direction === 'ltr'? <ChevronLeftIcon />:<ChevronRightIcon />}
           </IconButton>

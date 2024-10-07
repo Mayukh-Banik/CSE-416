@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+// Replace the BrowserRouter import with HashRouter
 
 // import {
 //   BrowserRouter as Router,
@@ -17,6 +18,9 @@ import {
 } from "@mui/material";
 import { HashRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 // Remove the BrowserRouter import and replace it with HashRouter
+
+
+
 
 
 import GeneralTheme from "./Stylesheets/GeneralTheme";
