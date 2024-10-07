@@ -17,7 +17,7 @@ function createWindow() {
     `file://${path.join(__dirname, 'client/build/index.html')}`
   );
 
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
   
 
   mainWindow.on('closed', () => (mainWindow = null));
