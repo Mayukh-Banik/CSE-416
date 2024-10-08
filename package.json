@@ -6,7 +6,7 @@
     "author": "Squid Team",
     "scripts": {
         "start": "cd client && react-scripts start",
-        "build": "cd client && DISABLE_ESLINT_PLUGIN=true react-scripts build",
+        "build": "cd client && npm run build",
         "electron-dev": "concurrently \"npm run start\" \"wait-on http://localhost:3000 && electron .\"",
         "electron-build": "npm run build && electron .",
         "electron": "electron ./main.js"
