@@ -1,6 +1,8 @@
 [submodule "coins/btcd"]
-	path = coins/btcd
-	url = https://github.com/btcsuite/btcd.git
-[submodule "coins/btcwallet"]
-	path = coins/btcwallet
-	url = https://github.com/btcsuite/btcwallet.git
+ path = coins/btcd
+ url = https://github.com/btcsuite/btcd.git
+
+ [submodule "coins/btcwallet"]
+ path = coins/btcwallet
+ url = https://github.com/btcsuite/btcwallet.git
+
