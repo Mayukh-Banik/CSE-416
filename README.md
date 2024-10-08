@@ -47,6 +47,7 @@ Follow these steps to set up the Electron desktop application:
     ```
     cd client
     npm install
+    npm install electron
     npm run build
     ```
     This will install all necessary client dependencies and create a `build` folder with the `index.html` file inside it.
