@@ -102,30 +102,35 @@ const MiningPage: React.FC = () => {
 
     const handleStopMining = async () => {
         try {
+            console.log("Attempting to stop mining...");
             const response = await fetch(`${API_BASE_URL}/api/stop-mining`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
             });
-
+    
             if (!response.ok) {
                 const errorData = await response.json();
+                console.error("Error stopping mining:", errorData);
                 throw new Error(errorData.message || "Failed to stop mining");
             }
-
+    
             const data: MiningStatus = await response.json();
+            console.log("Mining stopped successfully:", data);
             setSuccess("Mining stopped");
             setMiningStatus(data);
             setIsMining(data.isMining);
         } catch (error: unknown) {
             if (error instanceof Error) {
+                console.error("Error in handleStopMining:", error.message);
                 setError(error.message);
             } else {
                 setError("An unknown error occurred.");
             }
         }
     };
+    
 
     const handleCloseSnackbar = () => {
         setError(null);
