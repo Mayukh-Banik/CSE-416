@@ -1,9 +1,11 @@
 import React from 'react';
 import { Button } from '@mui/material';
+import { styled, useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
 const LogoutButton: React.FC = () => {
     const navigate = useNavigate();
+    const theme = useTheme();
 
     // work on this later
     const handleLogout = async () => {
@@ -17,8 +19,8 @@ const LogoutButton: React.FC = () => {
             color="inherit"
             onClick={handleLogout}
             style={{
-                backgroundColor:'#f4f4f4',
-                color:'#1876d2',
+                backgroundColor:'background.default',
+                color:'secondary.main',
                 position: 'absolute',
                 top: '16px',
                 right: '16px',

@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
 
-// MiningStatus holds the current status of mining
+// current mining status
 type MiningStatus struct {
 	MinedBlocks    int    `json:"minedBlocks"`
 	LastMinedBlock string `json:"lastMinedBlock"`
@@ -20,6 +21,7 @@ type MiningStatus struct {
 
 var (
 	miningStatus MiningStatus
+	client       *rpcclient.Client
 	mu           sync.Mutex
 )
 
@@ -75,16 +77,42 @@ func mine() {
 			mu.Unlock()
 			return
 		}
+
+		// implement our own block generation
+		blockHashes, err := client.Generate(1)
+		if err != nil {
+			log.Printf("Failed to generate block: %v", err)
+			miningStatus.IsMining = false
+			mu.Unlock()
+			return
+		}
+
 		miningStatus.MinedBlocks++
-		miningStatus.LastMinedBlock = time.Now().Format(time.RFC3339)
+		miningStatus.LastMinedBlock = blockHashes[0].String()
 		mu.Unlock()
 
 		// mining delay
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
 func main() {
+	// set up btcd connection
+	connCfg := &rpcclient.ConnConfig{
+		Host:         "localhost:8334", // btcd RPC server
+		User:         "user",
+		Pass:         "password",
+		HTTPPostMode: true,
+		DisableTLS:   true,
+	}
+
+	var err error
+	client, err = rpcclient.New(connCfg, nil)
+	if err != nil {
+		log.Fatalf("Error creating btcd client: %v", err)
+	}
+	defer client.Shutdown()
+
 	// default mining status
 	miningStatus = MiningStatus{
 		MinedBlocks:    0,
