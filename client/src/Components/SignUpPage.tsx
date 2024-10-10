@@ -1,95 +1,57 @@
-import React, { useState } from "react";
-import { HDNodeWallet, Mnemonic } from "ethers"; // Import HDNodeWallet and Mnemonic for ethers v6
-import { Box, Typography, Button } from "@mui/material";
-import * as bip39 from "bip39"; // For generating mnemonic phrases
-import { randomBytes } from '@ethersproject/random'; // Correct import for randomBytes
-import { hexlify } from '@ethersproject/bytes'; // Correct import for hexlify
-import { Buffer } from 'buffer'; // Import buffer polyfill
-import useSignUpPageStyles from "../Stylesheets/SignUpPageStyles";
+import React, { useState } from 'react';
+import * as bitcoin from 'bitcoinjs-lib';
+import * as ecc from 'tiny-secp256k1';
+import { ECPairFactory } from 'ecpair';
 
-const SignupPage: React.FC = () => {
-  const classes = useSignUpPageStyles(); // Custom styles
+const ECPair = ECPairFactory(ecc);
+
+const SignUpPage: React.FC = () => {
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [privateKey, setPrivateKey] = useState<string | null>(null);
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [mnemonic, setMnemonic] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const generateKeys = () => {
-    setErrorMessage(null); // Reset error
+  const generateWallet = async () => {
+    // Generate a Bitcoin key pair using ECPair
+    const keyPair = ECPair.makeRandom();
+    const { address } = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey });
+    const privateKey = keyPair.toWIF();
+
+    // Set the state to show the address and private key
+    setWalletAddress(address || null);
+    setPrivateKey(privateKey);
+    setIsSubmitted(true);
+
+    // Send the public key (walletAddress) to the backend to register
     try {
-      // Generate random entropy for the mnemonic
-      const entropy = randomBytes(16); // 128 bits for 12-word mnemonic
-      console.log('Entropy:', entropy); // Log the entropy for debugging
-
-      // Convert Uint8Array to Buffer
-      const entropyBuffer = Buffer.from(entropy);
-      const mnemonicPhrase = bip39.entropyToMnemonic(entropyBuffer.toString('hex')); // Convert to hex string for bip39
-      console.log('Mnemonic Phrase:', mnemonicPhrase); // Log the mnemonic for debugging
-
-      // Convert the mnemonic phrase into the Mnemonic type
-      const mnemonicObject = Mnemonic.fromPhrase(mnemonicPhrase); // ethers v6 conversion
-      console.log('Mnemonic Object:', mnemonicObject); // Log mnemonic object
-
-      // Create wallet from mnemonic using HDNodeWallet (ethers.js v6)
-      const wallet = HDNodeWallet.fromMnemonic(mnemonicObject); 
-      console.log('Wallet:', wallet); // Log the generated wallet
-
-      setMnemonic(mnemonicPhrase); // Set the mnemonic phrase
-      setPrivateKey(wallet.privateKey); // Private key
-      setPublicKey(wallet.address); // Public key
+      await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ walletAddress: address }),
+      });
     } catch (error) {
-      console.error('Error generating key pair:', error); // Log the error for debugging
-      setErrorMessage('Error generating key pair.');
+      console.error('Error registering wallet:', error);
     }
   };
 
-  const handleDownload = () => {
-    const element = document.createElement("a");
-    const file = new Blob([privateKey as string], { type: "text/plain" });
-    element.href = URL.createObjectURL(file);
-    element.download = "privateKey.txt";
-    document.body.appendChild(element);
-    element.click();
-  };
-
   return (
-    <Box className={classes.root}>
-      <Typography variant="h2" className={classes.title} gutterBottom>
-        Set Up Your Account
-      </Typography>
-      {!privateKey ? (
-        <Button variant="contained" color="primary" onClick={generateKeys}>
-          Generate Key Pair
-        </Button>
+    <div>
+      <h1>Sign Up</h1>
+      {!isSubmitted ? (
+        <button onClick={generateWallet}>Generate Wallet</button>
       ) : (
-        <Box mt={4} textAlign="center">
-          <Typography variant="h6" className={classes.publicKey} gutterBottom>
-            <strong>Your Public Key:</strong> {publicKey}
-          </Typography>
-          <Typography variant="body1" className={classes.mnemonic} gutterBottom>
-            <strong>12-word Mnemonic Phrase:</strong> {mnemonic}
-          </Typography>
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={handleDownload}
-            className={classes.button}
-          >
-            Download Private Key
-          </Button>
-          <Typography variant="body1" className={classes.warning}>
-            Warning: If you lose your private key or mnemonic, you will lose
-            access to your account.
-          </Typography>
-        </Box>
+        <div>
+          <p>Your wallet address (public key): {walletAddress}</p>
+          <p>Your private key: {privateKey}</p>
+          <p>
+            <strong>Important:</strong> Keep your private key secure and do not share it with
+            anyone.
+          </p>
+        </div>
       )}
-      {errorMessage && (
-        <Typography color="error" variant="body2" mt={2}>
-          {errorMessage}
-        </Typography>
-      )}
-    </Box>
+    </div>
   );
-};
+}
 
-export default SignupPage;
+export default SignUpPage;
