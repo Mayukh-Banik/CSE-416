@@ -294,7 +294,7 @@ const Sidebar: React.FC = () =>
         open = {open}
       >
         <DrawerHeader>
-          <img src="/squidcoin.png" alt="Squid Icon" width="30" />
+          <img src="/images/squidcoin.png" alt="Squid Icon" width="30" />
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1}}>
             Squid Coin
           </Typography>
