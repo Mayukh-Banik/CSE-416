@@ -1,95 +1,223 @@
 import React, { useState } from "react";
-import { HDNodeWallet, Mnemonic } from "ethers"; // Import HDNodeWallet and Mnemonic for ethers v6
-import { Box, Typography, Button } from "@mui/material";
-import * as bip39 from "bip39"; // For generating mnemonic phrases
-import { randomBytes } from '@ethersproject/random'; // Correct import for randomBytes
-import { hexlify } from '@ethersproject/bytes'; // Correct import for hexlify
-import { Buffer } from 'buffer'; // Import buffer polyfill
-import useSignUpPageStyles from "../Stylesheets/SignUpPageStyles";
+import {
+  Button,
+  Typography,
+  Box,
+  Container,
+  Link,
+  Paper,
+  IconButton,
+  Tooltip,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import useRegisterPageStyles from "../Stylesheets/RegisterPageStyles";
+import Header from "./Header";
 
-const SignupPage: React.FC = () => {
-  const classes = useSignUpPageStyles(); // Custom styles
+const SignUpPage: React.FC = () => {
+  const classes = useRegisterPageStyles();
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [privateKey, setPrivateKey] = useState<string | null>(null);
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [mnemonic, setMnemonic] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const generateKeys = () => {
-    setErrorMessage(null); // Reset error
+  const navigate = useNavigate();
+
+  const handleLogin = () => {
+    navigate("/login");
+  };
+
+  const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+    let binary = "";
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  };
+
+  const generateWallet = async () => {
     try {
-      // Generate random entropy for the mnemonic
-      const entropy = randomBytes(16); // 128 bits for 12-word mnemonic
-      console.log('Entropy:', entropy); // Log the entropy for debugging
+      const keyPair = await window.crypto.subtle.generateKey(
+        {
+          name: "RSA-OAEP",
+          modulusLength: 2048,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: "SHA-256",
+        },
+        true,
+        ["encrypt", "decrypt"]
+      );
 
-      // Convert Uint8Array to Buffer
-      const entropyBuffer = Buffer.from(entropy);
-      const mnemonicPhrase = bip39.entropyToMnemonic(entropyBuffer.toString('hex')); // Convert to hex string for bip39
-      console.log('Mnemonic Phrase:', mnemonicPhrase); // Log the mnemonic for debugging
+      const publicKey = await window.crypto.subtle.exportKey(
+        "spki",
+        keyPair.publicKey
+      );
+      const publicKeyBase64 = arrayBufferToBase64(publicKey);
 
-      // Convert the mnemonic phrase into the Mnemonic type
-      const mnemonicObject = Mnemonic.fromPhrase(mnemonicPhrase); // ethers v6 conversion
-      console.log('Mnemonic Object:', mnemonicObject); // Log mnemonic object
+      const privateKey = await window.crypto.subtle.exportKey(
+        "pkcs8",
+        keyPair.privateKey
+      );
+      const privateKeyBase64 = arrayBufferToBase64(privateKey);
 
-      // Create wallet from mnemonic using HDNodeWallet (ethers.js v6)
-      const wallet = HDNodeWallet.fromMnemonic(mnemonicObject); 
-      console.log('Wallet:', wallet); // Log the generated wallet
-
-      setMnemonic(mnemonicPhrase); // Set the mnemonic phrase
-      setPrivateKey(wallet.privateKey); // Private key
-      setPublicKey(wallet.address); // Public key
+      setWalletAddress(publicKeyBase64);
+      setPrivateKey(privateKeyBase64);
+      setIsSubmitted(true);
     } catch (error) {
-      console.error('Error generating key pair:', error); // Log the error for debugging
-      setErrorMessage('Error generating key pair.');
+      console.error("Error generating wallet:", error);
     }
   };
 
-  const handleDownload = () => {
-    const element = document.createElement("a");
-    const file = new Blob([privateKey as string], { type: "text/plain" });
-    element.href = URL.createObjectURL(file);
-    element.download = "privateKey.txt";
-    document.body.appendChild(element);
-    element.click();
+  const copyToClipboard = (text: string | null) => {
+    if (text) {
+      navigator.clipboard.writeText(text);
+      alert("Copied to clipboard!");
+    }
+  };
+
+  const downloadPrivateKey = () => {
+    if (privateKey) {
+      const element = document.createElement("a");
+      const file = new Blob([privateKey], { type: "text/plain" });
+      element.href = URL.createObjectURL(file);
+      element.download = "privateKey.txt";
+      document.body.appendChild(element); // Required for this to work in FireFox
+      element.click();
+    }
   };
 
   return (
-    <Box className={classes.root}>
-      <Typography variant="h2" className={classes.title} gutterBottom>
-        Set Up Your Account
-      </Typography>
-      {!privateKey ? (
-        <Button variant="contained" color="primary" onClick={generateKeys}>
-          Generate Key Pair
-        </Button>
-      ) : (
-        <Box mt={4} textAlign="center">
-          <Typography variant="h6" className={classes.publicKey} gutterBottom>
-            <strong>Your Public Key:</strong> {publicKey}
+    <>
+      <Header />
+      <Container className={classes.container}>
+        <Box sx={{ marginTop: "6rem", textAlign: "center" }}>
+          <Typography variant="h4" gutterBottom>
+            Sign Up
           </Typography>
-          <Typography variant="body1" className={classes.mnemonic} gutterBottom>
-            <strong>12-word Mnemonic Phrase:</strong> {mnemonic}
-          </Typography>
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={handleDownload}
-            className={classes.button}
-          >
-            Download Private Key
-          </Button>
-          <Typography variant="body1" className={classes.warning}>
-            Warning: If you lose your private key or mnemonic, you will lose
-            access to your account.
-          </Typography>
+          <LockOutlinedIcon
+            className={classes.icon}
+            sx={{ fontSize: "4rem", marginBottom: "1rem" }}
+          />
         </Box>
-      )}
-      {errorMessage && (
-        <Typography color="error" variant="body2" mt={2}>
-          {errorMessage}
+
+        {!isSubmitted ? (
+          <Box component="form" className={classes.form}>
+            <Button
+              variant="contained"
+              className={classes.button}
+              onClick={generateWallet}
+            >
+              Generate Wallet
+            </Button>
+          </Box>
+        ) : (
+          <Box sx={{ mt: 4, width: "70%", margin: "0 auto" }}>
+            <Paper
+              elevation={2}
+              sx={{
+                padding: 3,
+                textAlign: "center",
+                width: "100%",
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "1rem",
+                }}
+              >
+                <Typography variant="body1" sx={{ marginRight: "1rem" }}>
+                  <strong>Your wallet address (public key):</strong>
+                </Typography>
+                <Tooltip title="Copy to Clipboard">
+                  <IconButton onClick={() => copyToClipboard(walletAddress)}>
+                    <ContentCopyIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+              <Typography
+                variant="body2"
+                sx={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: "100%",
+                  marginBottom: "1rem",
+                  fontFamily: "monospace",
+                  wordBreak: "break-all",
+                }}
+              >
+                {walletAddress}
+              </Typography>
+
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "1rem",
+                }}
+              >
+                <Typography variant="body1" sx={{ marginRight: "1rem" }}>
+                  <strong>Your private key:</strong>
+                </Typography>
+                <Tooltip title="Copy to Clipboard">
+                  <IconButton onClick={() => copyToClipboard(privateKey)}>
+                    <ContentCopyIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+              <Typography
+                variant="body2"
+                sx={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: "100%",
+                  marginBottom: "1rem",
+                  fontFamily: "monospace",
+                  color: "red",
+                  wordBreak: "break-all",
+                }}
+              >
+                {privateKey}
+              </Typography>
+
+              <Typography
+                variant="body2"
+                sx={{
+                  marginBottom: "1rem",
+                  fontWeight: "bold",
+                  color: "orange",
+                }}
+              >
+                Important: Keep your private key secure and do not share it with
+                anyone.
+              </Typography>
+
+              <Button
+                variant="contained"
+                className={classes.button}
+                onClick={downloadPrivateKey}
+              >
+                Download Private Key
+              </Button>
+            </Paper>
+          </Box>
+        )}
+
+        <Typography sx={{ marginTop: "2rem", textAlign: "center" }}>
+          <Link onClick={handleLogin} className={classes.link}>
+            Already have an account? Log In
+          </Link>
         </Typography>
-      )}
-    </Box>
+      </Container>
+    </>
   );
 };
 
-export default SignupPage;
+export default SignUpPage;
