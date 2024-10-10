@@ -19,9 +19,9 @@ const FilesPage: React.FC = () => {
 
   return (
     <Box sx={{ padding: 2 }}>
-        <Header/>
+        {/* <Header/> */}
         <Sidebar />
-        <Box sx={{ marginLeft: 2 , marginTop: 4}}>
+        <Box sx={{ marginLeft: 2 , marginTop: 10}}>
             <Typography variant="h4" gutterBottom>
             Upload Files
             </Typography>

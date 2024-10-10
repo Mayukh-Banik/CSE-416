@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Box,CssBaseline,Drawer,IconButton,List,ListItem,ListItemText
   , ListItemIcon,Toolbar,Typography,Button,Collapse,TextField
 } from '@mui/material';
@@ -14,7 +14,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { FileCopy } from '@mui/icons-material';
+import { FileCopy, Logout } from '@mui/icons-material';
 import { styled, useTheme } from '@mui/material/styles';
 import Divider from '@mui/material/Divider';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -24,6 +24,7 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import { grey } from '@mui/material/colors';
+import LogoutButton from './LogoutButton';
 const drawerWidth = 275;
 
 
@@ -91,7 +92,28 @@ const Sidebar: React.FC = () =>
 {
   const theme = useTheme();
   const [open, setOpen]= React.useState(false);
-  const [dashboardOpen,setDashBoardOpen] = React.useState(false);
+  const navigate = useNavigate();
+
+  const handleFiles = async () => {
+      navigate('/files');
+  };
+
+  const handleWallet = async () => {
+    navigate('/wallet');
+  }; 
+
+  const handleMining = async () => {
+    navigate('/mining');
+  };  
+
+  const handleAccount = async () => {
+    navigate('/account');
+  };
+
+  const handleSettings = async () => {
+    navigate('/settings');
+  };
+  // const [dashboardOpen,setDashBoardOpen] = React.useState(false);
   
 
   const toggleDrawer = (newOpen:boolean) =>
@@ -99,62 +121,28 @@ const Sidebar: React.FC = () =>
     setOpen(newOpen);
   };
 
-  const toggleDashboard = () =>
-  {
-    setDashBoardOpen(!dashboardOpen);
-  }
+  // const toggleDashboard = () =>
+  // {
+  //   setDashBoardOpen(!dashboardOpen);
+  // }
 
   const drawer = (
     <div>
       <List>
-        {/*
-        Not sure if this is the intended logic 
-        */}
-       <ListItem component = {Button} onClick={()=>toggleDashboard()}>
-          <ListItemIcon><DashboardIcon /></ListItemIcon>
-          <ListItemText primary={
-      <Typography style={{ textTransform: 'none' }}>
-        Dashboard
-      </Typography>
-    }  />
-          {dashboardOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />} {/* Icon to indicate collapse/expand */}
-        </ListItem>
-
-        <Collapse in = {dashboardOpen} timeout = "auto" unmountOnExit>
-          <List component = "div" disablePadding>
-            <ListItem component = {Link} to = "/overview" sx={{ pl: 4 }} >
-              <ListItemIcon></ListItemIcon>
-              <ListItemText primary = "Overview"></ListItemText>
-            </ListItem>
-
-            <ListItem component = {Link} to = "/notifications" sx={{ pl: 4 }} >
-              <ListItemIcon></ListItemIcon>
-              <ListItemText primary = "Notifications"></ListItemText>
-            </ListItem>
-
-            <ListItem component = {Link} to = "/trade-history" sx={{ pl: 4 }} >
-              <ListItemIcon></ListItemIcon>
-              <ListItemText primary = "Trade History"></ListItemText>
-            </ListItem>
-          </List>
-        </Collapse>
-
-
-        {/*
-        Might need to implement file drop down functionality here too 
-        */}
-
-        <ListItem component = {Link} to = "/files">
+        <ListItem onClick={handleFiles} sx={{cursor:"pointer", "&:hover": {
+                                              backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
           <ListItemIcon><FileCopyIcon/></ListItemIcon>
           <ListItemText primary = "Files"></ListItemText>
         </ListItem>
 
-        <ListItem component = {Link} to = "/wallet">
+        <ListItem onClick={handleWallet} sx={{cursor:"pointer", "&:hover": {
+                                              backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
           <ListItemIcon><AccountBalanceWalletIcon/></ListItemIcon>
           <ListItemText primary = "Wallet"></ListItemText>
         </ListItem>
 
-        <ListItem component = {Link} to = "/mining">
+        <ListItem onClick={handleMining} sx={{cursor:"pointer", "&:hover": {
+                                              backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
           <ListItemIcon>
             <img 
               src={`${process.env.PUBLIC_URL}/pickaxe.png`} 
@@ -165,12 +153,14 @@ const Sidebar: React.FC = () =>
           <ListItemText primary = "Mining"></ListItemText>
         </ListItem>
 
-        <ListItem component = {Link} to = "/account">
+        <ListItem onClick={handleAccount} sx={{cursor:"pointer", "&:hover": {
+                                              backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
           <ListItemIcon><AccountCircleIcon/></ListItemIcon>
           <ListItemText primary = "Account"></ListItemText>
         </ListItem>
 
-        <ListItem component = {Link} to = "/settings">
+        <ListItem onClick={handleSettings} sx={{cursor:"pointer", "&:hover": {
+                                              backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
           <ListItemIcon><SettingsIcon/></ListItemIcon>
           <ListItemText primary = "Settings"></ListItemText>
         </ListItem>
@@ -185,7 +175,7 @@ const Sidebar: React.FC = () =>
   return (
     <Box sx = {{display:'flex'}}>
       <CssBaseline/>
-      <AppBar position = "fixed" open = {open} sx = {{backgroundColor: 'white'}} >
+      <AppBar position = "fixed" open = {open} sx={{backgroundColor:'#1876d2'}}>
         <Toolbar>
           <IconButton
             color = "inherit"
@@ -214,10 +204,11 @@ const Sidebar: React.FC = () =>
               '& .MuiOutlinedInput-root': {
                 borderRadius: '4px',
                 borderColor: 'grey',
+                backgroundColor: '#f4f4f4',
 
                 '& fieldset':
                 {
-                  borderColor:'grey',
+                  borderColor:'white',
                 },
 
                 '&:hover fieldset':{
@@ -228,52 +219,8 @@ const Sidebar: React.FC = () =>
           />
         </Toolbar>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: '', padding: 2 }}>
-
-          <IconButton color = "inherit" sx = {{ml:2}}>
-            <DarkModeIcon/>
-          </IconButton>
-
-          <IconButton color = "inherit" component = {Link} to = "/notifications">
-            <NotificationsIcon/>
-          </IconButton>
-          
-          <Button 
-            color = "inherit"
-            sx = {{
-              border: '2px solid #808080',
-              borderRadius: '4px',
-              padding: '6px 12px',
-              ml: 2,
-              // textDecoration: 'none',
-              // color: 'black',
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/login" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              Log in
-            </Typography>
-          </Button>
-                
-          <Button 
-            color = "inherit"
-            sx = {{
-              border: '2px solid #808080',
-              borderRadius: '4px',
-              padding: '6px 12px',
-              ml: 2,
-              
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/signup" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              Sign up
-            </Typography>
-          </Button>
+        <Box sx={{ display: 'inline-flex', justifyContent: 'space-between', padding: 2 }}>
+          <LogoutButton/>
           </Box>
         </Toolbar>
         <Divider/>
@@ -282,19 +229,21 @@ const Sidebar: React.FC = () =>
 
       <Drawer 
         sx={{
-          // width: drawerWidth,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
+            backgroundColor:'#f4f4f4',
+            color:'black'
           },
         }}
         variant = "persistent"
         anchor = "left"
         open = {open}
+        
       >
         <DrawerHeader>
-          <img src="/squidcoin.png" alt="Squid Icon" width="30" />
+          <img src="/squidcoin.png" alt="Squid Icon" width="30" />          
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1}}>
             Squid Coin
           </Typography>

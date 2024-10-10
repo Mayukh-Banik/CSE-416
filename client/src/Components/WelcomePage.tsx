@@ -48,7 +48,7 @@ const WelcomePage: React.FC = () => {
             onClick={handleLogin}
             variant="contained"
             color="primary"
-            sx={{ mb: 2, width: "100%", padding: "15px 0", fontSize: "1.2rem" }}
+            sx={{ mb: 2, width: "100%", padding: "15px 0", fontSize: "1.2rem", cursor: "pointer" }}
           >
             Log In
           </Button>
@@ -57,7 +57,7 @@ const WelcomePage: React.FC = () => {
             onClick={handleSignup}
             variant="contained"
             color="primary"
-            sx={{ mb: 2, width: "100%", padding: "15px 0", fontSize: "1.2rem" }}
+            sx={{ mb: 2, width: "100%", padding: "15px 0", fontSize: "1.2rem", cursor: "pointer" }}
           >
             Sign Up
           </Button>
