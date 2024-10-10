@@ -112,7 +112,7 @@ const SignupPage: React.FC = () => {
             onChange={(e) => setEmail(e.target.value)}
           />
           <TextField
-            label="Password"
+            label="Password (at least 8 characters)"
             type="password"
             variant="outlined"
             className={classes.inputField}
