@@ -3,12 +3,12 @@ module squidcoin
 go 1.23.2
 
 require (
+	github.com/btcsuite/btcd v0.24.2
 	github.com/gorilla/mux v1.8.1
 	github.com/rs/cors v1.11.1
 )
 
 require (
-	github.com/btcsuite/btcd v0.24.2 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.1.3 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.5 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
