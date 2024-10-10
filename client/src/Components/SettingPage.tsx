@@ -1,6 +1,5 @@
-import React, { useState }  from "react";
+import React from "react";
 import Sidebar from "./Sidebar";
-import Header from "./Header";
 import { Container, IconButton, Typography } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
@@ -16,21 +15,21 @@ const SettingPage: React.FC<SettingPageProps> = ({ darkMode, toggleTheme }) => {
     return (
         <div>
             <Sidebar />
-            <Header />
-            <h1></h1>
-            <h2>Identification</h2>
-            Your public key: 
-            <div>
-            <Typography variant="h6">Theme</Typography>
-            <IconButton onClick={toggleTheme}>
-            {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
-            </IconButton>
-            <br></br>
-            <IconButton> <DeleteIcon/>  Delete Account</IconButton>
-        </div>
+            <Container sx={{ marginTop: '100px', marginLeft:'50px' }}> {/* Add top margin here */}
+                <Typography variant="h4">Identification</Typography>
+                <Typography variant="body1">Your public key: </Typography>
 
+                <Typography variant="h6" sx={{ marginTop: '20px' }}>Theme</Typography>
+                <IconButton onClick={toggleTheme}>
+                    {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
+                </IconButton>
+
+                <IconButton sx={{ marginTop: '20px' }}> 
+                    <DeleteIcon/>  Delete Account
+                </IconButton>
+            </Container>
         </div>
     );
 }
 
-export default SettingPage
+export default SettingPage;
