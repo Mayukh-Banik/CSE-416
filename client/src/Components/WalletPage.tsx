@@ -83,7 +83,7 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                             width: '45%',
                         }}
                     >
-                            <img src={`${process.env.PUBLIC_URL}/image/squidcoin.png`} alt="Wallet" />
+                            <img src="/squidcoin.png" alt="Squid Icon" width="30" />          
                             <Box sx={{ ml: 2, textAlign: 'left' }}>
                             <Typography variant="h6">Balance</Typography>
                             <Typography variant="body1">{balance} Coins</Typography>
@@ -121,6 +121,5 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
         </>
     );
 };
-
 
 export default WalletPage;
