@@ -1,5 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import router from './routes';
 import {createMonkUsers, createMonkTransactions} from './monkData';
@@ -9,9 +10,14 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// MongoDB connection string from environment variables
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/test';
+
+// Use CORS middleware and allow specific origin (localhost:3000)
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Middleware for parsing JSON request bodies
 app.use(express.json());

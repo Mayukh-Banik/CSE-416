@@ -15,4 +15,14 @@ router.post(
   controllers.createUser
 );
 
+router.post(
+  '/login',
+  [
+    body('email').isEmail().withMessage('Please provide a valid email'),
+    body('password').notEmpty().withMessage('Password cannot be empty'),
+    validateRequest,
+  ],
+  controllers.loginUser
+);
+
 export default router;

@@ -3,26 +3,58 @@ import User from '../models/user';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 
-
 // Create a new user
 export const createUser = async (req: Request, res: Response) => {
-    console.log('Request received at /api/users/signup');  // 로그 추가
     try {
         const { name, email, password } = req.body;
-        const publicKey = crypto.randomBytes(32).toString('hex');
+        
+        // Check if user already exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            res.status(400).json({ message: 'User with this email already exists' });
+            return;
+        }
+        
+        // Validate password length
+        if (password.length < 8) {
+            res.status(400).json({ message: 'Password must be at least 8 characters long' });
+            return;
+        }
+        
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Generate key pair
+        const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+            modulusLength: 2048,
+            publicKeyEncoding: {
+                type: 'spki',
+                format: 'pem'
+            },
+            privateKeyEncoding: {
+                type: 'pkcs8',
+                format: 'pem'
+            }
+        });
+        
         const newUser = new User({
             name,
             email,
-            password,
+            password: hashedPassword,
             publicKey, 
         });
 
         await newUser.save();
-        res.status(201).json({ message: 'User created successfully', user: newUser });
+        
+        res.status(201).json({ 
+            message: 'User created successfully', 
+            user: newUser, 
+            secretKey: privateKey // Returning private key for download
+        });
     } catch (error) {
         res.status(400).json({ message: 'Error creating user', error });
     }
-}; // ToDo: return sk
+};
 
 export const loginUser = async (req: Request, res: Response) => {
     try {
@@ -47,6 +79,7 @@ export const loginUser = async (req: Request, res: Response) => {
         res.status(400).json({ message: 'Error logging in', error });
     }
 };
+
 
 // // Get a user by ID
 // export const getUserById = async (req: Request, res: Response) => {
