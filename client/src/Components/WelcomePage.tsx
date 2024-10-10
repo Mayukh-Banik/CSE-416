@@ -7,7 +7,7 @@ const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLogin = () => {
-    navigate("/login2");
+    navigate("/login");
   };
 
   const handleSignup = () => {

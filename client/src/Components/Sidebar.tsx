@@ -266,7 +266,7 @@ const Sidebar: React.FC = () =>
               ml: 2,
               
             }}>
-            <Typography variant = "h6" component = {Link} to = "/register" 
+            <Typography variant = "h6" component = {Link} to = "/signup" 
               style={{ 
                 textTransform: 'none',
                 textDecoration: 'none',
