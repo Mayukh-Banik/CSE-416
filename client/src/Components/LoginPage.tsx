@@ -1,70 +1,64 @@
-import React from 'react';
-import { TextField, Button, Container, Typography, Link, Box } from '@mui/material';
+import React, { useState } from 'react';
+import { TextField, Button, Container, Typography, Box, Link } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import { useNavigate } from 'react-router-dom';
 import useRegisterPageStyles from '../Stylesheets/RegisterPageStyles';
 import Header from './Header';
+import { useNavigate } from 'react-router-dom';
 
 const LoginPage: React.FC = () => {
-  const classes = useRegisterPageStyles()
+  const [walletAddress, setWalletAddress] = useState('');
+  const classes = useRegisterPageStyles();
   const navigate = useNavigate();
 
-  const handleSignup = () => {
-    // Registration logic (placeholder)
-    navigate('/register');
+  const handleLogin = () => {
+    // Handle login logic here
+    console.log('Logging in with wallet:', walletAddress);
   };
 
-  const handleLogin = () => {
-    // Registration logic (placeholder)
-    navigate('/dashboard');
-  }
+  const handleSignUpRedirect = () => {
+    navigate('/signup');
+  };
 
   return (
     <>
-    <Header></Header>
-    <Container className={classes.container}>
-      {/* Icon */}
-      <LockOutlinedIcon className={classes.icon} />
+      <Header />
+      <Container className={classes.container}>
+        {/* Icon */}
+        <LockOutlinedIcon className={classes.icon} />
 
-      {/* Form Title */}
-      <Typography variant="h4" gutterBottom>
-        Login
-      </Typography>
+        {/* Form Title */}
+        <Typography variant="h4" gutterBottom>
+          Log In
+        </Typography>
 
-      {/* Form */}
-      <Box component="form" className={classes.form}>
-        <TextField
-          label="Username/Email"
-          variant="outlined"
-          className={classes.inputField}
-          required
-        />
-        <TextField
-          label="Password"
-          type="password"
-          variant="outlined"
-          className={classes.inputField}
-          required
-        />
-        <Button
-          variant="contained"
-          className={classes.button}
-          onClick={handleLogin}
-        >
-          Login
-        </Button>
-      </Box>
+        {/* Form */}
+        <Box component="form" className={classes.form} sx={{ width: '70%' }}>
+          <TextField
+            label="Wallet Address"
+            variant="outlined"
+            fullWidth
+            value={walletAddress}
+            onChange={(e) => setWalletAddress(e.target.value)}
+            className={classes.inputField}
+            required
+          />
+          <Button
+            variant="contained"
+            fullWidth
+            className={classes.button}
+            onClick={handleLogin}
+          >
+            Log In
+          </Button>
+        </Box>
 
-      {/* Don't have an account have an account? */}
-      <Typography>
-        <Link
-          onClick={handleSignup}
-          className={classes.link}
-        >
-          Don't have an account? Sign up
-        </Link>
-      </Typography>
-    </Container>
+        {/* Highlighted text for Sign Up */}
+        <Typography sx={{ mt: 2 }}>
+          <Link onClick={handleSignUpRedirect} className={classes.link}>
+            Don't have an account? Sign Up!
+          </Link>
+        </Typography>
+      </Container>
     </>
   );
 };
