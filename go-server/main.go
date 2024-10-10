@@ -79,23 +79,22 @@ func mine() {
 		miningStatus.LastMinedBlock = time.Now().Format(time.RFC3339)
 		mu.Unlock()
 
-		// Simulate mining delay
+		// mining delay
 		time.Sleep(5 * time.Second)
 	}
 }
 
 func main() {
-	// Initialize default mining status
+	// default mining status
 	miningStatus = MiningStatus{
 		MinedBlocks:    0,
 		LastMinedBlock: "",
 		IsMining:       false,
 	}
 
-	// Create a new router
 	router := mux.NewRouter()
 
-	// Define API routes
+	// API routes
 	router.HandleFunc("/api/mining-status", getMiningStatus).Methods("GET")
 	router.HandleFunc("/api/start-mining", startMining).Methods("POST")
 	router.HandleFunc("/api/stop-mining", stopMining).Methods("POST")
@@ -108,10 +107,10 @@ func main() {
 		AllowCredentials: true,
 	}
 
-	// Create a CORS handler
+	// CORS handler
 	handler := cors.New(corsOptions).Handler(router)
 
-	// Start the server
+	// server
 	log.Println("Starting server on :8080")
 	if err := http.ListenAndServe(":8080", handler); err != nil {
 		log.Fatalf("Could not start server: %s\n", err.Error())
