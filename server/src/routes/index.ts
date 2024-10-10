@@ -1,10 +1,10 @@
 import { Router } from 'express';
+import userRoutes from './user.routes';
+import transactionRoutes from './transaction.routes';
 
 const router = Router();
 
-// Define your routes here
-router.get('/', (req, res) => {
-  res.send('Welcome to the API!');
-});
+router.use('/users', userRoutes);
+router.use('/transactions', transactionRoutes);
 
 export default router;

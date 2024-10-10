@@ -1,25 +1,29 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import mongoose from 'mongoose';
+import cors from 'cors';
 import dotenv from 'dotenv';
-import routes from './routes';
-// Import your routes (uncomment when available)
-// import userRoutes from './routes/user.routes';
-// import transactionRoutes from './routes/transaction.routes';
+import router from './routes';
+import {createMonkUsers, createMonkTransactions} from './monkData';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// MongoDB connection string from environment variables
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/test';
+
+// Use CORS middleware and allow specific origin (localhost:3000)
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Middleware for parsing JSON request bodies
 app.use(express.json());
 
 // Use routes
-app.use('/api', routes);
+app.use('/api', router);
 
 // Function to connect to MongoDB
 const connectDB = async (): Promise<void> => {
@@ -32,24 +36,19 @@ const connectDB = async (): Promise<void> => {
     process.exit(1); // Exit the process if the connection fails
   }
 };
-connectDB();
 
-// Default route
-app.get('/', (req: Request, res: Response) => {
-  res.send('Hello from TypeScript Express server!');
-});
+const startServer = async (): Promise<void> => {
+  await connectDB();
 
-// // Routes (uncomment these lines when you have the routes ready)
-// app.use('/api/users', userRoutes);
-// app.use('/api/transactions', transactionRoutes);
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
 
-// Global error handler middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).send({ error: 'Something went wrong!' });
-});
+  //monk data
+  await createMonkUsers();
+  await createMonkTransactions();
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+};
+
+startServer();
+
