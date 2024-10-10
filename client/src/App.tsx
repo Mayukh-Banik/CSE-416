@@ -30,9 +30,7 @@ import LoginPage from "./Components/LoginPage";
 import LoginPage2 from "./Components/LoginPage2";
 import SignupPage from "./Components/SignUpPage";
 import SettingPage from "./Components/SettingPage";
-import TransactionPage from "./Components/TransactionPage";
 import WalletPage from "./Components/WalletPage";
-import { Dashboard } from "@mui/icons-material";
 import FilesPage from "./Components/FilesPage";
 import MiningPage from "./Components/MiningPage";
 
@@ -169,7 +167,13 @@ const App: React.FC = () => {
     palette: {
       mode: "light",
       background: {
-        default: "#f4f4f4",
+        default: "#f4f4f4", //white
+      },
+      primary:{ //blue background
+        main:'#1876d2'
+      },
+      secondary: {
+        main: "#121212", // text color
       },
     },
   });
@@ -178,13 +182,13 @@ const App: React.FC = () => {
     palette: {
       mode: "dark",
       background: {
-        default: "#121212",
+        default: "#202d45", //darker gray
       },
       primary: {
-        main: "#f48fb1", // Main color for dark theme
+        main: "#202d45", // lighter gray
       },
       secondary: {
-        main: "#f48fb1", // Secondary color for dark theme
+        main: "#f4f4f4", // text color
       },
     },
   });

@@ -212,7 +212,7 @@ const MiningPage: React.FC = () => {
                 </Grid>
 
                 {/* feedback */}
-                {/* <Snackbar
+                <Snackbar
                     open={!!error}
                     autoHideDuration={6000}
                     onClose={handleCloseSnackbar}
@@ -232,7 +232,7 @@ const MiningPage: React.FC = () => {
                     <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: "100%" }}>
                         {success}
                     </Alert>
-                </Snackbar> */}
+                </Snackbar>
             </MiningContainer>
         </>
     );
