@@ -83,8 +83,8 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                             width: '45%',
                         }}
                     >
-                            <img src="/squidcoin.png" alt="Squid Icon" width="30" />          
-                            <Box sx={{ ml: 2, textAlign: 'left' }}>
+                        <img src="/images/walletBalance.png" alt="Squid Icon" width="40" />
+                        <Box sx={{ ml: 2, textAlign: 'left' }}>
                             <Typography variant="h6">Balance</Typography>
                             <Typography variant="body1">{balance} Coins</Typography>
                         </Box>
