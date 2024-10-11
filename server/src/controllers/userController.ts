@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import User from '../models/user';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 // Create a new user
 export const createUser = async (req: Request, res: Response) => {
@@ -72,8 +73,20 @@ export const loginUser = async (req: Request, res: Response) => {
             return;
         }
 
-        // const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
-        // res.status(200).json({ message: 'Login successful', token });
+        // Ensure JWT_SECRET is properly set
+        if (!process.env.JWT_SECRET) {
+            throw new Error('JWT_SECRET is not defined in environment variables');
+        }
+
+        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            // secure: process.env.NODE_ENV === 'production', //Send cookies only on HTTPS connections (for use in production environments)
+            sameSite: 'strict', 
+            maxAge: 5 * 60 * 1000
+        });
+
         res.status(200).json({ message: 'Login successful'});
     } catch (error) {
         res.status(400).json({ message: 'Error logging in', error });
