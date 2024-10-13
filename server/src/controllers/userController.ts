@@ -59,6 +59,7 @@ export const createUser = async (req: Request, res: Response) => {
 
 export const loginUser = async (req: Request, res: Response) => {
     try {
+        console.log("login request");
         const { email, password } = req.body;
         const user = await User.findOne({ email });
 
@@ -78,7 +79,18 @@ export const loginUser = async (req: Request, res: Response) => {
             throw new Error('JWT_SECRET is not defined in environment variables');
         }
 
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+        // Create a payload including necessary user information
+        const payload = {
+            userId: user._id,
+            name: user.name,
+            email: user.email,
+            publicKey: user.publicKey,
+            balance: user.balance,
+            reputation: user.reputation,
+            createdAt: user.createdAt,
+        };
+
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '5m' });
 
         res.cookie('token', token, {
             httpOnly: true,
