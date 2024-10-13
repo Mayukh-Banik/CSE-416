@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import router from './routes';
 import {createMonkUsers, createMonkTransactions} from './monkData';
@@ -22,6 +23,7 @@ app.use(cors({
 
 // Middleware for parsing JSON request bodies
 app.use(express.json());
+app.use(cookieParser());
 
 // Use routes
 app.use('/api', router);

@@ -8,170 +8,49 @@ import {
     TableRow,
     TablePagination,
 } from "@mui/material";
+import { TransactionTableProps } from "../types/interfaces";
 
-// not sure how this would fit with schema
-interface Transaction {
-    dateTime: string;
-    transactionId: string;
-    sender: string;
-    receiver: string;
-    fileName: string;
-    fileSize: string;
-    status: "Complete" | "Pending" | "Failed";
-    fee: string;
-}
+const TransactionTable: React.FC<TransactionTableProps> = ({
+    transactions,
+    search,
+    dateFilter,
+    statusFilter,
+}) => {
+    // Helper function to filter transactions based on search, date, and status filters
+    const filterTransactions = () => {
+        return transactions.filter((transaction) => {
+            // Search filter
+            const searchMatch =
+                transaction.fileName.toLowerCase().includes(search.toLowerCase()) ||
+                transaction.transactionId.toLowerCase().includes(search.toLowerCase());
 
-// filler data for displaying
-const transactions: Transaction[] = [
-    {
-        dateTime: "2024-09-25 10:00",
-        transactionId: "TX123456",
-        sender: "0xfcfc...2a3a",
-        receiver: "0xacda...c452",
-        fileName: "file1.zip",
-        fileSize: "10MB",
-        status: "Complete",
-        fee: "0.50",
-    },
-    {
-        dateTime: "2024-09-22 12:30",
-        transactionId: "TX654321",
-        sender: "0xabcd...1234",
-        receiver: "0xdeef...5678",
-        fileName: "file2.jpg",
-        fileSize: "20MB",
-        status: "Pending",
-        fee: "0.30",
-    },
-    {
-        dateTime: "2024-09-20 14:45",
-        transactionId: "TX789012",
-        sender: "0xefgh...3456",
-        receiver: "0ijkl...7890",
-        fileName: "file3.pdf",
-        fileSize: "15MB",
-        status: "Failed",
-        fee: "0.40",
-    },
-    {
-        dateTime: "2024-09-18 08:10",
-        transactionId: "TX456789",
-        sender: "0xmnop...9012",
-        receiver: "0qrst...3456",
-        fileName: "file4.png",
-        fileSize: "5MB",
-        status: "Complete",
-        fee: "0.25",
-    },
-    {
-        dateTime: "2024-09-15 16:20",
-        transactionId: "TX234567",
-        sender: "0xuvwx...7890",
-        receiver: "0xabcd...1234",
-        fileName: "file5.docx",
-        fileSize: "30MB",
-        status: "Complete",
-        fee: "0.60",
-    },
-    {
-        dateTime: "2024-09-12 11:00",
-        transactionId: "TX098765",
-        sender: "0xdefg...3456",
-        receiver: "0xhijk...7890",
-        fileName: "file6.mp4",
-        fileSize: "50MB",
-        status: "Pending",
-        fee: "0.75",
-    },
-    {
-        dateTime: "2024-09-10 19:35",
-        transactionId: "TX876543",
-        sender: "0xlmno...5678",
-        receiver: "0xpqrs...9012",
-        fileName: "file7.mp3",
-        fileSize: "12MB",
-        status: "Failed",
-        fee: "0.35",
-    },
-    {
-        dateTime: "2024-09-07 09:55",
-        transactionId: "TX987654",
-        sender: "0xtuvw...1234",
-        receiver: "0xyz...5678",
-        fileName: "file8.avi",
-        fileSize: "60MB",
-        status: "Complete",
-        fee: "1.00",
-    },
-    {
-        dateTime: "2024-09-05 14:25",
-        transactionId: "TX543210",
-        sender: "0xqrst...9012",
-        receiver: "0xuvwx...7890",
-        fileName: "file9.csv",
-        fileSize: "25MB",
-        status: "Complete",
-        fee: "0.45",
-    },
-    {
-        dateTime: "2024-09-02 21:50",
-        transactionId: "TX102938",
-        sender: "0xabcd...5678",
-        receiver: "0xmnop...1234",
-        fileName: "file10.zip",
-        fileSize: "8MB",
-        status: "Pending",
-        fee: "0.20",
-    },
-];
+            // Date filter
+            const date = new Date(transaction.timestamp);
+            const now = new Date();
+            let dateMatch = true;
 
+            if (dateFilter === "today") {
+                dateMatch = date.toDateString() === now.toDateString();
+            } else if (dateFilter === "week") {
+                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                dateMatch = date >= weekAgo;
+            } else if (dateFilter === "month") {
+                const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+                dateMatch = date >= monthAgo;
+            } else if (dateFilter === "year") {
+                const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+                dateMatch = date >= yearAgo;
+            }
 
-// props interface for the TransactionTable
-interface TransactionTableProps {
-    search: string;
-    dateFilter: string;
-    statusFilter: string;
-}
+            // Status filter
+            const statusMatch =
+                statusFilter === "all" || transaction.status.toLowerCase() === statusFilter.toLowerCase();
 
-// helper function to filter transactions 
-const filterTransactions = (
-    transactions: Transaction[],
-    search: string,
-    dateFilter: string,
-    statusFilter: string
-): Transaction[] => {
-    return transactions.filter((transaction) => {
-        const searchMatch = transaction.fileName.toLowerCase().includes(search.toLowerCase()) ||
-                            transaction.transactionId.toLowerCase().includes(search.toLowerCase());
-        
-        // date filter
-        const date = new Date(transaction.dateTime); // convert dateTime to Date object so we can "filter"/match
-        const now = new Date();
-        let dateMatch = true;
+            return searchMatch && dateMatch && statusMatch;
+        });
+    };
 
-        if (dateFilter === "today") {
-            dateMatch = date.toDateString() === now.toDateString();
-        } else if (dateFilter === "week") {
-            const weekAgo = new Date(now.setDate(now.getDate() - 7));
-            dateMatch = date >= weekAgo;
-        } else if (dateFilter === "month") {
-            const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
-            dateMatch = date >= monthAgo;
-        } else if (dateFilter === "year") {
-            const yearAgo = new Date(now.setFullYear(now.getFullYear() - 1));
-            dateMatch = date >= yearAgo;
-        }
-
-        // status filter
-        const statusMatch = statusFilter === "all" || transaction.status.toLowerCase() === statusFilter.toLowerCase();
-
-        return searchMatch && dateMatch && statusMatch;
-    });
-};
-
-const TransactionTable: React.FC<TransactionTableProps> = ({ search, dateFilter, statusFilter }) => {
-    // apply filters if necessary 
-    const filteredTransactions = filterTransactions(transactions, search, dateFilter, statusFilter);
+    const filteredTransactions = filterTransactions();
 
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -191,11 +70,11 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ search, dateFilter,
         page * rowsPerPage,
         page * rowsPerPage + rowsPerPage
     );
-    
+
     return (
         <TableContainer>
             <Table>
-                <TableHead sx={{ backgroundColor: "grey.200" }}> {/* Set the background color here */}
+                <TableHead sx={{ backgroundColor: "grey.200" }}>
                     <TableRow>
                         <TableCell>Date & Time</TableCell>
                         <TableCell>Transaction ID</TableCell>
@@ -210,8 +89,8 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ search, dateFilter,
                 <TableBody>
                     {filteredTransactions.length > 0 ? (
                         paginatedTransactions.map((transaction) => (
-                            <TableRow key={transaction.transactionId}>
-                                <TableCell>{transaction.dateTime}</TableCell>
+                            <TableRow key={transaction._id}>
+                                <TableCell>{new Date(transaction.timestamp).toLocaleString()}</TableCell>
                                 <TableCell>{transaction.transactionId}</TableCell>
                                 <TableCell>{transaction.fileName}</TableCell>
                                 <TableCell>{transaction.fileSize}</TableCell>
@@ -232,7 +111,7 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ search, dateFilter,
             </Table>
             <TablePagination
                 component="div"
-                count={transactions.length}
+                count={filteredTransactions.length}
                 page={page}
                 onPageChange={handleChangePage}
                 rowsPerPage={rowsPerPage}
@@ -242,5 +121,7 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ search, dateFilter,
         </TableContainer>
     );
 };
+
+export {};
 
 export default TransactionTable;

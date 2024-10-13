@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 // Replace the BrowserRouter import with HashRouter-02-01
-
 // import {
 //   BrowserRouter as Router,
 //   Routes,
@@ -17,12 +16,8 @@ import {
   CssBaseline,
 } from "@mui/material";
 import { HashRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import axios from "axios";
 // Remove the BrowserRouter import and replace it with HashRouter
-
-
-
-
-
 import GeneralTheme from "./Stylesheets/GeneralTheme";
 import WelcomePage from "./Components/WelcomePage";
 import RegisterPage from "./Components/RegisterPage";
@@ -33,134 +28,31 @@ import WalletPage from "./Components/WalletPage";
 import FilesPage from "./Components/FilesPage";
 import MiningPage from "./Components/MiningPage";
 
-const isUserLoggedIn = true; // should add the actual login state logic here.
-
-// Fake data for your wallet (temporary data)
-const walletAddress = "0x1234567890abcdef";
-const balance = 100;
-const transactions = [
-  {
-    id: "tx001",
-    sender: "0xsender001",
-    receiver: "0xreceiver001",
-    amount: 10,
-    timestamp: "2023-10-01T10:00:00",
-    status: "completed",
-  },
-  {
-    id: "tx009",
-    sender: "0xsender009",
-    receiver: "0xreceiver009",
-    amount: 90,
-    timestamp: "2023-10-09T17:20:00",
-    status: "completed",
-  },
-  {
-    id: "tx002",
-    sender: "0xsender002",
-    receiver: "0xreceiver002",
-    amount: 20,
-    timestamp: "2023-10-02T12:00:00",
-    status: "pending",
-  },
-  {
-    id: "tx005",
-    sender: "0xsender005",
-    receiver: "0xreceiver005",
-    amount: 50,
-    timestamp: "2023-10-05T16:00:00",
-    status: "completed",
-  },
-  {
-    id: "tx011",
-    sender: "0xsender011",
-    receiver: "0xreceiver011",
-    amount: 110,
-    timestamp: "2023-10-11T14:50:00",
-    status: "completed",
-  },
-  {
-    id: "tx003",
-    sender: "0xsender003",
-    receiver: "0xreceiver003",
-    amount: 30,
-    timestamp: "2023-10-03T14:00:00",
-    status: "completed",
-  },
-  {
-    id: "tx004",
-    sender: "0xsender004",
-    receiver: "0xreceiver004",
-    amount: 40,
-    timestamp: "2023-10-04T09:00:00",
-    status: "failed",
-  },
-
-  {
-    id: "tx006",
-    sender: "0xsender006",
-    receiver: "0xreceiver006",
-    amount: 60,
-    timestamp: "2023-10-06T11:00:00",
-    status: "pending",
-  },
-  {
-    id: "tx007",
-    sender: "0xsender007",
-    receiver: "0xreceiver007",
-    amount: 70,
-    timestamp: "2023-10-07T13:30:00",
-    status: "completed",
-  },
-  {
-    id: "tx013",
-    sender: "0xsender013",
-    receiver: "0xreceiver013",
-    amount: 130,
-    timestamp: "2023-10-13T18:00:00",
-    status: "failed",
-  },
-  {
-    id: "tx008",
-    sender: "0xsender008",
-    receiver: "0xreceiver008",
-    amount: 80,
-    timestamp: "2023-10-08T15:45:00",
-    status: "failed",
-  },
-
-  {
-    id: "tx010",
-    sender: "0xsender010",
-    receiver: "0xreceiver010",
-    amount: 100,
-    timestamp: "2023-10-10T10:10:00",
-    status: "pending",
-  },
-
-  {
-    id: "tx012",
-    sender: "0xsender012",
-    receiver: "0xreceiver012",
-    amount: 120,
-    timestamp: "2023-10-12T09:40:00",
-    status: "pending",
-  },
-];
-
-const publicKey = "publicKeyExample";
-const privateKey = "privateKeyExample";
+const jwtDecode = require("jwt-decode");
 
 interface PrivateRouteProps {
-  isAuthenticated: boolean;
+  isAuthenticated: boolean | null;
+  children: React.ReactNode;
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated }) => {
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+const getTokenFromCookies = (): string | null => {
+  const match = document.cookie.match(new RegExp("(^| )token=([^;]+)"));
+  return match ? match[2] : null;
 };
+
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated, children }) => {
+  if (isAuthenticated === null) {
+    return <div>Loading...</div>; // 로그인 여부 확인 중
+  }
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+};
+
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState<boolean | null>(null);
+  const [user, setUser] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const lightTheme = createTheme({
     palette: {
@@ -168,8 +60,8 @@ const App: React.FC = () => {
       background: {
         default: "#f4f4f4", //white
       },
-      primary:{ //blue background
-        main:'#1876d2'
+      primary: { //blue background
+        main: '#1876d2'
       },
       secondary: {
         main: "#121212", // text color
@@ -196,6 +88,32 @@ const App: React.FC = () => {
     setDarkMode((prevMode) => !prevMode);
   };
 
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/auth/status", {
+          withCredentials: true, // 쿠키를 사용하여 인증 정보 포함
+        });
+        if (response.data.isAuthenticated) {
+          setUser(response.data.user);
+          setIsUserLoggedIn(true);
+        } else {
+          setIsUserLoggedIn(false);
+        }
+      } catch (error) {
+        console.error("Error checking auth status:", error);
+        setIsUserLoggedIn(false);
+      }
+      setIsLoading(false);
+    };
+
+    checkAuthStatus();
+  }, []);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+  
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline /> {/* This resets CSS to a consistent baseline */}
@@ -218,18 +136,14 @@ const App: React.FC = () => {
           {/* <Route path='/register' element={<RegisterPage />} /> */}
 
           {/* Routes protected by PrivateRoute */}
-          <Route element={<PrivateRoute isAuthenticated={isUserLoggedIn} />}>
-            <Route
-              path="/wallet"
-              element={
-                <WalletPage
-                  walletAddress={walletAddress}
-                  balance={balance}
-                  transactions={transactions}
-                />
-              }
-            />
-          </Route>
+          <Route
+            path="/wallet"
+            element={
+              <PrivateRoute isAuthenticated={isUserLoggedIn}>
+                <WalletPage user={user} />
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </Router>
     </ThemeProvider>
