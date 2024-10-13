@@ -1,9 +1,10 @@
 import React from "react";
 import Sidebar from "./Sidebar";
-import { Container, IconButton, Typography } from '@mui/material';
+import { Box, Container, IconButton, Typography } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import DeleteIcon from '@mui/icons-material/Delete';
+import LogoutButton from "./LogoutButton";
 
 type SettingPageProps = {
     darkMode: boolean;
@@ -23,6 +24,11 @@ const SettingPage: React.FC<SettingPageProps> = ({ darkMode, toggleTheme }) => {
                 <IconButton onClick={toggleTheme}>
                     {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
                 </IconButton>
+
+                <Box sx={{ marginTop: '20px' }}>
+                    <LogoutButton sx={{ display: 'block', visibility: 'visible' }} /> {/* Force visibility */}
+                </Box>
+
 
                 <IconButton sx={{ marginTop: '20px' }}> 
                     <DeleteIcon/>  Delete Account

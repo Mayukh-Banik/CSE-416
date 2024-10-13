@@ -14,7 +14,6 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { styled, useTheme } from '@mui/material/styles';
 import Divider from '@mui/material/Divider';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import LogoutButton from './LogoutButton';
 const drawerWidth = 275;
 
 
@@ -197,11 +196,7 @@ const Sidebar: React.FC = () =>
               },
             }}
           />
-        </Toolbar>
-
-        <Box sx={{ display: 'inline-flex', justifyContent: 'space-between', padding: 2 }}>
-          <LogoutButton/>
-          </Box>
+          </Toolbar>
         </Toolbar>
         <Divider/>
         
