@@ -18,6 +18,7 @@ const userSchema = new Schema<IUser>({
   password: { type: String, required: true, minlength: 6 },
   publicKey: { type: String, required: true},
   balance: { type: Number, default: 0, min: 0 },
+  reputation: { type: Number, default: 0},
   createdAt: { type: Date, default: Date.now, immutable: true }
 });
 
