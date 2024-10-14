@@ -1,16 +1,18 @@
 import express from 'express';
 import controllers from '../controllers';
 import { body } from 'express-validator';
-import { validateRequest } from '../middlewares';
+import middlewares from '../middlewares';
 
 const router = express.Router();
+
+router.get("/info", middlewares.authenticateJWT, controllers.getUserInfo);
 
 router.post(
   '/signup',
   [
     body('email').isEmail().withMessage('Please provide a valid email'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-    validateRequest,
+    middlewares.validateRequest,
   ],
   controllers.createUser
 );
@@ -20,7 +22,7 @@ router.post(
   [
     body('email').isEmail().withMessage('Please provide a valid email'),
     body('password').notEmpty().withMessage('Password cannot be empty'),
-    validateRequest,
+    middlewares.validateRequest,
   ],
   controllers.loginUser
 );
