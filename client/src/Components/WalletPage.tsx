@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import {
     Box,
     Typography,
@@ -15,13 +15,19 @@ import {
 } from "@mui/material";
 import { QRCodeCanvas } from "qrcode.react";
 import Sidebar from "./Sidebar";
-// import TransactionTable from "./TransactionTable";
-import { WalletDetailsProps, TransactionProps } from "../types/interfaces";
+import { TransactionProps } from "../types/interfaces";
 
-const WalletPage: React.FC<{ user: WalletDetailsProps }> = ({ user }) => {
-    const { walletAddress, balance, walletLabel, userId } = user;
+interface User {
+    userId: string;
+    walletAddress: string;
+    balance: number;
+    walletLabel: string;
+    // 추가적인 필드가 필요하면 여기에 추가
+}
 
-    // State for transactions, pagination, search, and filters
+const WalletPage: React.FC = () => {
+    // State for user details and transactions
+    const [user, setUser] = useState<User | null>(null);
     const [transactions, setTransactions] = useState<TransactionProps[]>([]);
     const [itemsToShow, setItemsToShow] = useState(5);
     const [search, setSearch] = useState("");
@@ -29,20 +35,37 @@ const WalletPage: React.FC<{ user: WalletDetailsProps }> = ({ user }) => {
     const [statusFilter, setStatusFilter] = useState<string>("all");
 
     useEffect(() => {
-        // Fetch transaction history when component mounts
-        const fetchTransactions = async () => {
+        // Fetch user information from the server using the token in HttpOnly cookie
+        const fetchUserInfo = async () => {
             try {
-                const response = await axios.get(
-                    `http://localhost:5000/api/transaction/${userId}`
-                );
-                setTransactions(response.data);
+                console.log("씨발");
+                const response = await axios.get("http://localhost:5000/api/users/info", {
+                    withCredentials: true,
+                });
+                console.log("쭈발",response);
+                setUser(response.data.user);
+
+                // Fetch transaction history when user information is available
+                const fetchTransactions = async () => {
+                    try {
+                        const transactionsResponse: AxiosResponse<TransactionProps[]> = await axios.get(
+                            `http://localhost:5000/api/transaction/${response.data.user.userId}`,
+                            { withCredentials: true }
+                        );
+                        setTransactions(transactionsResponse.data);
+                    } catch (error) {
+                        console.error("Error fetching transactions:", error);
+                    }
+                };
+
+                fetchTransactions();
             } catch (error) {
-                console.error("Error fetching transactions:", error);
+                console.error("Error fetching user info:", error);
             }
         };
 
-        fetchTransactions();
-    }, [userId]);
+        fetchUserInfo();
+    }, []);
 
     // Function to load more transactions
     const loadMoreTransactions = () => {
@@ -67,13 +90,17 @@ const WalletPage: React.FC<{ user: WalletDetailsProps }> = ({ user }) => {
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
 
+    if (!user) {
+        return <div>Loading user information...</div>;
+    }
+
     return (
         <>
             <CssBaseline />
             <Sidebar />
             <Container maxWidth="md" sx={{ mt: 4 }}>
                 <Typography variant="h4" sx={{ mb: 2 }}>
-                    {walletLabel || "Wallet Details"}
+                    {user.walletLabel || "Wallet Details"}
                 </Typography>
                 {/* Balance and Wallet Address */}
                 <Box
@@ -105,7 +132,7 @@ const WalletPage: React.FC<{ user: WalletDetailsProps }> = ({ user }) => {
                         />
                         <Box sx={{ ml: 2, textAlign: "left" }}>
                             <Typography variant="h6">Balance</Typography>
-                            <Typography variant="body1">{balance} Coins</Typography>
+                            <Typography variant="body1">{user.balance} Coins</Typography>
                         </Box>
                     </Box>
 
@@ -124,13 +151,13 @@ const WalletPage: React.FC<{ user: WalletDetailsProps }> = ({ user }) => {
                     >
                         {/* QR Code generate */}
                         <QRCodeCanvas
-                            value={walletAddress}
+                            value={user.walletAddress}
                             size={50}
                             style={{ marginRight: "10px" }}
                         />
                         <Box sx={{ ml: 2, textAlign: "left" }}>
                             <Typography variant="h6">Wallet Address</Typography>
-                            <Typography variant="body1">{walletAddress}</Typography>
+                            <Typography variant="body1">{user.walletAddress}</Typography>
                         </Box>
                     </Box>
                 </Box>
