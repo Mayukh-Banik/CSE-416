@@ -4,7 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import router from './routes';
-import {createMonkUsers, createMonkTransactions} from './monkData';
+// import {createMonkUsers, createMonkTransactions} from './monkData';
 
 // Load environment variables
 dotenv.config();
@@ -48,8 +48,8 @@ const startServer = async (): Promise<void> => {
   });
 
   //monk data
-  await createMonkUsers();
-  await createMonkTransactions();
+  // await createMonkUsers();
+  // await createMonkTransactions();
 
 };
 

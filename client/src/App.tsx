@@ -92,12 +92,15 @@ const App: React.FC = () => {
     const checkAuthStatus = async () => {
       try {
         const response = await axios.get("http://localhost:5000/api/auth/status", {
-          withCredentials: true, // 쿠키를 사용하여 인증 정보 포함
+          withCredentials: true,
         });
+        console.log("Auth status response:", response); // 응답 전체 출력
         if (response.data.isAuthenticated) {
+          console.log("User is authenticated:", response.data.user); // 인증된 사용자 정보 출력
           setUser(response.data.user);
           setIsUserLoggedIn(true);
         } else {
+          console.log("User is not authenticated");
           setIsUserLoggedIn(false);
         }
       } catch (error) {
@@ -113,7 +116,7 @@ const App: React.FC = () => {
   if (isLoading) {
     return <div>Loading...</div>;
   }
-  
+
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline /> {/* This resets CSS to a consistent baseline */}
@@ -140,7 +143,7 @@ const App: React.FC = () => {
             path="/wallet"
             element={
               <PrivateRoute isAuthenticated={isUserLoggedIn}>
-                <WalletPage user={user} />
+                <WalletPage />
               </PrivateRoute>
             }
           />

@@ -8,8 +8,8 @@ import jwt from 'jsonwebtoken';
  * @param res - The response object.
  */
 export const checkAuthStatus = (req: Request, res: Response): void => {
-    console.log("Request cookies:", req.cookies); // 쿠키 값 확인
-    console.log("Authorization header:", req.headers.authorization); // Authorization 헤더 확인
+    console.log("[authController] Request cookies:", req.cookies); // 쿠키 값 확인
+    console.log("[authController] Authorization header:", req.headers.authorization); // Authorization 헤더 확인
 
     const token = req.cookies?.token;
 
