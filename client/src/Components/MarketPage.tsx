@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, List, ListItem, ListItemText, Button, TextField, Pagination } from '@mui/material';
-import Header from './Header';
-import Sidebar from './Sidebar';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination } from '@mui/material';
 
 export interface IFile {
   fileName: string;
@@ -11,40 +9,50 @@ export interface IFile {
   createdAt: Date;
 }
 
-const MarketPage: React.FC = () => {
+const MarketplacePage: React.FC = () => {
+  //dummy data from chat
   const [files, setFiles] = useState<IFile[]>([
-    { fileName: 'Example File 1', hash: 'abc123', reputation: 'High', fileSize: 2048, createdAt: new Date() },
-    { fileName: 'Example File 2', hash: 'def456', reputation: 'Medium', fileSize: 1024, createdAt: new Date() },
-    { fileName: 'Example File 3', hash: 'ghi789', reputation: 'Low', fileSize: 512, createdAt: new Date() },
-    { fileName: 'Example File 4', hash: 'jkl012', reputation: 'High', fileSize: 2048, createdAt: new Date() },
-    { fileName: 'Example File 5', hash: 'mno345', reputation: 'Medium', fileSize: 1024, createdAt: new Date() },
-    { fileName: 'Example File 6', hash: 'pqr678', reputation: 'Low', fileSize: 512, createdAt: new Date() },
-    // Add more files as needed
+    { fileName: 'Vacation_Snapshot.png', hash: 'img001', reputation: 'High', fileSize: 2048000, createdAt: new Date('2023-09-15') },
+    { fileName: 'Project_Proposal.pdf', hash: 'doc002', reputation: 'Medium', fileSize: 512000, createdAt: new Date('2023-08-10') },
+    { fileName: 'Family_Photo.jpg', hash: 'img003', reputation: 'High', fileSize: 1500000, createdAt: new Date('2023-07-22') },
+    { fileName: 'Recipe_Book.pdf', hash: 'doc004', reputation: 'Low', fileSize: 1000000, createdAt: new Date('2023-10-01') },
+    { fileName: 'Nature_Wallpaper.jpg', hash: 'img005', reputation: 'High', fileSize: 2500000, createdAt: new Date('2023-06-05') },
+    { fileName: 'User_Manual.png', hash: 'img006', reputation: 'Medium', fileSize: 350000, createdAt: new Date('2023-05-14') },
+    { fileName: 'Presentation_Slides.pptx', hash: 'doc007', reputation: 'Medium', fileSize: 700000, createdAt: new Date('2023-09-20') },
+    { fileName: 'Financial_Report.pdf', hash: 'doc008', reputation: 'High', fileSize: 800000, createdAt: new Date('2023-10-05') },
+    { fileName: 'Tech_Article.jpg', hash: 'img009', reputation: 'Low', fileSize: 600000, createdAt: new Date('2023-04-30') },
+    { fileName: 'Game_Screenshots.png', hash: 'img010', reputation: 'Medium', fileSize: 1200000, createdAt: new Date('2023-09-30') },
   ]);
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [page, setPage] = useState(1);
-  const itemsPerPage = 10;
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
   const filteredFiles = files.filter(file => 
     file.fileName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDownloadRequest = (file: IFile) => {
+    //add implementation later
     console.log(`Requesting download for: ${file.fileName}`);
   };
 
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-    setPage(value);
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
   };
 
-  const indexOfLastFile = page * itemsPerPage;
-  const indexOfFirstFile = indexOfLastFile - itemsPerPage;
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0); // Reset to the first page
+  };
+
+  // pagination
+  const indexOfLastFile = (page + 1) * rowsPerPage;
+  const indexOfFirstFile = indexOfLastFile - rowsPerPage;
   const currentFiles = filteredFiles.slice(indexOfFirstFile, indexOfLastFile);
 
   return (
-    <Box sx={{ padding: 2, marginTop:'100px' }}>
-      <Sidebar/>
+    <Box sx={{ padding: 2, marginTop: '100px' }}>
       <Typography variant="h4" gutterBottom>
         Marketplace
       </Typography>
@@ -56,28 +64,46 @@ const MarketPage: React.FC = () => {
         onChange={(e) => setSearchTerm(e.target.value)}
         sx={{ marginBottom: 2 }}
       />
-      <List>
-        {currentFiles.map((file) => (
-          <ListItem key={file.hash} divider>
-            <ListItemText
-              primary={file.fileName}
-              secondary={`Size: ${(file.fileSize / 1024).toFixed(2)} KB | Reputation: ${file.reputation} | Created At: ${file.createdAt.toLocaleDateString()}`}
-            />
-            <Button variant="contained" onClick={() => handleDownloadRequest(file)}>
-              Download
-            </Button>
-          </ListItem>
-        ))}
-      </List>
-      <Pagination
-        count={Math.ceil(filteredFiles.length / itemsPerPage)}
+      <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>File Name</TableCell>
+              <TableCell>File Size (KB)</TableCell>
+              <TableCell>Reputation</TableCell>
+              <TableCell>Created At</TableCell>
+              <TableCell>Request to Download</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {currentFiles.map((file) => (
+              <TableRow key={file.hash}>
+                <TableCell>{file.fileName}</TableCell>
+                <TableCell>{(file.fileSize / 1024).toFixed(2)}</TableCell>
+                <TableCell>{file.reputation}</TableCell>
+                <TableCell>{file.createdAt.toLocaleDateString()}</TableCell>
+                <TableCell>
+                  <Button variant="contained" onClick={() => handleDownloadRequest(file)}>
+                    Download
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <TablePagination
+        component="div"
+        count={filteredFiles.length}
         page={page}
-        onChange={handlePageChange}
-        color="primary"
+        onPageChange={handleChangePage}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        rowsPerPageOptions={[5, 10, 25]}
         sx={{ marginTop: 2 }}
       />
     </Box>
   );
 };
 
-export default MarketPage;
+export default MarketplacePage;
