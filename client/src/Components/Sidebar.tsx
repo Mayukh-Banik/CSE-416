@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Link, useNavigate } from 'react-router-dom';
 import { Box,CssBaseline,Drawer,IconButton,List,ListItem,ListItemText
   , ListItemIcon,Toolbar,Typography,Button,Collapse,TextField
 } from '@mui/material';
@@ -15,6 +14,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { styled, useTheme } from '@mui/material/styles';
 import Divider from '@mui/material/Divider';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import StoreIcon from '@mui/icons-material/Store';
 const drawerWidth = 275;
 
 
@@ -117,7 +117,7 @@ const Sidebar: React.FC = () =>
       <List>
 
         <ListItem onClick={handleMarket} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
-          <ListItemIcon><FileCopyIcon/></ListItemIcon>
+          <ListItemIcon><StoreIcon/></ListItemIcon>
           <ListItemText primary = "Market"></ListItemText>
         </ListItem>
 
@@ -229,7 +229,7 @@ const Sidebar: React.FC = () =>
         
       >
         <DrawerHeader>
-          <img src="/images/squidcoin.png" alt="Squid Icon" width="30" />
+          <img src="/squidcoin.png" alt="Squid Icon" width="30" />
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1}}>
             Squid Coin
           </Typography>

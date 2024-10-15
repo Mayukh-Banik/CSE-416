@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination } from '@mui/material';
+import Sidebar from './Sidebar';
 
 export interface IFile {
   fileName: string;
@@ -52,7 +53,8 @@ const MarketplacePage: React.FC = () => {
   const currentFiles = filteredFiles.slice(indexOfFirstFile, indexOfLastFile);
 
   return (
-    <Box sx={{ padding: 2, marginTop: '100px' }}>
+    <Box sx={{ padding: 2, marginTop: '100px', marginLeft:'275px'}}>
+      <Sidebar/>
       <Typography variant="h4" gutterBottom>
         Marketplace
       </Typography>
@@ -72,7 +74,7 @@ const MarketplacePage: React.FC = () => {
               <TableCell>File Size (KB)</TableCell>
               <TableCell>Reputation</TableCell>
               <TableCell>Created At</TableCell>
-              <TableCell>Request to Download</TableCell>
+              <TableCell></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
