@@ -9,5 +9,5 @@ type ChallengeResponse struct {
 
 // ChallengeRequest contains the challenge request by the user
 type ChallengeRequest struct {
-    UserID string `json:"user_id"`
+    PublicKey string `json:"public_key"`
 }

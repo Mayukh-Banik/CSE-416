@@ -37,7 +37,7 @@ func RequestChallenge(w http.ResponseWriter, r *http.Request) {
     var challengeReq models.ChallengeRequest
     json.NewDecoder(r.Body).Decode(&challengeReq)
 
-    challenge, err := services.GenerateChallenge(challengeReq.UserID)
+    challenge, err := services.GenerateChallenge(challengeReq.PublicKey)
     if err != nil {
         http.Error(w, err.Error(), http.StatusUnauthorized)
         return
@@ -59,4 +59,31 @@ func VerifyLogin(w http.ResponseWriter, r *http.Request) {
 
     // Successfully authenticated
     json.NewEncoder(w).Encode(map[string]string{"status": "login successful"})
+}
+
+// LoginWithWalletID handles the login using only the walletId (public key)
+func LoginWithWalletID(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		WalletID string `json:"walletId"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// Call the service to login with walletId (public key)
+	success, err := services.LoginWithWalletID(req.WalletID)
+	if err != nil {
+		http.Error(w, "Login failed: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	if success {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Login successful"})
+	} else {
+		http.Error(w, "Login failed", http.StatusUnauthorized)
+	}
 }
