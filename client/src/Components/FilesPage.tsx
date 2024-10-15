@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import Sidebar from "./Sidebar";
+import PublishIcon from '@mui/icons-material/Publish';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { 
   Box, 
   Button, 
@@ -12,8 +14,6 @@ import {
   Snackbar,
   Alert
 } from "@mui/material";
-import PublishIcon from '@mui/icons-material/Publish';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 interface UploadedFile {
   id: string; 
@@ -26,11 +26,15 @@ const FilesPage: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
+  const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({});
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      setSelectedFiles(Array.from(files)); 
+      const fileArray = Array.from(files);
+      setSelectedFiles(fileArray);
+      // Compute hashes for each file
+      fileArray.forEach(file => computeSHA512(file));
     }
   };
 
@@ -75,6 +79,21 @@ const FilesPage: React.FC = () => {
 
   const handleUploadClick = () => {
     document.getElementById("file-input")?.click();
+  };
+
+
+  const computeSHA512 = async (file: File) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-512", arrayBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray
+      .map(byte => byte.toString(16).padStart(2, "0"))
+      .join("");
+    
+    setFileHashes(prevHashes => ({
+      ...prevHashes,
+      [file.name]: hashHex,
+    }));
   };
 
   return (
