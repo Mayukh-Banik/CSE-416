@@ -94,6 +94,10 @@ const Sidebar: React.FC = () =>
   const handleSettings = async () => {
     navigate('/settings');
   };
+
+  const handleMarket = async () => {
+    navigate('/market')
+  }
   // const [dashboardOpen,setDashBoardOpen] = React.useState(false);
   
 
@@ -110,6 +114,12 @@ const Sidebar: React.FC = () =>
   const drawer = (
     <div>
       <List>
+
+        <ListItem onClick={handleMarket} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
+          <ListItemIcon><FileCopyIcon/></ListItemIcon>
+          <ListItemText primary = "Market"></ListItemText>
+        </ListItem>
+
         <ListItem onClick={handleFiles} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
           <ListItemIcon><FileCopyIcon/></ListItemIcon>
           <ListItemText primary = "Files"></ListItemText>

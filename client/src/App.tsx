@@ -32,6 +32,7 @@ import SettingPage from "./Components/SettingPage";
 import WalletPage from "./Components/WalletPage";
 import FilesPage from "./Components/FilesPage";
 import MiningPage from "./Components/MiningPage";
+import MarketPage from "./Components/MarketPage";
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
@@ -205,6 +206,7 @@ const App: React.FC = () => {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/market" element={<MarketPage />} />
           <Route path="/files" element={<FilesPage />} />
           <Route
             path="/settings"
