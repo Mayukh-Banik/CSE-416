@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os/exec"
 	"sync"
 	"time"
 
@@ -18,12 +19,19 @@ type MiningStatus struct {
 	IsMining       bool   `json:"isMining"`
 }
 
+// WalletResponse represents the response format for wallet generation
+type WalletResponse struct {
+	Message    string `json:"message"`
+	PublicKey  string `json:"public_key"`
+	PrivateKey string `json:"private_key"`
+}
+
 var (
 	miningStatus MiningStatus
 	mu           sync.Mutex
 )
 
-// fetch current mining status
+// Get current mining status
 func getMiningStatus(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -32,7 +40,7 @@ func getMiningStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(miningStatus)
 }
 
-// begins mining process
+// Start mining process
 func startMining(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -51,7 +59,7 @@ func startMining(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(miningStatus)
 }
 
-// stopMining handles POST requests to stop the mining process
+// Stop mining process
 func stopMining(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -62,12 +70,11 @@ func stopMining(w http.ResponseWriter, r *http.Request) {
 	}
 
 	miningStatus.IsMining = false
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(miningStatus)
 }
 
-// mine simulates the mining process by incrementing mined blocks periodically
+// Mine blocks (simulated)
 func mine() {
 	for {
 		mu.Lock()
@@ -79,13 +86,45 @@ func mine() {
 		miningStatus.LastMinedBlock = time.Now().Format(time.RFC3339)
 		mu.Unlock()
 
-		// mining delay
-		time.Sleep(5 * time.Second)
+		time.Sleep(5 * time.Second) // Simulate mining time
 	}
 }
 
+// Wallet generation handler
+func generateWalletHandler(w http.ResponseWriter, r *http.Request) {
+	cmd := exec.Command("/Users/dianne/go/bin/btcwallet", "--create")
+
+	output, err := cmd.CombinedOutput() // Captures both stdout and stderr
+	if err != nil {
+		log.Printf("Error generating wallet: %v, output: %s", err, string(output))
+		http.Error(w, "Failed to generate wallet. Please check server logs.", http.StatusInternalServerError)
+		return
+	}
+
+	// Example: Parsing output (you'll need to adjust based on actual btcwallet output)
+	wallet := WalletResponse{
+		Message:    "Wallet generated successfully",
+		PublicKey:  extractPublicKeyFromOutput(),
+		PrivateKey: extractPrivateKeyFromOutput(),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(wallet)
+
+	log.Printf("Wallet generated successfully at %s", time.Now().Format(time.RFC3339))
+}
+
+func extractPublicKeyFromOutput() string {
+    // Logic to extract public key
+    return "public_key_example"
+}
+
+func extractPrivateKeyFromOutput() string {
+    // Logic to extract private key
+    return "private_key_example"
+}
 func main() {
-	// default mining status
+	// Default mining status
 	miningStatus = MiningStatus{
 		MinedBlocks:    0,
 		LastMinedBlock: "",
@@ -98,6 +137,7 @@ func main() {
 	router.HandleFunc("/api/mining-status", getMiningStatus).Methods("GET")
 	router.HandleFunc("/api/start-mining", startMining).Methods("POST")
 	router.HandleFunc("/api/stop-mining", stopMining).Methods("POST")
+	router.HandleFunc("/api/generate-wallet", generateWalletHandler).Methods("POST") // Wallet generation route
 
 	// Configure CORS
 	corsOptions := cors.Options{
@@ -107,10 +147,8 @@ func main() {
 		AllowCredentials: true,
 	}
 
-	// CORS handler
 	handler := cors.New(corsOptions).Handler(router)
 
-	// server
 	log.Println("Starting server on :8080")
 	if err := http.ListenAndServe(":8080", handler); err != nil {
 		log.Fatalf("Could not start server: %s\n", err.Error())
