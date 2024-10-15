@@ -9,6 +9,7 @@ import (
     "errors"
     "log"
     "time"
+	"strings"
 
     "go-server/models"
     "go-server/utils"
@@ -42,6 +43,9 @@ func GenerateWallet() (WalletResponse, error) {
         Bytes: pubASN1,
     })
 
+	// Clean the public key (remove newlines for storage consistency)
+    cleanPublicKey := strings.ReplaceAll(string(publicKeyPEM), "\n", "")
+
     // Encode private key to PEM format
     privASN1 := x509.MarshalPKCS1PrivateKey(privateKey)
     privateKeyPEM := pem.EncodeToMemory(&pem.Block{
@@ -55,7 +59,7 @@ func GenerateWallet() (WalletResponse, error) {
     // Create a new user object
     user := models.User{
         UserID:      userID,
-        PublicKey:   string(publicKeyPEM),
+        PublicKey:   cleanPublicKey,
         CreatedDate: time.Now(),
     }
 
