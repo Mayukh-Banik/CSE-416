@@ -27,46 +27,26 @@ const SignUpPage: React.FC = () => {
     navigate("/login");
   };
 
-  const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
-    let binary = "";
-    const bytes = new Uint8Array(buffer);
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  };
-
-  const generateWallet = async () => {
+  // API call to backend to generate wallet
+  const handleSignup = async () => {
     try {
-      const keyPair = await window.crypto.subtle.generateKey(
-        {
-          name: "RSA-OAEP",
-          modulusLength: 2048,
-          publicExponent: new Uint8Array([1, 0, 1]),
-          hash: "SHA-256",
+      const response = await fetch("http://localhost:8080/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        true,
-        ["encrypt", "decrypt"]
-      );
+      });
 
-      const publicKey = await window.crypto.subtle.exportKey(
-        "spki",
-        keyPair.publicKey
-      );
-      const publicKeyBase64 = arrayBufferToBase64(publicKey);
-
-      const privateKey = await window.crypto.subtle.exportKey(
-        "pkcs8",
-        keyPair.privateKey
-      );
-      const privateKeyBase64 = arrayBufferToBase64(privateKey);
-
-      setWalletAddress(publicKeyBase64);
-      setPrivateKey(privateKeyBase64);
-      setIsSubmitted(true);
+      if (response.ok) {
+        const data = await response.json();
+        setWalletAddress(data.public_key);
+        setPrivateKey(data.private_key);
+        setIsSubmitted(true);
+      } else {
+        console.error("Failed to signup");
+      }
     } catch (error) {
-      console.error("Error generating wallet:", error);
+      console.error("Error during signup:", error);
     }
   };
 
@@ -107,7 +87,7 @@ const SignUpPage: React.FC = () => {
             <Button
               variant="contained"
               className={classes.button}
-              onClick={generateWallet}
+              onClick={handleSignup} // Backend signup
             >
               Generate Wallet
             </Button>

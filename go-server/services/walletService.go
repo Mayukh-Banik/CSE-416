@@ -1,49 +1,77 @@
 package services
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
-	"errors"
-	"log"
+    "context"
+    "crypto/rand"
+    "crypto/rsa"
+    "crypto/x509"
+    "encoding/pem"
+    "errors"
+    "log"
+    "time"
+
+    "go-server/models"
+    "go-server/utils"
+
+    //"go.mongodb.org/mongo-driver/mongo"
 )
 
 // WalletResponse struct to send back both public and private keys
 type WalletResponse struct {
-	PublicKey  string `json:"public_key"`
-	PrivateKey string `json:"private_key"` // Include private key here
+    UserID     string `json:"user_id"`
+    PublicKey  string `json:"public_key"`
+    PrivateKey string `json:"private_key"`
 }
 
-// GenerateWallet creates an RSA key pair and returns the public and private keys
+// GenerateWallet creates an RSA key pair, stores the user in MongoDB, and returns the response
 func GenerateWallet() (WalletResponse, error) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		log.Printf("Error generating private key: %v", err)
-		return WalletResponse{}, errors.New("failed to generate keys")
-	}
+    // Generate RSA key pair
+    privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+    if err != nil {
+        log.Printf("Error generating private key: %v", err)
+        return WalletResponse{}, errors.New("failed to generate keys")
+    }
 
-	// Extract public key in PEM format
-	pubKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-	if err != nil {
-		return WalletResponse{}, err
-	}
+    // Encode public key to PEM format
+    pubASN1, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+    if err != nil {
+        return WalletResponse{}, err
+    }
+    publicKeyPEM := pem.EncodeToMemory(&pem.Block{
+        Type:  "PUBLIC KEY",
+        Bytes: pubASN1,
+    })
 
-	// PEM encode the public key
-	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pubKeyBytes,
-	})
+    // Encode private key to PEM format
+    privASN1 := x509.MarshalPKCS1PrivateKey(privateKey)
+    privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+        Type:  "RSA PRIVATE KEY",
+        Bytes: privASN1,
+    })
 
-	// PEM encode the private key
-	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
-	})
+    // Generate a unique user ID
+    userID := utils.GenerateUserID()
 
-	// Return both keys
-	return WalletResponse{
-		PublicKey:  string(publicKeyPEM),
-		PrivateKey: string(privateKeyPEM),
-	}, nil
+    // Create a new user object
+    user := models.User{
+        UserID:      userID,
+        PublicKey:   string(publicKeyPEM),
+        CreatedDate: time.Now(),
+    }
+
+    // Store the user in MongoDB
+    collection := utils.GetCollection("squidcoinDB", "users")
+    _, err = collection.InsertOne(context.TODO(), user)
+    if err != nil {
+        return WalletResponse{}, err
+    }
+
+    // Prepare the response
+    walletResponse := WalletResponse{
+        UserID:     userID,
+        PublicKey:  user.PublicKey,
+        PrivateKey: string(privateKeyPEM),
+    }
+
+    return walletResponse, nil
 }
