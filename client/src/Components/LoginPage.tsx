@@ -1,136 +1,103 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { TextField, Button, Container, Typography, Link, Box } from '@mui/material';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import useRegisterPageStyles from '../Stylesheets/RegisterPageStyles';
-import Header from './Header';
-import { useNavigate } from 'react-router-dom';
-
-const PORT = 5000;
+import React, { useState } from "react";
+import {
+  TextField,
+  Button,
+  Container,
+  Typography,
+  Box,
+  Link,
+} from "@mui/material";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import useRegisterPageStyles from "../Stylesheets/RegisterPageStyles";
+import Header from "./Header";
+import { useNavigate } from "react-router-dom";
 
 const LoginPage: React.FC = () => {
-    const classes = useRegisterPageStyles();
-    const navigate = useNavigate();
+  const [walletAddress, setWalletAddress] = useState(""); // Wallet ID (Public Key)
+  const [walletError, setWalletError] = useState(""); // Error for wallet address
+  const classes = useRegisterPageStyles();
+  const navigate = useNavigate();
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState<string | null>(null);
+  // Function to handle the "Log In" button click
+  const handleLogin = async () => {
+    if (walletAddress.trim() === "") {
+      setWalletError("Wallet address cannot be empty."); // Set error if the input is empty
+      return;
+    }
 
-    const validateForm = () => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Clear any previous errors
+    setWalletError("");
 
-        if (!email || !password) {
-            setError('All fields are required.');
-            return false;
-        }
-        if (!emailRegex.test(email)) {
-            setError('Invalid email format.');
-            return false;
-        }
-        if (password.length < 8) {
-            setError('Password must be at least 8 characters long.');
-            return false;
-        }
-        setError(null);
-        return true;
-    };
+    try {
+      // Send the walletId (public key) to the backend for login
+      const response = await fetch("http://localhost:8080/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ walletId: walletAddress.trim() }), // Using walletAddress as walletId
+      });
 
-    const handleLogin = async () => {
-        if (!validateForm()) {
-            return;
-        }
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Login successful:", data);
+        // Navigate to the wallet page upon successful login
+        navigate("/wallet"); // Adjust the path as per your routing
+      } else {
+        const error = await response.text();
+        console.error("Login failed:", error);
+        setWalletError("Invalid wallet address."); // Show error if login fails
+      }
+    } catch (error) {
+      console.error("Error during login:", error);
+      setWalletError("An error occurred. Please try again.");
+    }
+  };
 
-        const userData = {
-            email,
-            password,
-        };
+  const handleSignUpRedirect = () => {
+    navigate("/signup");
+  };
 
+  return (
+    <>
+      <Header />
+      <Container className={classes.container}>
+        <LockOutlinedIcon className={classes.icon} />
+        <Typography variant="h4" gutterBottom>
+          Log In
+        </Typography>
 
-        try {
-            const response = await axios.post(`http://localhost:${PORT}/api/users/login`, userData, {
-              withCredentials: true
-            });
-            if (response.data && response.data.error) {
-              setError(response.data.error);
-            } else {
-              navigate('/wallet'); // ToDo: navigate to dashboard after implemented
-            }
-        } catch (error: any) {
-            console.error('Error during login:', error);
-            if (error.response && error.response.data && error.response.data.message) {
-                setError(error.response.data.message);
-            } else {
-                setError('Failed to login. Please try again later.');
-            }
-        }
-    };
+        <Box component="form" className={classes.form} sx={{ width: "70%" }}>
+          <TextField
+            label="Wallet Address"
+            variant="outlined"
+            fullWidth
+            value={walletAddress}
+            onChange={(e) => setWalletAddress(e.target.value)}
+            className={classes.inputField}
+            required
+            error={!!walletError} // Show error state if walletError exists
+            helperText={walletError} // Display error message
+          />
 
-    const handleSignup = () => {
-        navigate('/signup');
-    };
+          <Button
+            variant="contained"
+            fullWidth
+            className={classes.button}
+            onClick={handleLogin} // Log in with walletId
+          >
+            Log In
+          </Button>
+        </Box>
 
-    return (
-        <>
-            <Header></Header>
-            <Container className={classes.container}>
-                {/* Icon */}
-                <LockOutlinedIcon className={classes.icon} />
-
-                {/* Form Title */}
-                <Typography variant="h4" gutterBottom>
-                    Log In
-                </Typography>
-
-                {/* Error Message */}
-                {error && (
-                    <Typography color="error" style={{ marginBottom: '1rem' }}>
-                        {error}
-                    </Typography>
-                )}
-
-                {/* Form */}
-                <Box component="form" className={classes.form}>
-                    <TextField
-                        label="Email Address"
-                        type="email"
-                        variant="outlined"
-                        className={classes.inputField}
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                    <TextField
-                        label="Password"
-                        type="password"
-                        variant="outlined"
-                        className={classes.inputField}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <Button
-                        variant="contained"
-                        className={classes.button}
-                        onClick={handleLogin}
-                    >
-                        Log In
-                    </Button>
-                </Box>
-
-                {/* Don't have an account link */}
-                <Typography>
-                    <Link
-                        onClick={handleSignup}
-                        className={classes.link}
-                    >
-                        Don't have an account? Sign Up
-                    </Link>
-                    <div>tempUser@example.com</div>
-                    <div>password123</div>
-                </Typography>
-            </Container>
-        </>
-    );
+        <Typography sx={{ mt: 2 }}>
+          <Link onClick={handleSignUpRedirect} className={classes.link}>
+            Don't have an account? Sign Up!
+          </Link>
+        </Typography>
+      </Container>
+    </>
+  );
 };
 
 export default LoginPage;

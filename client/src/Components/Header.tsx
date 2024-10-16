@@ -12,7 +12,7 @@ const Header: React.FC = () => {
   return (
     <AppBar position="static" color="primary">
       <Toolbar>
-        <Typography variant="h6" component="div" onClick={handleWelcome} sx={{ flexGrow: 1, cursor: "pointer"}}>
+        <Typography variant="h6" component="div" onClick={handleWelcome} sx={{ flexGrow: 1 }}>
           Project Squid
         </Typography>
         {/* Logo */}

@@ -18,6 +18,7 @@ import {
 import { HashRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import axios from "axios";
 // Remove the BrowserRouter import and replace it with HashRouter
+
 import GeneralTheme from "./Stylesheets/GeneralTheme";
 import WelcomePage from "./Components/WelcomePage";
 import RegisterPage from "./Components/RegisterPage";
