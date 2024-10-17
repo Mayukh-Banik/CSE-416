@@ -112,7 +112,7 @@ const Sidebar: React.FC = () =>
       <List>
         <ListItem onClick={handleFiles} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
           <ListItemIcon><FileCopyIcon/></ListItemIcon>
-          <ListItemText primary = "Files"></ListItemText>
+          <ListItemText primary = "View/Upload Files"></ListItemText>
         </ListItem>
 
         <ListItem onClick={handleWallet} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
