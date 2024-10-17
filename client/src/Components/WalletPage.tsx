@@ -1,11 +1,9 @@
-import React, { useState } from "react";
-import { Box, Typography, Container, List, ListItem, ListItemText, Button } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import React from "react";
+import { Box, Typography, Container } from "@mui/material";
 import { QRCodeCanvas } from "qrcode.react";
-import Header from "./Header";
-import Sidebar from "./Sidebar";
-import TransactionTable from "./TransactionTable";
-import TransactionPage from "./TransactionPage";
+import Sidebar from "./Sidebar"; // Ensure this is imported correctly
+import TransactionPage from "./TransactionPage"; // Make sure this component is correctly defined
+import { useTheme } from '@mui/material/styles';
 
 interface Transaction {
     id: string;
@@ -22,7 +20,11 @@ interface WalletDetailsProps {
     transactions: Transaction[];
     walletLabel?: string;
     fee?: number;
+    // isCollapsed: boolean; // Add this prop to manage sidebar state
 }
+
+const drawerWidth = 300;
+const collapsedDrawerWidth = 100;
 
 const WalletPage: React.FC<WalletDetailsProps> = ({
     walletAddress,
@@ -30,33 +32,24 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
     transactions,
     walletLabel,
     fee,
+    // isCollapsed, // Accept the prop
 }) => {
-    // Pagination state for showing limited transactions
-    const [itemsToShow, setItemsToShow] = useState(5);
-
-    const sortedTransactions = [...transactions].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-
-    // Chart Data for Network Fee
-    const feeChartData = {
-        labels: ['Network Fee'],
-        datasets: [
-            {
-                label: 'Fee',
-                data: [fee || 0],
-                backgroundColor: 'rgba(75,192,192,0.6)',
-                borderColor: 'rgba(75,192,192,1)',
-                borderWidth: 1,
-            },
-        ],
-    };
-
+    // const marginLeft = isCollapsed ? `${collapsedDrawerWidth}px` : `${drawerWidth}px`; // Determine margin based on sidebar state
+    const theme = useTheme();
     return (
-        <>
-            {/* <Header /> */}
-            <Sidebar/>
-            <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Box
+            sx={{
+                padding: 2,
+                marginTop: '70px',
+                marginLeft: `${drawerWidth}px`, // Default expanded margin
+                transition: 'margin-left 0.3s ease', // Smooth transition
+                [theme.breakpoints.down('sm')]: {
+                    marginLeft: `${collapsedDrawerWidth}px`, // Adjust left margin for small screens
+                },
+            }}
+        >
+            <Sidebar />
+            <Container maxWidth="md">
                 <Typography variant="h4" sx={{ mb: 2 }}>
                     {walletLabel || 'Wallet Details'}
                 </Typography>
@@ -90,8 +83,6 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                         </Box>
                     </Box>
 
-
-
                     {/* Wallet Address Box */}
                     <Box
                         sx={{
@@ -105,7 +96,7 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                             ml: 2,
                         }}
                     >
-                        {/* QR Code generate */}
+                        {/* QR Code generation */}
                         <QRCodeCanvas value={walletAddress} size={50} style={{ marginRight: '10px' }} />
                         <Box sx={{ ml: 2, textAlign: 'left' }}>
                             <Typography variant="h6">Wallet Address</Typography>
@@ -115,10 +106,9 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                 </Box>
 
                 <Typography variant="h6">Transaction History</Typography>
-                <TransactionPage/>
-                
-            </Container >
-        </>
+                <TransactionPage /> {/* Ensure TransactionPage accepts transactions as a prop */}
+            </Container>
+        </Box>
     );
 };
 

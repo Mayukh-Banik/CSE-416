@@ -11,15 +11,13 @@ import {
     Card,
     CardContent,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { styled, useTheme } from "@mui/material/styles";
 import Sidebar from "./Sidebar";
 
 // Styled components
 const MiningContainer = styled(Box)(({ theme }) => ({
     padding: theme.spacing(4),
     transition: "margin-left 0.3s ease",
-    marginTop: 100,
-    marginLeft: 275,
     [theme.breakpoints.down("sm")]: {
         marginLeft: 0,
     },
@@ -32,7 +30,11 @@ interface MiningStatus {
     isMining: boolean;
 }
 
+const drawerWidth = 300;
+const collapsedDrawerWidth = 100;
+
 const MiningPage: React.FC = () => {
+    const theme = useTheme();
     const [isMining, setIsMining] = useState(false);
     const [miningStatus, setMiningStatus] = useState<MiningStatus>({
         minedBlocks: 0,
@@ -138,8 +140,21 @@ const MiningPage: React.FC = () => {
     };
 
     return (
-        <>
+        <Box
+            sx={{
+            padding: 2,
+            marginTop: '70px',
+            marginLeft: `${drawerWidth}px`, // Default expanded margin
+            transition: 'margin-left 0.3s ease', // Smooth transition
+            [theme.breakpoints.down('sm')]: {
+                marginLeft: `${collapsedDrawerWidth}px`, // Adjust left margin for small screens
+            },
+            }}
+        >
             <Sidebar />
+            <Typography variant="h4" gutterBottom>
+                Mining
+            </Typography>
             <MiningContainer>
                 <Grid container spacing={4}>
                     {/* Mining Controls */}
@@ -239,7 +254,7 @@ const MiningPage: React.FC = () => {
                     </Alert>
                 </Snackbar>
             </MiningContainer>
-        </>
+        </Box>
     );
 };
 

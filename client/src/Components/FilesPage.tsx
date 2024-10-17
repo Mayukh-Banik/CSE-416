@@ -14,6 +14,7 @@ import {
   Snackbar,
   Alert
 } from "@mui/material";
+import { useTheme } from '@mui/material/styles';
 
 // change to our file model later
 interface UploadedFile {
@@ -23,13 +24,18 @@ interface UploadedFile {
   isPublished: boolean;
 }
 
+const drawerWidth = 300;
+const collapsedDrawerWidth = 100;
+
 const FilesPage: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({});
+  
+  const theme = useTheme();
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {    
     const files = event.target.files;
     if (files) {
       const fileArray = Array.from(files);
@@ -98,9 +104,19 @@ const FilesPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', padding: 2 }}>
+      <Box
+        sx={{
+          padding: 2,
+          marginTop: '70px',
+          marginLeft: `${drawerWidth}px`, // Default expanded margin
+          transition: 'margin-left 0.3s ease', // Smooth transition
+          [theme.breakpoints.down('sm')]: {
+            marginLeft: `${collapsedDrawerWidth}px`, // Adjust left margin for small screens
+          },
+        }}
+      >
       <Sidebar />
-      <Box sx={{ flexGrow: 1, marginLeft: 2, marginTop: 10 }}>
+      <Box sx={{ flexGrow: 1}}>
         <Typography variant="h4" gutterBottom>
           Upload Files
         </Typography>

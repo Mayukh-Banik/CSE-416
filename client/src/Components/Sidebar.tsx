@@ -1,188 +1,113 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Box,CssBaseline,Drawer,IconButton,List,ListItem,ListItemText
-  , ListItemIcon,Toolbar,Typography,Button,Collapse,TextField
+import {
+  Box, CssBaseline, Drawer, List, ListItem, ListItemText,
+  ListItemIcon, Toolbar, Typography, TextField, Divider
 } from '@mui/material';
 import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import SettingsIcon from '@mui/icons-material/Settings';
-import MenuIcon from '@mui/icons-material/Menu';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { styled, useTheme } from '@mui/material/styles';
-import Divider from '@mui/material/Divider';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import StoreIcon from '@mui/icons-material/Store';
+
 const drawerWidth = 275;
+const collapsedDrawerWidth = 80; // Width when collapsed
 
-
-const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
-  open?: boolean;
-}>(({ theme, open }) => ({
+const Main = styled('main')(({ theme }) => ({
   flexGrow: 1,
   padding: theme.spacing(3),
-  transition: theme.transitions.create('margin', {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
+  transition: theme.transitions.create(['margin'], {
+    easing: theme.transitions.easing.easeInOut,
+    duration: theme.transitions.duration.standard,
   }),
-  marginLeft: `-${drawerWidth}px`,
-  ...(open && {
-    transition: theme.transitions.create('margin', {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-    marginLeft: 0,
-  }),
+  marginLeft: `${drawerWidth}px`, // Default expanded
+  [theme.breakpoints.down('sm')]: {
+    marginLeft: `${collapsedDrawerWidth}px`, // Collapsed on small screens
+  },
 }));
-
 
 interface AppBarProps extends MuiAppBarProps {
   open?: boolean;
 }
 
-const AppBar = styled(MuiAppBar, {
-  shouldForwardProp: (prop) => prop !== 'open',
-})<AppBarProps>(({ theme, open }) => ({
+const AppBar = styled(MuiAppBar)<AppBarProps>(({ theme }) => ({
   transition: theme.transitions.create(['margin', 'width'], {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
+    easing: theme.transitions.easing.easeInOut,
+    duration: theme.transitions.duration.standard,
   }),
-  ...(open && {
-    width: `calc(100% - ${drawerWidth}px)`,
-    marginLeft: `${drawerWidth}px`,
-    transition: theme.transitions.create(['margin', 'width'], {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-  }),
+  width: `calc(100% - ${drawerWidth}px)`, // Default expanded
+  marginLeft: `${drawerWidth}px`,
+  [theme.breakpoints.down('sm')]: {
+    width: `calc(100% - ${collapsedDrawerWidth}px)`, // Adjust width when collapsed
+    marginLeft: `${collapsedDrawerWidth}px`,
+  },
 }));
 
-
 const DrawerHeader = styled('div')(({ theme }) => ({
-  
   display: 'flex',
   alignItems: 'center',
   padding: theme.spacing(0, 1),
-  // necessary for content to be below app bar
   ...theme.mixins.toolbar,
-  justifyContent: 'flex-end',
+  justifyContent: 'center', // Center the content when collapsed
 }));
 
-const Sidebar: React.FC = () => 
-{
+const Sidebar: React.FC = () => {
   const theme = useTheme();
-  const [open, setOpen]= React.useState(false);
   const navigate = useNavigate();
 
-  const handleFiles = async () => {
-      navigate('/files');
-  };
-
-  const handleWallet = async () => {
-    navigate('/wallet');
-  }; 
-
-  const handleMining = async () => {
-    navigate('/mining');
-  };  
-
-  const handleAccount = async () => {
-    navigate('/account');
-  };
-
-  const handleSettings = async () => {
-    navigate('/settings');
-  };
-
-  const handleMarket = async () => {
-    navigate('/market')
-  }
-  // const [dashboardOpen,setDashBoardOpen] = React.useState(false);
-  
-
-  const toggleDrawer = (newOpen:boolean) =>
-  {
-    setOpen(newOpen);
-  };
-
-  // const toggleDashboard = () =>
-  // {
-  //   setDashBoardOpen(!dashboardOpen);
-  // }
+  const handleFiles = async () => navigate('/files');
+  const handleWallet = async () => navigate('/wallet');
+  const handleMining = async () => navigate('/mining');
+  const handleAccount = async () => navigate('/account');
+  const handleSettings = async () => navigate('/settings');
+  const handleMarket = async () => navigate('/market');
 
   const drawer = (
     <div>
       <List>
-
-        <ListItem onClick={handleMarket} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
-          <ListItemIcon><StoreIcon/></ListItemIcon>
-          <ListItemText primary = "Market"></ListItemText>
+        <ListItem onClick={handleMarket} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon><StoreIcon /></ListItemIcon>
+          <ListItemText primary="Market" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
-
-        <ListItem onClick={handleFiles} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
-          <ListItemIcon><FileCopyIcon/></ListItemIcon>
-          <ListItemText primary = "Files"></ListItemText>
+        <ListItem onClick={handleFiles} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon><FileCopyIcon /></ListItemIcon>
+          <ListItemText primary="Files" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
-
-        <ListItem onClick={handleWallet} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
-          <ListItemIcon><AccountBalanceWalletIcon/></ListItemIcon>
-          <ListItemText primary = "Wallet"></ListItemText>
+        <ListItem onClick={handleWallet} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon><AccountBalanceWalletIcon /></ListItemIcon>
+          <ListItemText primary="Wallet" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
-
-        <ListItem onClick={handleMining} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
+        <ListItem onClick={handleMining} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
           <ListItemIcon>
-            <img 
-              src={`${process.env.PUBLIC_URL}/pickaxe.png`} 
-              alt="Pickaxe Icon" 
-              style={{ width: '24px', height: '24px', filter: 'invert'}} 
+            <img
+              src={`${process.env.PUBLIC_URL}/pickaxe.png`}
+              alt="Pickaxe Icon"
+              style={{ width: '24px', height: '24px', filter: 'invert' }}
             />
           </ListItemIcon>
-          <ListItemText primary = "Mining"></ListItemText>
+          <ListItemText primary="Mining" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
-
-        <ListItem onClick={handleAccount} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
-          <ListItemIcon><AccountCircleIcon/></ListItemIcon>
-          <ListItemText primary = "Account"></ListItemText>
+        <ListItem onClick={handleAccount} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon><AccountCircleIcon /></ListItemIcon>
+          <ListItemText primary="Account" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
-
-        <ListItem onClick={handleSettings} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
-          <ListItemIcon><SettingsIcon/></ListItemIcon>
-          <ListItemText primary = "Settings"></ListItemText>
+        <ListItem onClick={handleSettings} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon><SettingsIcon /></ListItemIcon>
+          <ListItemText primary="Settings" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
-
         <Divider />
-
       </List>
-      </div>
-  )
-
+    </div>
+  );
 
   return (
-    <Box sx = {{display:'flex'}}>
-      <CssBaseline/>
-      <AppBar position = "fixed" open = {open} sx={{backgroundColor:'primary.main'}}>
-      {/* <AppBar position = "fixed" open = {open} sx={{backgroundColor:'#000000'}}> */}
-
+    <Box sx={{ display: 'flex' }}>
+      <CssBaseline />
+      <AppBar position="fixed" sx={{ backgroundColor: 'primary.main' }}>
         <Toolbar>
-          <IconButton
-            color = "inherit"
-            aria-label = "open-drawer"
-            onClick = {()=>toggleDrawer(true)}
-            edge = "start"
-            sx={[
-              {
-                mr: 2,
-              },
-              open && { display: 'none' },
-            ]}
-            >
-              <MenuIcon />
-            </IconButton>
-
-          <Toolbar>
-          <Box sx={{ flexGrow: 1 }} /> {/* Pushes the search bar to the right */}
+          <Box sx={{ flexGrow: 1 }} />
           <TextField
             variant="outlined"
             placeholder="Search…"
@@ -195,47 +120,39 @@ const Sidebar: React.FC = () =>
                 borderColor: 'grey',
                 backgroundColor: 'background.default',
                 color: 'secondary.main',
-
-                '& fieldset':
-                {
-                  borderColor:'white',
-                },
-
-                '&:hover fieldset':{
-                  borderColor:'darkgrey'
-                }
+                '& fieldset': { borderColor: 'white' },
+                '&:hover fieldset': { borderColor: 'darkgrey' }
               },
             }}
           />
-          </Toolbar>
         </Toolbar>
-        <Divider/>
-        
       </AppBar>
 
-      <Drawer 
+      <Drawer
         sx={{
           flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            backgroundColor:'background.default',
-            color:'secondary.main'
+            backgroundColor: 'background.default',
+            color: 'secondary.main',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.easeInOut,
+              duration: theme.transitions.duration.standard,
+            }),
+            [theme.breakpoints.down('sm')]: {
+              width: collapsedDrawerWidth, // Collapse sidebar on small screens
+            },
           },
         }}
-        variant = "persistent"
-        anchor = "left"
-        open = {open}
-        
+        variant="permanent"
+        anchor="left"
       >
         <DrawerHeader>
           <img src="/squidcoin.png" alt="Squid Icon" width="30" />
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1}}>
+          <Typography variant="h6" noWrap component="div" sx={{ display: { xs: 'none', sm: 'block' } }}>
             Squid Coin
           </Typography>
-          <IconButton onClick ={()=>toggleDrawer(false)}>
-            {theme.direction === 'ltr'? <ChevronLeftIcon />:<ChevronRightIcon />}
-          </IconButton>
         </DrawerHeader>
         <Divider />
         {drawer}
@@ -243,6 +160,5 @@ const Sidebar: React.FC = () =>
     </Box>
   );
 }
-
 
 export default Sidebar;

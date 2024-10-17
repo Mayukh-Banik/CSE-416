@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination } from '@mui/material';
 import Sidebar from './Sidebar';
+import { useTheme } from '@mui/material/styles';
 
 export interface IFile {
   fileName: string;
@@ -10,7 +11,11 @@ export interface IFile {
   createdAt: Date;
 }
 
+const drawerWidth = 300;
+const collapsedDrawerWidth = 100;
+
 const MarketplacePage: React.FC = () => {
+  const theme = useTheme();
   //dummy data from chat
   const [files, setFiles] = useState<IFile[]>([
     { fileName: 'Vacation_Snapshot.png', hash: 'img001', reputation: 'High', fileSize: 2048000, createdAt: new Date('2023-09-15') },
@@ -53,7 +58,17 @@ const MarketplacePage: React.FC = () => {
   const currentFiles = filteredFiles.slice(indexOfFirstFile, indexOfLastFile);
 
   return (
-    <Box sx={{ padding: 2, marginTop: '100px', marginLeft:'275px'}}>
+    <Box
+      sx={{
+        padding: 2,
+        marginTop: '70px',
+        marginLeft: `${drawerWidth}px`, // Default expanded margin
+        transition: 'margin-left 0.3s ease', // Smooth transition
+        [theme.breakpoints.down('sm')]: {
+          marginLeft: `${collapsedDrawerWidth}px`, // Adjust left margin for small screens
+        },
+      }}
+    >
       <Sidebar/>
       <Typography variant="h4" gutterBottom>
         Marketplace
