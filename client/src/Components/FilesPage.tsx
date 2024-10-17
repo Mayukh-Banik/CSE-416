@@ -15,11 +15,12 @@ import {
   Alert
 } from "@mui/material";
 
+// change to our file model later
 interface UploadedFile {
   id: string; 
   name: string;
   size: number; 
-  isPublic: boolean;
+  isPublished: boolean;
 }
 
 const FilesPage: React.FC = () => {
@@ -48,7 +49,7 @@ const FilesPage: React.FC = () => {
         id: `${file.name}-${file.size}-${Date.now()}`, // Simple unique ID
         name: file.name,
         size: file.size,
-        isPublic: false,
+        isPublished: false,
       }));
 
       setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
@@ -60,10 +61,10 @@ const FilesPage: React.FC = () => {
     }
   };
 
-  const handleTogglePublic = async (id: string) => {
+  const handleTogglePublished = async (id: string) => {
     setUploadedFiles((prev) =>
       prev.map((file) =>
-        file.id === id ? { ...file, isPublic: !file.isPublic } : file
+        file.id === id ? { ...file, isPublished: !file.isPublished } : file
       )
     );
   };
@@ -177,10 +178,10 @@ const FilesPage: React.FC = () => {
                     </Typography>
                     <Switch 
                       edge="end" 
-                      onChange={() => handleTogglePublic(file.id)} 
-                      checked={file.isPublic} 
+                      onChange={() => handleTogglePublished(file.id)} 
+                      checked={file.isPublished} 
                       color="primary"
-                      inputProps={{ 'aria-label': `make ${file.name} public` }}
+                      inputProps={{ 'aria-label': `make ${file.name} publish` }}
                     />
                     <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteFile(file.id)}>
                       <DeleteIcon />
