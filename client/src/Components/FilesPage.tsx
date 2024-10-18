@@ -12,21 +12,25 @@ import {
   Switch,
   IconButton,
   Snackbar,
-  Alert
+  Alert,
+  TextField // Import TextField
 } from "@mui/material";
 
 interface UploadedFile {
   id: string; 
   name: string;
   size: number; 
+  description: string; // Add description field
+  hash: string; // Add hash field
   isPublic: boolean;
 }
 
 const FilesPage: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({}); // Track descriptions
+  const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({}); // Track hashes
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
-  const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({});
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -38,21 +42,29 @@ const FilesPage: React.FC = () => {
     }
   };
 
+  const handleDescriptionChange = (fileName: string, description: string) => {
+    setDescriptions((prev) => ({ ...prev, [fileName]: description }));
+  };
+
   const handleUpload = async () => {
     try {
-      // not actual functionality
+      // Simulate file upload delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // uploaded files
+      // Create uploaded file objects with descriptions and hashes
       const newUploadedFiles: UploadedFile[] = selectedFiles.map((file) => ({
-        id: `${file.name}-${file.size}-${Date.now()}`, // Simple unique ID
+        id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID
         name: file.name,
         size: file.size,
+        description: descriptions[file.name] || "", // Attach description
+        hash: fileHashes[file.name], // Attach the computed hash
         isPublic: false,
       }));
 
       setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
       setSelectedFiles([]);
+      setDescriptions({}); // Reset descriptions after upload
+      setFileHashes({}); // Reset hashes after upload
       setNotification({ open: true, message: "Files uploaded successfully!", severity: "success" });
     } catch (error) {
       setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
@@ -80,7 +92,6 @@ const FilesPage: React.FC = () => {
   const handleUploadClick = () => {
     document.getElementById("file-input")?.click();
   };
-
 
   const computeSHA512 = async (file: File) => {
     const arrayBuffer = await file.arrayBuffer();
@@ -152,6 +163,19 @@ const FilesPage: React.FC = () => {
                     primary={file.name} 
                     secondary={`Size: ${(file.size / 1024).toFixed(2)} KB`} 
                   />
+                  <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: 1 }}>
+                    <TextField
+                      label="Description"
+                      variant="outlined"
+                      fullWidth
+                      margin="normal"
+                      value={descriptions[file.name] || ""}
+                      onChange={(e) => handleDescriptionChange(file.name, e.target.value)}
+                    />
+                    <Typography variant="body2" sx={{ marginTop: 1 }}>
+                      SHA-512 Hash: {fileHashes[file.name] || "Computing..."}
+                    </Typography>
+                  </Box>
                 </ListItem>
               ))}
             </List>
@@ -169,7 +193,7 @@ const FilesPage: React.FC = () => {
                 <ListItem key={file.id} divider>
                   <ListItemText 
                     primary={file.name} 
-                    secondary={`Size: ${(file.size / 1024).toFixed(2)} KB`} 
+                    secondary={`Size: ${(file.size / 1024).toFixed(2)} KB - Description: ${file.description} - SHA-512: ${file.hash}`} 
                   />
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Typography variant="body2" component="span" sx={{ marginRight: 1 }}>

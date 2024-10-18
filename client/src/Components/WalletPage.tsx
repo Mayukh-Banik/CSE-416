@@ -1,11 +1,8 @@
 import React, { useState } from "react";
-import { Box, Typography, Container, List, ListItem, ListItemText, Button } from "@mui/material";
+import { Box, Typography, Container, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, TableContainer, Paper } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
-import Header from "./Header";
 import Sidebar from "./Sidebar";
-import TransactionTable from "./TransactionTable";
-import TransactionPage from "./TransactionPage";
 
 interface Transaction {
     id: string;
@@ -24,6 +21,17 @@ interface WalletDetailsProps {
     fee?: number;
 }
 
+// Sorting helper function
+const sortTransactions = (transactions: Transaction[], orderBy: keyof Transaction, order: 'asc' | 'desc') => {
+    return transactions.sort((a, b) => {
+        if (order === 'asc') {
+            return a[orderBy] < b[orderBy] ? -1 : 1;
+        } else {
+            return a[orderBy] > b[orderBy] ? -1 : 1;
+        }
+    });
+};
+
 const WalletPage: React.FC<WalletDetailsProps> = ({
     walletAddress,
     balance,
@@ -31,35 +39,33 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
     walletLabel,
     fee,
 }) => {
-    // Pagination state for showing limited transactions
-    const [itemsToShow, setItemsToShow] = useState(5);
+    const navigate = useNavigate();
 
-    const sortedTransactions = [...transactions].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+    const [orderBy, setOrderBy] = useState<keyof Transaction>('timestamp');
 
-    // Chart Data for Network Fee
-    const feeChartData = {
-        labels: ['Network Fee'],
-        datasets: [
-            {
-                label: 'Fee',
-                data: [fee || 0],
-                backgroundColor: 'rgba(75,192,192,0.6)',
-                borderColor: 'rgba(75,192,192,1)',
-                borderWidth: 1,
-            },
-        ],
+    // Handle sorting click
+    const handleSort = (property: keyof Transaction) => {
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
     };
+
+    // Handle transaction click (navigating to detail page)
+    const handleTransactionClick = (id: string) => {
+        navigate(`/transaction/${id}`);
+    };
+
+    const sortedTransactions = sortTransactions([...transactions], orderBy, order);
 
     return (
         <>
-            {/* <Header /> */}
-            <Sidebar/>
+            <Sidebar />
             <Container maxWidth="md" sx={{ mt: 4 }}>
                 <Typography variant="h4" sx={{ mb: 2 }}>
                     {walletLabel || 'Wallet Details'}
                 </Typography>
+                
                 {/* Balance and Wallet Address */}
                 <Box
                     sx={{
@@ -90,8 +96,6 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                         </Box>
                     </Box>
 
-
-
                     {/* Wallet Address Box */}
                     <Box
                         sx={{
@@ -105,7 +109,6 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                             ml: 2,
                         }}
                     >
-                        {/* QR Code generate */}
                         <QRCodeCanvas value={walletAddress} size={50} style={{ marginRight: '10px' }} />
                         <Box sx={{ ml: 2, textAlign: 'left' }}>
                             <Typography variant="h6">Wallet Address</Typography>
@@ -114,10 +117,81 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                     </Box>
                 </Box>
 
-                <Typography variant="h6">Transaction History</Typography>
-                <TransactionPage/>
-                
-            </Container >
+                <Typography variant="h6" sx={{ mt: 4 }}>Transaction History</Typography>
+
+                {/* Transaction Table */}
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'id'}
+                                        direction={orderBy === 'id' ? order : 'asc'}
+                                        onClick={() => handleSort('id')}
+                                    >
+                                        ID
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'sender'}
+                                        direction={orderBy === 'sender' ? order : 'asc'}
+                                        onClick={() => handleSort('sender')}
+                                    >
+                                        Sender
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'receiver'}
+                                        direction={orderBy === 'receiver' ? order : 'asc'}
+                                        onClick={() => handleSort('receiver')}
+                                    >
+                                        Receiver
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'amount'}
+                                        direction={orderBy === 'amount' ? order : 'asc'}
+                                        onClick={() => handleSort('amount')}
+                                    >
+                                        Amount
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'timestamp'}
+                                        direction={orderBy === 'timestamp' ? order : 'asc'}
+                                        onClick={() => handleSort('timestamp')}
+                                    >
+                                        Date
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>Status</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {sortedTransactions.map((transaction) => (
+                                <TableRow
+                                    key={transaction.id}
+                                    hover
+                                    sx={{ cursor: 'pointer' }}
+                                    onClick={() => handleTransactionClick(transaction.id)}
+                                >
+                                    <TableCell>{transaction.id}</TableCell>
+                                    <TableCell>{transaction.sender}</TableCell>
+                                    <TableCell>{transaction.receiver}</TableCell>
+                                    <TableCell>{transaction.amount}</TableCell>
+                                    <TableCell>{new Date(transaction.timestamp).toLocaleString()}</TableCell>
+                                    <TableCell>{transaction.status}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Container>
         </>
     );
 };
