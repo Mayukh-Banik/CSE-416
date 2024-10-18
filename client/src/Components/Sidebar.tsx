@@ -151,7 +151,7 @@ const Sidebar: React.FC = () => {
         anchor="left"
       >
         <DrawerHeader>
-          <img src="/squidcoin.png" alt="Squid Icon" width="30" />
+          <img src={`${process.env.PUBLIC_URL}/squidcoin.png`} alt="Squid Icon" width="30" />
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1, display: { xs: 'none', sm: 'block' }}}>
             SquidNet
           </Typography>

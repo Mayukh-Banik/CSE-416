@@ -55,6 +55,13 @@
                 "rpm"
             ],
             "category": "Utility"
-        }
+        },
+        "extraResources": [
+            {
+                "from": "client/pblic/",
+                "to": "public/",
+                "filter": ["**/*"]
+            }
+        ]
     }
 }
