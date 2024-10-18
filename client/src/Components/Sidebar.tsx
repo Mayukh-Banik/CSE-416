@@ -61,10 +61,11 @@ const Sidebar: React.FC = () => {
   const handleFiles = async () => navigate('/files');
   const handleWallet = async () => navigate('/wallet');
   const handleMining = async () => navigate('/mining');
-  const handleAccount = async () => navigate('/account');
+  const handleAccount = async () => navigate('/account/1');
   const handleSettings = async () => navigate('/settings');
   const handleMarket = async () => navigate('/market');
   const handleProxy = async () => navigate('/proxy');
+  const handleGlobalTransactions = async () => navigate('/global-transactions');
 
   const drawer = (
     <div>
@@ -77,11 +78,6 @@ const Sidebar: React.FC = () => {
         <ListItem onClick={handleFiles} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
           <ListItemIcon><FileCopyIcon/></ListItemIcon>
           <ListItemText primary="View/Upload Files" sx={{ display: { xs: 'none', sm: 'block' } }} />
-        </ListItem>
-
-        <ListItem onClick={handleWallet} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
-          <ListItemIcon><AccountBalanceWalletIcon /></ListItemIcon>
-          <ListItemText primary="Wallet" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
         <ListItem onClick={handleMining} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
@@ -98,6 +94,11 @@ const Sidebar: React.FC = () => {
         <ListItem onClick={handleAccount} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
           <ListItemIcon><AccountCircleIcon /></ListItemIcon>
           <ListItemText primary="Account" sx={{ display: { xs: 'none', sm: 'block' } }} />
+        </ListItem>
+
+        <ListItem onClick={handleGlobalTransactions} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon><AccountCircleIcon /></ListItemIcon>
+          <ListItemText primary="Global Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
         <ListItem onClick={handleProxy} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
