@@ -36,6 +36,7 @@ import MarketPage from "./Components/MarketPage";
 import FileViewPage from "./Components/FileViewPage";
 import AccountViewPage from "./Components/AccountViewPage";
 import TransactionDetailsPage from "./Components/TransactionDetailsPage";
+import ProxyPage from "./Components/ProxyPage";
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
@@ -118,6 +119,7 @@ const App: React.FC = () => {
       <Router>
         <Routes>
           <Route path="/" element={<WelcomePage />} />
+          <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />

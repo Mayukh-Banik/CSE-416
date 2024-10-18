@@ -10,9 +10,9 @@ import FileCopyIcon from '@mui/icons-material/FileCopy';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { styled, useTheme } from '@mui/material/styles';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import SecurityIcon from '@mui/icons-material/Security';
 import StoreIcon from '@mui/icons-material/Store';
 import { Padding } from '@mui/icons-material';
-
 const drawerWidth = 275;
 const collapsedDrawerWidth = 80; // Width when collapsed
 
@@ -95,6 +95,13 @@ const Sidebar: React.FC = () => {
           <ListItemIcon><AccountCircleIcon /></ListItemIcon>
           <ListItemText primary="Account" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
+        <ListItem component={Link} to="/proxy">
+          <ListItemIcon>
+            <SecurityIcon />
+          </ListItemIcon>
+          <ListItemText primary="Proxy" />
+        </ListItem>
+
         <ListItem onClick={handleSettings} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
           <ListItemIcon><SettingsIcon /></ListItemIcon>
           <ListItemText primary="Settings" sx={{ display: { xs: 'none', sm: 'block' } }} />

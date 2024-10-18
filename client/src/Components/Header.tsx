@@ -2,6 +2,7 @@ import React from "react";
 import { AppBar, Toolbar, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
+
 const Header: React.FC = () => {
   const navigate = useNavigate();
 
