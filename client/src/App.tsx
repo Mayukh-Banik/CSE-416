@@ -36,6 +36,7 @@ import FileViewPage from "./Components/FileViewPage";
 import AccountViewPage from "./Components/AccountViewPage";
 import ProxyPage from "./Components/ProxyPage";
 import GlobalTransactions from "./Components/Global_Transactions";
+import SearchPage from "./Components/SearchPage";
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
@@ -146,6 +147,7 @@ const App: React.FC = () => {
           <Route path="/account" element={<AccountViewPage />} />
           <Route path="/account/:address" element={<AccountViewPage />} />
           <Route path="/fileview/:fileId" element={<FileViewPage />} />
+          <Route path="/search-page" element={<SearchPage />} />
         </Routes>
       </Router>
     </ThemeProvider>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Box, CssBaseline, Drawer, List, ListItem, ListItemText,
@@ -12,7 +12,7 @@ import { styled, useTheme } from '@mui/material/styles';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SecurityIcon from '@mui/icons-material/Security';
 import StoreIcon from '@mui/icons-material/Store';
-import { Padding } from '@mui/icons-material';
+
 const drawerWidth = 275;
 const collapsedDrawerWidth = 80; // Width when collapsed
 
@@ -57,6 +57,13 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 const Sidebar: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearchKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter') {
+        navigate(`/search-page?q=${searchQuery}`); // Include search query in the URL
+    }
+};
 
   const handleFiles = async () => navigate('/files');
   const handleWallet = async () => navigate('/wallet');
@@ -127,6 +134,9 @@ const Sidebar: React.FC = () => {
             variant="outlined"
             placeholder="Search…"
             size="small"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)} // Update search query state
+            onKeyPress={handleSearchKeyPress} // Handle Enter key press
             sx={{
               width: '250px',
               ml: 4,
@@ -168,7 +178,6 @@ const Sidebar: React.FC = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1, display: { xs: 'none', sm: 'block' }}}>
             SquidNet
           </Typography>
-
         </DrawerHeader>
         <Divider />
         {drawer}
