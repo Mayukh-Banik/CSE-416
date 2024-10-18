@@ -151,7 +151,7 @@ const App: React.FC = () => {
           <Route path="/fileview" element={<FileViewPage />} />
           <Route path="/account" element={<AccountViewPage />} />
           <Route path="/account/:address" element={<AccountViewPage />} />
-          <Route path="/fileview/:fileName" element={<FileViewPage />} />
+          <Route path="/fileview/:fileId" element={<FileViewPage />} />
         </Routes>
       </Router>
     </ThemeProvider>

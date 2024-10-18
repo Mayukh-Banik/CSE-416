@@ -1,10 +1,9 @@
 import React, { useState } from "react";
-import { Box, Typography, Container, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, TableContainer, Paper } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { Box, Typography, Container, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, TableContainer, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
 import { QRCodeCanvas } from "qrcode.react";
 import Sidebar from "./Sidebar"; // Ensure this is imported correctly
-import TransactionPage from "./TransactionPage"; // Make sure this component is correctly defined
 import { useTheme } from '@mui/material/styles';
+import { Link } from "react-router-dom";
 
 interface Transaction {
     id: string;
@@ -21,7 +20,6 @@ interface WalletDetailsProps {
     transactions: Transaction[];
     walletLabel?: string;
     fee?: number;
-    // isCollapsed: boolean; // Add this prop to manage sidebar state
 }
 
 const drawerWidth = 300;
@@ -44,12 +42,12 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
     transactions,
     walletLabel,
     fee,
-    // isCollapsed, // Accept the prop
 }) => {
-    const navigate = useNavigate();
     const theme = useTheme();
     const [order, setOrder] = useState<'asc' | 'desc'>('asc');
     const [orderBy, setOrderBy] = useState<keyof Transaction>('timestamp');
+    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const [isDialogOpen, setDialogOpen] = useState(false);
 
     // Handle sorting click
     const handleSort = (property: keyof Transaction) => {
@@ -58,9 +56,14 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
         setOrderBy(property);
     };
 
-    // Handle transaction click (navigating to detail page)
-    const handleTransactionClick = (id: string) => {
-        navigate(`/transaction/${id}`);
+    // Handle transaction click (open dialog)
+    const handleTransactionClick = (transaction: Transaction) => {
+        setSelectedTransaction(transaction);
+        setDialogOpen(true);
+    };
+
+    const handleCloseDialog = () => {
+        setDialogOpen(false);
     };
 
     const sortedTransactions = sortTransactions([...transactions], orderBy, order);
@@ -70,10 +73,10 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
             sx={{
                 padding: 2,
                 marginTop: '70px',
-                marginLeft: `${drawerWidth}px`, // Default expanded margin
-                transition: 'margin-left 0.3s ease', // Smooth transition
+                marginLeft: `${drawerWidth}px`,
+                transition: 'margin-left 0.3s ease',
                 [theme.breakpoints.down('sm')]: {
-                    marginLeft: `${collapsedDrawerWidth}px`, // Adjust left margin for small screens
+                    marginLeft: `${collapsedDrawerWidth}px`,
                 },
             }}
         >
@@ -82,7 +85,7 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                 <Typography variant="h4" sx={{ mb: 2 }}>
                     {walletLabel || 'Wallet Details'}
                 </Typography>
-                
+
                 {/* Balance and Wallet Address */}
                 <Box
                     sx={{
@@ -197,7 +200,7 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                                     key={transaction.id}
                                     hover
                                     sx={{ cursor: 'pointer' }}
-                                    onClick={() => handleTransactionClick(transaction.id)}
+                                    onClick={() => handleTransactionClick(transaction)}
                                 >
                                     <TableCell>{transaction.id}</TableCell>
                                     <TableCell>{transaction.sender}</TableCell>
@@ -210,6 +213,49 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                         </TableBody>
                     </Table>
                 </TableContainer>
+
+                {/* Dialog for Transaction Details */}
+                <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
+                    <DialogTitle>Transaction Details</DialogTitle>
+                    <DialogContent>
+                        {selectedTransaction && (
+                        <Box>
+                            <Typography variant="body1">
+                                <strong>ID:</strong> {selectedTransaction.id} <br/>
+                                <strong>Sender:</strong> {selectedTransaction.sender} <br/>
+                                <strong>Receiver:</strong> {selectedTransaction.receiver} <br/>
+                                <strong>Amount:</strong> {selectedTransaction.amount} <br/>
+                                <strong>Date:</strong>{" "} 
+                                    {new Date(selectedTransaction.timestamp).toLocaleString()} <br/>
+                                <strong>Status:</strong> {selectedTransaction.status} <br/>
+                            </Typography>
+                            
+                            {/* Center the buttons in the dialog */}
+                            <Box 
+                            sx={{ 
+                                display: "flex", 
+                                flexDirection: "column", 
+                                alignItems: "center", 
+                                marginTop: "20px" 
+                            }}
+                            >
+                                <Button
+                                    variant="contained"
+                                    component={Link}
+                                    to={`/fileview/${selectedTransaction.id}`}
+                                >
+                                    View File
+                                </Button>
+                            </Box>
+                        </Box>
+                        )}
+                    </DialogContent>
+                    <DialogActions sx={{ marginTop: "-10px", justifyContent: "center" }}>
+                        <Button onClick={handleCloseDialog} color="primary">
+                            Close
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Container>
         </Box>
     );
