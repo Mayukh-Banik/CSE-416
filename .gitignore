@@ -1,0 +1,9 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+ipfs-server-data
+electron/
+node_modules/
+private_key.pem

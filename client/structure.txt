@@ -1,0 +1,36 @@
+.
+├── Dockerfile
+├── README.md
+├── README_DOCKER
+├── config-overrides.js
+├── package-lock.json
+├── package.json
+├── public
+│   ├── favicon.ico
+│   ├── images
+│   ├── index.html
+│   ├── logo192.png
+│   ├── logo512.png
+│   ├── manifest.json
+│   ├── pickaxe.png
+│   ├── robots.txt
+│   └── squidcoin.png
+├── src
+│   ├── App.css
+│   ├── App.test.tsx
+│   ├── App.tsx
+│   ├── Components
+│   ├── Stylesheets
+│   ├── index.css
+│   ├── index.tsx
+│   ├── logo.svg
+│   ├── main
+│   ├── preload
+│   ├── react-app-env.d.ts
+│   ├── reportWebVitals.ts
+│   ├── setupTests.ts
+│   └── structure.txt
+├── structure.txt
+└── tsconfig.json
+
+8 directories, 26 files
