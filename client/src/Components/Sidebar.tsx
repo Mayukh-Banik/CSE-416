@@ -64,6 +64,7 @@ const Sidebar: React.FC = () => {
   const handleAccount = async () => navigate('/account');
   const handleSettings = async () => navigate('/settings');
   const handleMarket = async () => navigate('/market');
+  const handleProxy = async () => navigate('/proxy');
 
   const drawer = (
     <div>
@@ -77,10 +78,12 @@ const Sidebar: React.FC = () => {
           <ListItemIcon><FileCopyIcon/></ListItemIcon>
           <ListItemText primary="View/Upload Files" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
+
         <ListItem onClick={handleWallet} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
           <ListItemIcon><AccountBalanceWalletIcon /></ListItemIcon>
           <ListItemText primary="Wallet" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
+
         <ListItem onClick={handleMining} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
           <ListItemIcon>
             <img
@@ -91,11 +94,13 @@ const Sidebar: React.FC = () => {
           </ListItemIcon>
           <ListItemText primary="Mining" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
+
         <ListItem onClick={handleAccount} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
           <ListItemIcon><AccountCircleIcon /></ListItemIcon>
           <ListItemText primary="Account" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
-        <ListItem component={Link} to="/proxy">
+
+        <ListItem onClick={handleProxy} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
           <ListItemIcon>
             <SecurityIcon />
           </ListItemIcon>
