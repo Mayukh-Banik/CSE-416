@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from "./Sidebar";
 import useProxyHostsStyles from '../Stylesheets/ProxyPageStyles';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Box, TextField } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 
 interface ProxyHost {
   access: string;
@@ -15,9 +16,12 @@ interface ProxyHost {
   price: string;
 }
 
+const drawerWidth = 300;
+const collapsedDrawerWidth = 100; 
+
 const ProxyHosts: React.FC = () => {
   const styles = useProxyHostsStyles();
-
+  const theme = useTheme();
   const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([
     {
       access: 'Public',
@@ -129,9 +133,18 @@ const ProxyHosts: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      <Box
+        sx={{
+          padding: 2,
+          marginTop: '70px',
+          marginLeft: `${drawerWidth}px`, 
+          transition: 'margin-left 0.3s ease',
+          [theme.breakpoints.down('sm')]: {
+            marginLeft: `${collapsedDrawerWidth}px`,
+          },
+        }}
+      >
       <Sidebar />
-      <br />
-      <br />
       <Box sx={{ marginTop: 2 }}>
         <Typography variant="h4">Proxy Hosts</Typography>
         <Typography variant="h6">Your Current IP: {currentIP}</Typography>  
@@ -233,6 +246,7 @@ const ProxyHosts: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+      </Box>
       </Box>
     </div>
   );
