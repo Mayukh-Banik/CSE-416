@@ -29,14 +29,13 @@ import RegisterPage from "./Components/RegisterPage";
 import LoginPage from "./Components/LoginPage";
 import SignupPage from "./Components/SignUpPage";
 import SettingPage from "./Components/SettingPage";
-import WalletPage from "./Components/WalletPage";
 import FilesPage from "./Components/FilesPage";
 import MiningPage from "./Components/MiningPage";
 import MarketPage from "./Components/MarketPage";
 import FileViewPage from "./Components/FileViewPage";
 import AccountViewPage from "./Components/AccountViewPage";
-import TransactionDetailsPage from "./Components/TransactionDetailsPage";
 import ProxyPage from "./Components/ProxyPage";
+import GlobalTransactions from "./Components/Global_Transactions";
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
@@ -125,6 +124,7 @@ const App: React.FC = () => {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/market" element={<MarketPage />} />
           <Route path="/files" element={<FilesPage />} />
+          <Route path="/global-transactions" element={<GlobalTransactions />} />
           <Route
             path="/settings"
             element={
@@ -139,17 +139,9 @@ const App: React.FC = () => {
           {/* Routes protected by PrivateRoute */}
           <Route element={<PrivateRoute isAuthenticated={isUserLoggedIn} />}>
             <Route
-              path="/wallet"
-              element={
-                <WalletPage
-                  walletAddress={walletAddress}
-                  balance={balance}
-                  transactions={transactions}
-                />
-              }
+              path="/account"
             />
           </Route>
-          <Route path="/transaction/:id" element={<TransactionDetailsPage />} />
           <Route path="/fileview" element={<FileViewPage />} />
           <Route path="/account" element={<AccountViewPage />} />
           <Route path="/account/:address" element={<AccountViewPage />} />
