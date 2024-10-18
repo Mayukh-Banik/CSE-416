@@ -1,4 +1,4 @@
-import React, {useState}, { useState } from "react";
+import React, { useState } from "react";
 // Replace the BrowserRouter import with HashRouter
 
 // import {
@@ -8,7 +8,6 @@ import React, {useState}, { useState } from "react";
 //   Outlet,
 //   Navigate,
 // } from "react-router-dom";
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'; // Import CssBaseline here
 import {
   Container,
   Typography,
@@ -36,6 +35,7 @@ import WalletPage from "./Components/WalletPage";
 import { Dashboard } from "@mui/icons-material";
 import FilesPage from "./Components/FilesPage";
 import MiningPage from "./Components/MiningPage";
+import ProxyPage from "./Components/ProxyPage";
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
@@ -200,11 +200,36 @@ const App: React.FC = () => {
       <Router>
         <Routes>
           <Route path="/" element={<WelcomePage />} />
+          <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path='/login' element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login2" element={<LoginPage2 />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/files" element={<FilesPage />} />
+          <Route
+            path="/settings"
+            element={
+              <SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />
+            }
+          />
+          {/* <Route path='/transaction' element={<TransactionPage />} /> */}
+          <Route path="/mining" element={<MiningPage />} />
+
           {/* <Route path='/register' element={<RegisterPage />} /> */}
-          <Route path="/settings" element={<SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />} />
-          <Route path="/dashboard" element={<Dashboard />} />  
+
+          {/* Routes protected by PrivateRoute */}
+          <Route element={<PrivateRoute isAuthenticated={isUserLoggedIn} />}>
+            <Route
+              path="/wallet"
+              element={
+                <WalletPage
+                  walletAddress={walletAddress}
+                  balance={balance}
+                  transactions={transactions}
+                />
+              }
+            />
+          </Route>
         </Routes>
       </Router>
     </ThemeProvider>

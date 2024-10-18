@@ -23,6 +23,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import SecurityIcon from '@mui/icons-material/Security';
 import { grey } from '@mui/material/colors';
 const drawerWidth = 275;
 
@@ -169,6 +170,13 @@ const Sidebar: React.FC = () =>
           <ListItemIcon><AccountCircleIcon/></ListItemIcon>
           <ListItemText primary = "Account"></ListItemText>
         </ListItem>
+        <ListItem component={Link} to="/proxy">
+          <ListItemIcon>
+            <SecurityIcon />
+          </ListItemIcon>
+          <ListItemText primary="Proxy" />
+        </ListItem>
+
 
         <ListItem component = {Link} to = "/settings">
           <ListItemIcon><SettingsIcon/></ListItemIcon>
