@@ -28,8 +28,42 @@ import SettingPage from "./Components/SettingPage";
 import WalletPage from "./Components/WalletPage";
 import FilesPage from "./Components/FilesPage";
 import MiningPage from "./Components/MiningPage";
+import MarketPage from "./Components/MarketPage";
+import FileViewPage from "./Components/FileViewPage";
+import AccountViewPage from "./Components/AccountViewPage";
+import TransactionDetailsPage from "./Components/TransactionDetailsPage";
+import ProxyPage from "./Components/ProxyPage";
 
 const jwtDecode = require("jwt-decode");
+const isUserLoggedIn = true; // should add the actual login state logic here.
+
+// Fake data for your wallet (temporary data)
+const walletAddress = "0x1234567890abcdef";
+const balance = 100;
+const transactions = [
+  {
+    id: "tx001",
+    sender: "0xsender001",
+    receiver: "0xreceiver001",
+    amount: 10,
+    timestamp: "2023-10-01T10:00:00",
+    status: "completed",
+    file: "file001.pdf"
+  },
+  {
+    id: "tx009",
+    sender: "0xsender009",
+    receiver: "0xreceiver009",
+    amount: 90,
+    timestamp: "2023-10-09T17:20:00",
+    status: "completed",
+    file: "file009.docx"
+  },
+  // Add other transactions...
+];
+
+const publicKey = "publicKeyExample";
+const privateKey = "privateKeyExample";
 
 interface PrivateRouteProps {
   isAuthenticated: boolean | null;
@@ -41,12 +75,10 @@ const getTokenFromCookies = (): string | null => {
   return match ? match[2] : null;
 };
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated, children }) => {
-  if (isAuthenticated === null) {
-    return <div>Loading...</div>; // 로그인 여부 확인 중
-  }
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated }) => {
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 };
+
 
 
 const App: React.FC = () => {
@@ -124,9 +156,11 @@ const App: React.FC = () => {
       <Router>
         <Routes>
           <Route path="/" element={<WelcomePage />} />
+          <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/market" element={<MarketPage />} />
           <Route path="/files" element={<FilesPage />} />
           <Route
             path="/settings"
@@ -140,14 +174,22 @@ const App: React.FC = () => {
           {/* <Route path='/register' element={<RegisterPage />} /> */}
 
           {/* Routes protected by PrivateRoute */}
+
           <Route
             path="/wallet"
             element={
-              <PrivateRoute isAuthenticated={isUserLoggedIn}>
-                <WalletPage />
-              </PrivateRoute>
+              <WalletPage
+                walletAddress={walletAddress}
+                balance={balance}
+                transactions={transactions}
+              />
             }
           />
+          <Route path="/transaction/:id" element={<TransactionDetailsPage />} />
+          <Route path="/fileview" element={<FileViewPage />} />
+          <Route path="/account" element={<AccountViewPage />} />
+          <Route path="/account/:address" element={<AccountViewPage />} />
+          <Route path="/fileview/:fileId" element={<FileViewPage />} />
         </Routes>
       </Router>
     </ThemeProvider>

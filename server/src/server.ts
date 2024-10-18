@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import router from './routes';
 // import {createMonkUsers, createMonkTransactions} from './monkData';
+// import {createMonkUsers, createMonkTransactions} from './monkData';
 
 // Load environment variables
 dotenv.config();

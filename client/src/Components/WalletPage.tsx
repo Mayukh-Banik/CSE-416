@@ -1,114 +1,98 @@
-import React, { useEffect, useState } from "react";
-import axios, { AxiosResponse } from "axios";
-import {
-    Box,
-    Typography,
-    Container,
-    Button,
-    CssBaseline,
-    TextField,
-    Select,
-    MenuItem,
-    InputLabel,
-    FormControl,
-    SelectChangeEvent,
-} from "@mui/material";
+import React, { useState } from "react";
+import { Box, Typography, Container, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, TableContainer, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
 import { QRCodeCanvas } from "qrcode.react";
-import Sidebar from "./Sidebar";
-import { TransactionProps } from "../types/interfaces";
+import Sidebar from "./Sidebar"; // Ensure this is imported correctly
+import { useTheme } from '@mui/material/styles';
+import { Link } from "react-router-dom";
 
-interface User {
-    userId: string;
-    walletAddress: string;
-    balance: number;
-    walletLabel: string;
-    // 추가적인 필드가 필요하면 여기에 추가
+interface Transaction {
+    id: string;
+    sender: string;
+    receiver: string;
+    amount: number;
+    timestamp: string;
+    status: string;
 }
 
-const WalletPage: React.FC = () => {
-    // State for user details and transactions
-    const [user, setUser] = useState<User | null>(null);
-    const [transactions, setTransactions] = useState<TransactionProps[]>([]);
-    const [itemsToShow, setItemsToShow] = useState(5);
-    const [search, setSearch] = useState("");
-    const [dateFilter, setDateFilter] = useState<string>("all");
-    const [statusFilter, setStatusFilter] = useState<string>("all");
+interface WalletDetailsProps {
+    walletAddress: string;
+    balance: number;
+    transactions: Transaction[];
+    walletLabel?: string;
+    fee?: number;
+}
 
-    useEffect(() => {
-        // Fetch user information from the server using the token in HttpOnly cookie
-        const fetchUserInfo = async () => {
-            try {
-                console.log("씨발");
-                const response = await axios.get("http://localhost:5000/api/users/info", {
-                    withCredentials: true,
-                });
-                console.log("쭈발",response);
-                setUser(response.data.user);
+const drawerWidth = 300;
+const collapsedDrawerWidth = 100;
 
-                // Fetch transaction history when user information is available
-                const fetchTransactions = async () => {
-                    try {
-                        const transactionsResponse: AxiosResponse<TransactionProps[]> = await axios.get(
-                            `http://localhost:5000/api/transaction/${response.data.user.userId}`,
-                            { withCredentials: true }
-                        );
-                        setTransactions(transactionsResponse.data);
-                    } catch (error) {
-                        console.error("Error fetching transactions:", error);
-                    }
-                };
+// Sorting helper function
+const sortTransactions = (transactions: Transaction[], orderBy: keyof Transaction, order: 'asc' | 'desc') => {
+    return transactions.sort((a, b) => {
+        if (order === 'asc') {
+            return a[orderBy] < b[orderBy] ? -1 : 1;
+        } else {
+            return a[orderBy] > b[orderBy] ? -1 : 1;
+        }
+    });
+};
 
-                fetchTransactions();
-            } catch (error) {
-                console.error("Error fetching user info:", error);
-            }
-        };
+const WalletPage: React.FC<WalletDetailsProps> = ({
+    walletAddress,
+    balance,
+    transactions,
+    walletLabel,
+    fee,
+}) => {
+    const theme = useTheme();
+    const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+    const [orderBy, setOrderBy] = useState<keyof Transaction>('timestamp');
+    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const [isDialogOpen, setDialogOpen] = useState(false);
 
-        fetchUserInfo();
-    }, []);
-
-    // Function to load more transactions
-    const loadMoreTransactions = () => {
-        setItemsToShow((prev) => prev + 5);
+    // Handle sorting click
+    const handleSort = (property: keyof Transaction) => {
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
     };
 
-    // Handle search and filter changes
-    const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setSearch(event.target.value);
+    // Handle transaction click (open dialog)
+    const handleTransactionClick = (transaction: Transaction) => {
+        setSelectedTransaction(transaction);
+        setDialogOpen(true);
     };
 
-    const handleDateFilterChange = (event: SelectChangeEvent<string>) => {
-        setDateFilter(event.target.value as string);
+    const handleCloseDialog = () => {
+        setDialogOpen(false);
     };
 
-    const handleStatusFilterChange = (event: SelectChangeEvent<string>) => {
-        setStatusFilter(event.target.value as string);
-    };
-
-    // Sort transactions by timestamp in descending order
-    const sortedTransactions = [...transactions].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-
-    if (!user) {
-        return <div>Loading user information...</div>;
-    }
+    const sortedTransactions = sortTransactions([...transactions], orderBy, order);
 
     return (
-        <>
-            <CssBaseline />
+        <Box
+            sx={{
+                padding: 2,
+                marginTop: '70px',
+                marginLeft: `${drawerWidth}px`,
+                transition: 'margin-left 0.3s ease',
+                [theme.breakpoints.down('sm')]: {
+                    marginLeft: `${collapsedDrawerWidth}px`,
+                },
+            }}
+        >
             <Sidebar />
-            <Container maxWidth="md" sx={{ mt: 4 }}>
+            <Container maxWidth="md">
                 <Typography variant="h4" sx={{ mb: 2 }}>
-                    {user.walletLabel || "Wallet Details"}
+                    {walletLabel || 'Wallet Details'}
                 </Typography>
+
                 {/* Balance and Wallet Address */}
                 <Box
                     sx={{
-                        display: "flex",
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "center",
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                         padding: 2,
                         gap: 2,
                     }}
@@ -116,104 +100,164 @@ const WalletPage: React.FC = () => {
                     {/* Balance Box */}
                     <Box
                         sx={{
-                            display: "flex",
-                            flexDirection: "row",
-                            alignItems: "center",
+                            display: 'flex',
+                            flexDirection: 'row',
+                            alignItems: 'center',
                             padding: 2,
                             borderRadius: 2,
                             boxShadow: 2,
-                            width: "45%",
+                            width: '45%',
+                            background: 'white',
                         }}
                     >
-                        <img
-                            src="/images/walletBalance.png"
-                            alt="Wallet Balance Icon"
-                            width="40"
-                        />
-                        <Box sx={{ ml: 2, textAlign: "left" }}>
+                        <img src={`${process.env.PUBLIC_URL}/squidcoin.png`} alt="Squid Icon" width="30" />
+                        <Box sx={{ ml: 2, textAlign: 'left' }}>
                             <Typography variant="h6">Balance</Typography>
-                            <Typography variant="body1">{user.balance} Coins</Typography>
+                            <Typography variant="body1">{balance} Coins</Typography>
                         </Box>
                     </Box>
 
                     {/* Wallet Address Box */}
                     <Box
                         sx={{
-                            display: "flex",
-                            flexDirection: "row",
-                            alignItems: "center",
+                            display: 'flex',
+                            flexDirection: 'row',
+                            alignItems: 'center',
                             padding: 2,
                             borderRadius: 2,
                             boxShadow: 2,
-                            width: "45%",
+                            width: '45%',
                             ml: 2,
+                            background: 'white',
                         }}
                     >
-                        {/* QR Code generate */}
-                        <QRCodeCanvas
-                            value={user.walletAddress}
-                            size={50}
-                            style={{ marginRight: "10px" }}
-                        />
-                        <Box sx={{ ml: 2, textAlign: "left" }}>
+                        <QRCodeCanvas value={walletAddress} size={50} style={{ marginRight: '10px' }} />
+                        <Box sx={{ ml: 2, textAlign: 'left' }}>
                             <Typography variant="h6">Wallet Address</Typography>
-                            <Typography variant="body1">{user.walletAddress}</Typography>
+                            <Typography variant="body1">{walletAddress}</Typography>
                         </Box>
                     </Box>
                 </Box>
 
-                {/* Transaction Filters */}
-                <Box sx={{ mt: 4, mb: 2 }}>
-                    <TextField
-                        label="Search Transactions"
-                        variant="outlined"
-                        onChange={handleSearch}
-                        value={search}
-                        sx={{ marginBottom: 2, mr: 2 }}
-                    />
+                <Typography variant="h6" sx={{ mt: 4 }}>Transaction History</Typography>
 
-                    {/* Date Filter */}
-                    <FormControl variant="outlined" sx={{ marginBottom: 2, minWidth: 120, mr: 2 }}>
-                        <InputLabel>Date</InputLabel>
-                        <Select value={dateFilter} onChange={handleDateFilterChange} label="Date">
-                            <MenuItem value="all">All</MenuItem>
-                            <MenuItem value="today">Today</MenuItem>
-                            <MenuItem value="week">This Week</MenuItem>
-                            <MenuItem value="month">This Month</MenuItem>
-                            <MenuItem value="year">This Year</MenuItem>
-                        </Select>
-                    </FormControl>
+                {/* Transaction Table */}
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'id'}
+                                        direction={orderBy === 'id' ? order : 'asc'}
+                                        onClick={() => handleSort('id')}
+                                    >
+                                        ID
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'sender'}
+                                        direction={orderBy === 'sender' ? order : 'asc'}
+                                        onClick={() => handleSort('sender')}
+                                    >
+                                        Sender
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'receiver'}
+                                        direction={orderBy === 'receiver' ? order : 'asc'}
+                                        onClick={() => handleSort('receiver')}
+                                    >
+                                        Receiver
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'amount'}
+                                        direction={orderBy === 'amount' ? order : 'asc'}
+                                        onClick={() => handleSort('amount')}
+                                    >
+                                        Amount
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'timestamp'}
+                                        direction={orderBy === 'timestamp' ? order : 'asc'}
+                                        onClick={() => handleSort('timestamp')}
+                                    >
+                                        Date
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>Status</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {sortedTransactions.map((transaction) => (
+                                <TableRow
+                                    key={transaction.id}
+                                    hover
+                                    sx={{ cursor: 'pointer' }}
+                                    onClick={() => handleTransactionClick(transaction)}
+                                >
+                                    <TableCell>{transaction.id}</TableCell>
+                                    <TableCell>{transaction.sender}</TableCell>
+                                    <TableCell>{transaction.receiver}</TableCell>
+                                    <TableCell>{transaction.amount}</TableCell>
+                                    <TableCell>{new Date(transaction.timestamp).toLocaleString()}</TableCell>
+                                    <TableCell>{transaction.status}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
 
-                    {/* Status Filter */}
-                    <FormControl variant="outlined" sx={{ marginBottom: 2, minWidth: 120 }}>
-                        <InputLabel>Status</InputLabel>
-                        <Select value={statusFilter} onChange={handleStatusFilterChange} label="Status">
-                            <MenuItem value="all">All</MenuItem>
-                            <MenuItem value="pending">Pending</MenuItem>
-                            <MenuItem value="completed">Completed</MenuItem>
-                            <MenuItem value="failed">Failed</MenuItem>
-                        </Select>
-                    </FormControl>
-                </Box>
-
-                {/* Transaction History */}
-                <Typography variant="h6" sx={{ mt: 4 }}>
-                    Transaction History
-                </Typography>
-                {/* <TransactionTable
-                    search={search}
-                    dateFilter={dateFilter}
-                    statusFilter={statusFilter}
-                    transactions={sortedTransactions.slice(0, itemsToShow)}
-                /> */}
-
-                {itemsToShow < sortedTransactions.length && (
-                    <Button variant="contained" sx={{ mt: 2 }} onClick={loadMoreTransactions}>
-                        Load More
-                    </Button>
-                )}
+                {/* Dialog for Transaction Details */}
+                <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
+                    <DialogTitle>Transaction Details</DialogTitle>
+                    <DialogContent>
+                        {selectedTransaction && (
+                        <Box>
+                            <Typography variant="body1">
+                                <strong>ID:</strong> {selectedTransaction.id} <br/>
+                                <strong>Sender:</strong> {selectedTransaction.sender} <br/>
+                                <strong>Receiver:</strong> {selectedTransaction.receiver} <br/>
+                                <strong>Amount:</strong> {selectedTransaction.amount} <br/>
+                                <strong>Date:</strong>{" "} 
+                                    {new Date(selectedTransaction.timestamp).toLocaleString()} <br/>
+                                <strong>Status:</strong> {selectedTransaction.status} <br/>
+                            </Typography>
+                            
+                            {/* Center the buttons in the dialog */}
+                            <Box 
+                            sx={{ 
+                                display: "flex", 
+                                flexDirection: "column", 
+                                alignItems: "center", 
+                                marginTop: "20px" 
+                            }}
+                            >
+                                <Button
+                                    variant="contained"
+                                    component={Link}
+                                    to={`/fileview/${selectedTransaction.id}`}
+                                >
+                                    View File
+                                </Button>
+                            </Box>
+                        </Box>
+                        )}
+                    </DialogContent>
+                    <DialogActions sx={{ marginTop: "-10px", justifyContent: "center" }}>
+                        <Button onClick={handleCloseDialog} color="primary">
+                            Close
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Container>
-        </>
+        </Box>
     );
 };
 
