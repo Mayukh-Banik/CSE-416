@@ -46,7 +46,11 @@ func main() {
 
 
     // Initialize routes
-    router := routes.InitRoutes()
+    router := http.NewServeMux()
+    apiRouter := routes.InitRoutes()
+
+    // "/api" 경로에 대해서 라우터 연결
+    router.Handle("/api/", http.StripPrefix("/api", apiRouter))
 
     // Add CORS middleware
     c := cors.New(cors.Options{

@@ -43,7 +43,7 @@ func GenerateChallenge(publicKey string) (string, error) {
     challenge := base64.StdEncoding.EncodeToString(challengeBytes)
 
     // Store the challenge in memory for the user
-    challengeStore[user.UserID] = challenge
+    challengeStore[user.ID.Hex()] = challenge
 
     return challenge, nil
 }
@@ -69,30 +69,30 @@ func VerifySignature(publicKey, signature string) (bool, error) {
     log.Printf("User found for publicKey: %s", user.PublicKey)
 
     // Get the stored challenge
-    challenge, exists := challengeStore[user.UserID]
+    challenge, exists := challengeStore[user.ID.Hex()]
     if !exists {
-        log.Printf("Challenge not found for userID: %s", user.UserID)
+        log.Printf("Challenge not found for ID: %s", user.ID.Hex())
         return false, errors.New("challenge not found or expired")
     }
 
-    log.Printf("Challenge found for userID: %s", challenge)
+    log.Printf("Challenge found for ID: %s", challenge)
 
     // Verify the signature using public key and challenge
     parsedPublicKey, err := utils.ParsePublicKey(user.PublicKey)
     if err != nil {
-        log.Printf("Invalid public key for userID: %s", user.UserID)
+        log.Printf("Invalid public key for ID: %s", user.ID.Hex())
         return false, errors.New("invalid public key")
     }
 
     verified := utils.VerifySignature(parsedPublicKey, challenge, signature)
     if !verified {
-        log.Printf("Signature verification failed for userID: %s", user.UserID)
+        log.Printf("Signature verification failed for ID: %s", user.ID.Hex())
         return false, errors.New("signature verification failed")
     }
 
     // Cleanup: remove challenge after successful verification
-    delete(challengeStore, user.UserID)
-    log.Printf("Signature verification succeeded for userID: %s", user.UserID)
+    delete(challengeStore, user.ID.Hex())
+    log.Printf("Signature verification succeeded for ID: %s", user.ID.Hex())
 
     return true, nil
 }

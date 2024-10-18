@@ -19,7 +19,6 @@ import (
 
 // WalletResponse struct to send back both public and private keys
 type WalletResponse struct {
-    UserID     string `json:"user_id"`
     PublicKey  string `json:"public_key"`
     PrivateKey string `json:"private_key"`
 }
@@ -53,14 +52,10 @@ func GenerateWallet() (WalletResponse, error) {
         Bytes: privASN1,
     })
 
-    // Generate a unique user ID
-    userID := utils.GenerateUserID()
-
     // Create a new user object
     user := models.User{
-        UserID:      userID,
         PublicKey:   cleanPublicKey,
-        CreatedDate: time.Now(),
+        CreatedAt: time.Now(),
     }
 
     // Store the user in MongoDB
@@ -72,7 +67,6 @@ func GenerateWallet() (WalletResponse, error) {
 
     // Prepare the response
     walletResponse := WalletResponse{
-        UserID:     userID,
         PublicKey:  user.PublicKey,
         PrivateKey: string(privateKeyPEM),
     }

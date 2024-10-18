@@ -20,7 +20,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
     }
 
     // Log success message
-    log.Printf("User %s created successfully", walletResponse.UserID)
+    log.Printf("User %s created successfully", walletResponse.PublicKey)
 
     // Return the wallet response to the frontend
     json.NewEncoder(w).Encode(walletResponse)
@@ -87,3 +87,34 @@ func LoginWithWalletID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Login failed", http.StatusUnauthorized)
 	}
 }
+
+// AuthStatusResponse는 상태 확인 응답 구조체입니다.
+type AuthStatusResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+// // AuthStatus는 JWT 토큰 상태를 검증하는 핸들러입니다.
+// func AuthStatus(w http.ResponseWriter, r *http.Request) {
+// 	// Authorization 헤더에서 토큰 추출
+// 	token := r.Header.Get("Authorization")
+// 	if token == "" {
+// 		http.Error(w, "Missing token", http.StatusUnauthorized)
+// 		return
+// 	}
+
+// 	// 토큰 검증
+// 	valid, err := services.VerifyToken(token)
+// 	if err != nil || !valid {
+// 		http.Error(w, "Invalid token", http.StatusUnauthorized)
+// 		return
+// 	}
+
+// 	// 토큰이 유효한 경우
+// 	response := AuthStatusResponse{
+// 		Status:  "valid",
+// 		Message: "Token is valid",
+// 	}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(response)
+// }
