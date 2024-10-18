@@ -1,13 +1,149 @@
-import React, {useState} from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'; // Import CssBaseline here
-import { Container, Typography, Button } from '@mui/material';
-import WelcomePage from './Components/WelcomePage';
-import RegisterPage from './Components/RegisterPage';
-import LoginPage from './Components/LoginPage';
-import SettingPage from './Components/SettingPage';
-import Dashboard from './Components/Dashboard';
-import TransactionPage from './Components/TransactionPage';
+import React, { useState } from "react";
+import {
+  Container,
+  Typography,
+  Button,
+  ThemeProvider,
+  createTheme,
+  CssBaseline,
+} from "@mui/material";
+import { HashRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import WelcomePage from "./Components/WelcomePage";
+import RegisterPage from "./Components/RegisterPage";
+import LoginPage from "./Components/LoginPage";
+import LoginPage2 from "./Components/LoginPage2";
+import SignupPage from "./Components/SignUpPage";
+import SettingPage from "./Components/SettingPage";
+import WalletPage from "./Components/WalletPage";
+import FilesPage from "./Components/FilesPage";
+import MiningPage from "./Components/MiningPage";
+import ProxyPage from "./Components/ProxyPage";
+
+const isUserLoggedIn = true; // should add the actual login state logic here.
+
+// Fake data for your wallet (temporary data)
+const walletAddress = "0x1234567890abcdef";
+const balance = 100;
+const transactions = [
+  {
+    id: "tx001",
+    sender: "0xsender001",
+    receiver: "0xreceiver001",
+    amount: 10,
+    timestamp: "2023-10-01T10:00:00",
+    status: "completed",
+  },
+  {
+    id: "tx009",
+    sender: "0xsender009",
+    receiver: "0xreceiver009",
+    amount: 90,
+    timestamp: "2023-10-09T17:20:00",
+    status: "completed",
+  },
+  {
+    id: "tx002",
+    sender: "0xsender002",
+    receiver: "0xreceiver002",
+    amount: 20,
+    timestamp: "2023-10-02T12:00:00",
+    status: "pending",
+  },
+  {
+    id: "tx005",
+    sender: "0xsender005",
+    receiver: "0xreceiver005",
+    amount: 50,
+    timestamp: "2023-10-05T16:00:00",
+    status: "completed",
+  },
+  {
+    id: "tx011",
+    sender: "0xsender011",
+    receiver: "0xreceiver011",
+    amount: 110,
+    timestamp: "2023-10-11T14:50:00",
+    status: "completed",
+  },
+  {
+    id: "tx003",
+    sender: "0xsender003",
+    receiver: "0xreceiver003",
+    amount: 30,
+    timestamp: "2023-10-03T14:00:00",
+    status: "completed",
+  },
+  {
+    id: "tx004",
+    sender: "0xsender004",
+    receiver: "0xreceiver004",
+    amount: 40,
+    timestamp: "2023-10-04T09:00:00",
+    status: "failed",
+  },
+
+  {
+    id: "tx006",
+    sender: "0xsender006",
+    receiver: "0xreceiver006",
+    amount: 60,
+    timestamp: "2023-10-06T11:00:00",
+    status: "pending",
+  },
+  {
+    id: "tx007",
+    sender: "0xsender007",
+    receiver: "0xreceiver007",
+    amount: 70,
+    timestamp: "2023-10-07T13:30:00",
+    status: "completed",
+  },
+  {
+    id: "tx013",
+    sender: "0xsender013",
+    receiver: "0xreceiver013",
+    amount: 130,
+    timestamp: "2023-10-13T18:00:00",
+    status: "failed",
+  },
+  {
+    id: "tx008",
+    sender: "0xsender008",
+    receiver: "0xreceiver008",
+    amount: 80,
+    timestamp: "2023-10-08T15:45:00",
+    status: "failed",
+  },
+
+  {
+    id: "tx010",
+    sender: "0xsender010",
+    receiver: "0xreceiver010",
+    amount: 100,
+    timestamp: "2023-10-10T10:10:00",
+    status: "pending",
+  },
+
+  {
+    id: "tx012",
+    sender: "0xsender012",
+    receiver: "0xreceiver012",
+    amount: 120,
+    timestamp: "2023-10-12T09:40:00",
+    status: "pending",
+  },
+];
+
+const publicKey = "publicKeyExample";
+const privateKey = "privateKeyExample";
+
+interface PrivateRouteProps {
+  isAuthenticated: boolean;
+}
+
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated }) => {
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+};
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -33,7 +169,6 @@ const App: React.FC = () => {
     },
   });
 
-
   const toggleTheme = () => {
     setDarkMode((prevMode) => !prevMode);
   };
@@ -44,16 +179,40 @@ const App: React.FC = () => {
       <Router>
         <Routes>
           <Route path="/" element={<WelcomePage />} />
+          <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path='/login' element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login2" element={<LoginPage2 />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/files" element={<FilesPage />} />
+          <Route
+            path="/settings"
+            element={
+              <SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />
+            }
+          />
+          {/* <Route path='/transaction' element={<TransactionPage />} /> */}
+          <Route path="/mining" element={<MiningPage />} />
+
           {/* <Route path='/register' element={<RegisterPage />} /> */}
-          <Route path="/settings" element={<SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />} />
-          <Route path="/dashboard" element={<Dashboard />} />  
+
+          {/* Routes protected by PrivateRoute */}
+          <Route element={<PrivateRoute isAuthenticated={isUserLoggedIn} />}>
+            <Route
+              path="/wallet"
+              element={
+                <WalletPage
+                  walletAddress={walletAddress}
+                  balance={balance}
+                  transactions={transactions}
+                />
+              }
+            />
+          </Route>
         </Routes>
       </Router>
-      </ThemeProvider>
-    );
-  };
-  
+    </ThemeProvider>
+  );
+};
 
 export default App;

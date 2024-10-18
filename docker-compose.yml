@@ -1,23 +1,42 @@
 services:
-  server:
-    build: ./server
-    ports:
-      - "8000:8000"
   client:
     build: ./client
     ports:
       - "3000:3000"
-  database:
-    image: "mysql"
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-    volumes:
-      - ./database:/var/lib/mysql
+    networks:
+      - caddy_network
+    container_name: app_client_server
+    # volumes:
+      # - ./Shared:/Shared
 
-volumes:
-  database_volume:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /database
+  caddy:
+    build:
+      context: ./Caddy
+    container_name: caddy_server
+    ports:
+      - "5000:5000"
+    networks:
+      - caddy_network
+    restart: unless-stopped
+    # volumes:
+      # - ./Shared:/Shared
+
+  ipfs-server:
+    build: ./IPFS-Server
+    container_name: ipfs_server
+    ports:
+      - "4001:4001"
+      - "5001:5001"
+      - "8080:8080"
+    volumes:
+      - ./ipfs-server-data:/data/ipfs
+      - type: bind
+        source: ./Shared
+        target: /Shared
+        read_only: false
+    networks:
+      - caddy_network
+
+networks:
+  caddy_network:
+    driver: bridge

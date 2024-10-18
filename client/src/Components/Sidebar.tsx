@@ -1,106 +1,321 @@
-// // Sidebar.tsx
-// import React from 'react';
-// import { Link } from 'react-router-dom';
-// import { Drawer, List, ListItem, ListItemText, ListItemIcon } from '@mui/material';
-// import HomeIcon from '@mui/icons-material/Home';
-// import DashboardIcon from '@mui/icons-material/Dashboard';
-// import SettingsIcon from '@mui/icons-material/Settings';
 
-// const Sidebar: React.FC = () => {
-//   return (
-//     <Drawer variant="permanent" anchor="left">
-//       <List>
-//         <ListItem  component={Link} to="/">
-//           <ListItemIcon><HomeIcon /></ListItemIcon>
-//           <ListItemText primary="Home" />
-//         </ListItem>
-//         <ListItem  component={Link} to="/dashboard">
-//           <ListItemIcon><DashboardIcon /></ListItemIcon>
-//           <ListItemText primary="Dashboard" />
-//         </ListItem>
-//         <ListItem  component={Link} to="/transaction">
-//           <ListItemIcon><DashboardIcon /></ListItemIcon>
-//           <ListItemText primary="Transaction" />
-//         </ListItem>
-//         <ListItem  component={Link} to="/settings">
-//           <ListItemIcon><SettingsIcon /></ListItemIcon>
-//           <ListItemText primary="Settings" />
-//         </ListItem>
-//       </List>
-//     </Drawer>
-//   );
-// }
-
-// export default Sidebar;
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Drawer, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Link } from 'react-router-dom';
+import { Box,CssBaseline,Drawer,IconButton,List,ListItem,ListItemText
+  , ListItemIcon,Toolbar,Typography,Button,Collapse,TextField
+} from '@mui/material';
+import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import HomeIcon from '@mui/icons-material/Home';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SettingsIcon from '@mui/icons-material/Settings';
+import MenuIcon from '@mui/icons-material/Menu';
+import FileCopyIcon from '@mui/icons-material/FileCopy';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { FileCopy } from '@mui/icons-material';
+import { styled, useTheme } from '@mui/material/styles';
+import Divider from '@mui/material/Divider';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
 import ReceiptIcon from '@mui/icons-material/Receipt';
-import { makeStyles } from '@mui/styles';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import SecurityIcon from '@mui/icons-material/Security';
+import { grey } from '@mui/material/colors';
+const drawerWidth = 275;
 
-const useStyles = makeStyles({
-  drawer: {
-    width: 240, // Sidebar width
-    flexShrink: 0,
-  },
-  drawerPaper: {
-    width: 240, // Sidebar width
-  },
-  active: {
-    backgroundColor: '#f4f4f4',
-  },
-});
 
-const Sidebar: React.FC = () => {
-  const classes = useStyles();
-  const location = useLocation(); // Get the current path
+const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
+  open?: boolean;
+}>(({ theme }) => ({
+  flexGrow: 1,
+  padding: theme.spacing(3),
+  transition: theme.transitions.create('margin', {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  marginLeft: `-${drawerWidth}px`,
+  variants: [
+    {
+      props: ({ open }) => open,
+      style: {
+        transition: theme.transitions.create('margin', {
+          easing: theme.transitions.easing.easeOut,
+          duration: theme.transitions.duration.enteringScreen,
+        }),
+        marginLeft: 0,
+      },
+    },
+  ],
+}));
+
+interface AppBarProps extends MuiAppBarProps {
+  open?: boolean;
+}
+
+const AppBar = styled(MuiAppBar, {
+  shouldForwardProp: (prop) => prop !== 'open',
+})<AppBarProps>(({ theme }) => ({
+  transition: theme.transitions.create(['margin', 'width'], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  variants: [
+    {
+      props: ({ open }) => open,
+      style: {
+        width: `calc(100% - ${drawerWidth}px)`,
+        marginLeft: `${drawerWidth}px`,
+        transition: theme.transitions.create(['margin', 'width'], {
+          easing: theme.transitions.easing.easeOut,
+          duration: theme.transitions.duration.enteringScreen,
+        }),
+      },
+    },
+  ],
+}));
+
+const DrawerHeader = styled('div')(({ theme }) => ({
+  
+  display: 'flex',
+  alignItems: 'center',
+  padding: theme.spacing(0, 1),
+  // necessary for content to be below app bar
+  ...theme.mixins.toolbar,
+  justifyContent: 'flex-end',
+}));
+
+const Sidebar: React.FC = () => 
+{
+  const theme = useTheme();
+  const [open,setOpen]= React.useState(false);
+  const [dashboardOpen,setDashBoardOpen] = React.useState(false);
+  
+
+  const toggleDrawer = (newOpen:boolean) =>
+  {
+    setOpen(newOpen);
+  };
+
+  const toggleDashboard = () =>
+  {
+    setDashBoardOpen(!dashboardOpen);
+  }
+
+  const drawer = (
+    <div>
+      <List>
+        {/*
+        Not sure if this is the intended logic 
+        */}
+       <ListItem component = {Button} onClick={()=>toggleDashboard()}>
+          <ListItemIcon><DashboardIcon /></ListItemIcon>
+          <ListItemText primary={
+      <Typography style={{ textTransform: 'none' }}>
+        Dashboard
+      </Typography>
+    }  />
+          {dashboardOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />} {/* Icon to indicate collapse/expand */}
+        </ListItem>
+
+        <Collapse in = {dashboardOpen} timeout = "auto" unmountOnExit>
+          <List component = "div" disablePadding>
+            <ListItem component = {Link} to = "/overview" sx={{ pl: 4 }} >
+              <ListItemIcon></ListItemIcon>
+              <ListItemText primary = "Overview"></ListItemText>
+            </ListItem>
+
+            <ListItem component = {Link} to = "/notifications" sx={{ pl: 4 }} >
+              <ListItemIcon></ListItemIcon>
+              <ListItemText primary = "Notifications"></ListItemText>
+            </ListItem>
+
+            <ListItem component = {Link} to = "/trade-history" sx={{ pl: 4 }} >
+              <ListItemIcon></ListItemIcon>
+              <ListItemText primary = "Trade History"></ListItemText>
+            </ListItem>
+          </List>
+        </Collapse>
+
+
+        {/*
+        Might need to implement file drop down functionality here too 
+        */}
+
+        <ListItem component = {Link} to = "/files">
+          <ListItemIcon><FileCopyIcon/></ListItemIcon>
+          <ListItemText primary = "Files"></ListItemText>
+        </ListItem>
+
+        <ListItem component = {Link} to = "/wallet">
+          <ListItemIcon><AccountBalanceWalletIcon/></ListItemIcon>
+          <ListItemText primary = "Wallet"></ListItemText>
+        </ListItem>
+
+        <ListItem component = {Link} to = "/mining">
+          <ListItemIcon>
+            <img 
+              src={`${process.env.PUBLIC_URL}/pickaxe.png`} 
+              alt="Pickaxe Icon" 
+              style={{ width: '24px', height: '24px', filter: 'invert'}} 
+            />
+          </ListItemIcon>
+          <ListItemText primary = "Mining"></ListItemText>
+        </ListItem>
+
+        <ListItem component = {Link} to = "/account">
+          <ListItemIcon><AccountCircleIcon/></ListItemIcon>
+          <ListItemText primary = "Account"></ListItemText>
+        </ListItem>
+        <ListItem component={Link} to="/proxy">
+          <ListItemIcon>
+            <SecurityIcon />
+          </ListItemIcon>
+          <ListItemText primary="Proxy" />
+        </ListItem>
+
+
+        <ListItem component = {Link} to = "/settings">
+          <ListItemIcon><SettingsIcon/></ListItemIcon>
+          <ListItemText primary = "Settings"></ListItemText>
+        </ListItem>
+
+        <Divider />
+
+      </List>
+      </div>
+  )
+
 
   return (
-    <Drawer
-      className={classes.drawer}
-      variant="permanent"
-      anchor="left"
-      classes={{ paper: classes.drawerPaper }}
-    >
-      <List>
-        <ListItem
-          component={Link}
-          to="/"
-          className={location.pathname === '/' ? classes.active : ''}
-        >
-          <ListItemIcon><HomeIcon /></ListItemIcon>
-          <ListItemText primary="Home" />
-        </ListItem>
-        <ListItem
-          component={Link}
-          to="/dashboard"
-          className={location.pathname === '/dashboard' ? classes.active : ''}
-        >
-          <ListItemIcon><DashboardIcon /></ListItemIcon>
-          <ListItemText primary="Dashboard" />
-        </ListItem>
-        <ListItem
-          component={Link}
-          to="/transaction"
-          className={location.pathname === '/transaction' ? classes.active : ''}
-        >
-          <ListItemIcon><ReceiptIcon /></ListItemIcon>
-          <ListItemText primary="Transactions" />
-        </ListItem>
-        <ListItem
-          component={Link}
-          to="/settings"
-          className={location.pathname === '/settings' ? classes.active : ''}
-        >
-          <ListItemIcon><SettingsIcon /></ListItemIcon>
-          <ListItemText primary="Settings" />
-        </ListItem>
-      </List>
-    </Drawer>
+    <Box sx = {{display:'flex'}}>
+      <CssBaseline/>
+      <AppBar position = "fixed" open = {open} sx = {{backgroundColor: 'white'}} >
+        <Toolbar>
+          <IconButton
+            color = "inherit"
+            aria-label = "open-drawer"
+            onClick = {()=>toggleDrawer(true)}
+            edge = "start"
+            sx={[
+              {
+                mr: 2,
+              },
+              open && { display: 'none' },
+            ]}
+            >
+              <MenuIcon />
+            </IconButton>
+
+          <Toolbar>
+          <Box sx={{ flexGrow: 1 }} /> {/* Pushes the search bar to the right */}
+          <TextField
+            variant="outlined"
+            placeholder="Search…"
+            size="small"
+            sx={{
+              width: '250px',
+              ml: 4,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '4px',
+                borderColor: 'grey',
+
+                '& fieldset':
+                {
+                  borderColor:'grey',
+                },
+
+                '&:hover fieldset':{
+                  borderColor:'darkgrey'
+                }
+              },
+            }}
+          />
+        </Toolbar>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: '', padding: 2 }}>
+
+          <IconButton color = "inherit" sx = {{ml:2}}>
+            <DarkModeIcon/>
+          </IconButton>
+
+          <IconButton color = "inherit" component = {Link} to = "/notifications">
+            <NotificationsIcon/>
+          </IconButton>
+          
+          <Button 
+            color = "inherit"
+            sx = {{
+              border: '2px solid #808080',
+              borderRadius: '4px',
+              padding: '6px 12px',
+              ml: 2,
+              // textDecoration: 'none',
+              // color: 'black',
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/login" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              Log in
+            </Typography>
+          </Button>
+                
+          <Button 
+            color = "inherit"
+            sx = {{
+              border: '2px solid #808080',
+              borderRadius: '4px',
+              padding: '6px 12px',
+              ml: 2,
+              
+            }}>
+            <Typography variant = "h6" component = {Link} to = "/register" 
+              style={{ 
+                textTransform: 'none',
+                textDecoration: 'none',
+                color: 'black', }}>
+              Sign up
+            </Typography>
+          </Button>
+          </Box>
+        </Toolbar>
+        <Divider/>
+        
+      </AppBar>
+
+      <Drawer 
+        sx={{
+          // width: drawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+          },
+        }}
+        variant = "persistent"
+        anchor = "left"
+        open = {open}
+      >
+        <DrawerHeader>
+          <img src="/squidcoin.png" alt="Squid Icon" width="30" />
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1}}>
+            Squid Coin
+          </Typography>
+          <IconButton onClick ={()=>toggleDrawer(false)}>
+            {theme.direction === 'ltr'? <ChevronLeftIcon />:<ChevronRightIcon />}
+          </IconButton>
+        </DrawerHeader>
+        <Divider />
+        {drawer}
+      </Drawer>
+    </Box>
   );
-};
+}
+
 
 export default Sidebar;

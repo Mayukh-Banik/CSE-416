@@ -13,10 +13,19 @@ import {
 import TransactionTable from "./TransactionTable";
 import Sidebar from "./Sidebar";
 
+// interface TransactionPageProps {
+//     open: boolean;
+// }
+
 const TransactionPage: React.FC = () => {
     const [search, setSearch] = useState("");
     const [dateFilter, setDateFilter] = useState<string>("all");
     const [statusFilter, setStatusFilter] = useState<string>("all");
+    const [sidebarOpen, setSidebarOpen] = useState<boolean>(true); // State to toggle sidebar
+
+    const toggleSidebar = () => {
+      setSidebarOpen((prev) => !prev);
+    };
 
     const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSearch(event.target.value);
@@ -31,6 +40,7 @@ const TransactionPage: React.FC = () => {
     };
 
     return (
+        
         <Box sx={{ display: "flex" }}>
             <CssBaseline />
             <Sidebar />
