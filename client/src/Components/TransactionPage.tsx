@@ -85,7 +85,7 @@ const TransactionPage: React.FC = () => {
                 </FormControl>
 
                 {/* Transaction Table */}
-                <TransactionTable search={search} dateFilter={dateFilter} statusFilter={statusFilter} />
+                {/* <TransactionTable search={search} dateFilter={dateFilter} statusFilter={statusFilter} /> */}
             </Container>
         </Box>
     );

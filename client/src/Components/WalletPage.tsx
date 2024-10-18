@@ -1,5 +1,6 @@
-import React from "react";
-import { Box, Typography, Container } from "@mui/material";
+import React, { useState } from "react";
+import { Box, Typography, Container, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, TableContainer, Paper } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 import Sidebar from "./Sidebar"; // Ensure this is imported correctly
 import TransactionPage from "./TransactionPage"; // Make sure this component is correctly defined
@@ -26,6 +27,17 @@ interface WalletDetailsProps {
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
+// Sorting helper function
+const sortTransactions = (transactions: Transaction[], orderBy: keyof Transaction, order: 'asc' | 'desc') => {
+    return transactions.sort((a, b) => {
+        if (order === 'asc') {
+            return a[orderBy] < b[orderBy] ? -1 : 1;
+        } else {
+            return a[orderBy] > b[orderBy] ? -1 : 1;
+        }
+    });
+};
+
 const WalletPage: React.FC<WalletDetailsProps> = ({
     walletAddress,
     balance,
@@ -34,8 +46,25 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
     fee,
     // isCollapsed, // Accept the prop
 }) => {
-    // const marginLeft = isCollapsed ? `${collapsedDrawerWidth}px` : `${drawerWidth}px`; // Determine margin based on sidebar state
+    const navigate = useNavigate();
     const theme = useTheme();
+    const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+    const [orderBy, setOrderBy] = useState<keyof Transaction>('timestamp');
+
+    // Handle sorting click
+    const handleSort = (property: keyof Transaction) => {
+        const isAsc = orderBy === property && order === 'asc';
+        setOrder(isAsc ? 'desc' : 'asc');
+        setOrderBy(property);
+    };
+
+    // Handle transaction click (navigating to detail page)
+    const handleTransactionClick = (id: string) => {
+        navigate(`/transaction/${id}`);
+    };
+
+    const sortedTransactions = sortTransactions([...transactions], orderBy, order);
+
     return (
         <Box
             sx={{
@@ -53,6 +82,7 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                 <Typography variant="h4" sx={{ mb: 2 }}>
                     {walletLabel || 'Wallet Details'}
                 </Typography>
+                
                 {/* Balance and Wallet Address */}
                 <Box
                     sx={{
@@ -74,6 +104,7 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                             borderRadius: 2,
                             boxShadow: 2,
                             width: '45%',
+                            background: 'white',
                         }}
                     >
                         <img src="/squidcoin.png" alt="Squid Icon" width="40" />
@@ -94,9 +125,9 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                             boxShadow: 2,
                             width: '45%',
                             ml: 2,
+                            background: 'white',
                         }}
                     >
-                        {/* QR Code generation */}
                         <QRCodeCanvas value={walletAddress} size={50} style={{ marginRight: '10px' }} />
                         <Box sx={{ ml: 2, textAlign: 'left' }}>
                             <Typography variant="h6">Wallet Address</Typography>
@@ -105,8 +136,80 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                     </Box>
                 </Box>
 
-                <Typography variant="h6">Transaction History</Typography>
-                <TransactionPage /> {/* Ensure TransactionPage accepts transactions as a prop */}
+                <Typography variant="h6" sx={{ mt: 4 }}>Transaction History</Typography>
+
+                {/* Transaction Table */}
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'id'}
+                                        direction={orderBy === 'id' ? order : 'asc'}
+                                        onClick={() => handleSort('id')}
+                                    >
+                                        ID
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'sender'}
+                                        direction={orderBy === 'sender' ? order : 'asc'}
+                                        onClick={() => handleSort('sender')}
+                                    >
+                                        Sender
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'receiver'}
+                                        direction={orderBy === 'receiver' ? order : 'asc'}
+                                        onClick={() => handleSort('receiver')}
+                                    >
+                                        Receiver
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'amount'}
+                                        direction={orderBy === 'amount' ? order : 'asc'}
+                                        onClick={() => handleSort('amount')}
+                                    >
+                                        Amount
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={orderBy === 'timestamp'}
+                                        direction={orderBy === 'timestamp' ? order : 'asc'}
+                                        onClick={() => handleSort('timestamp')}
+                                    >
+                                        Date
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>Status</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {sortedTransactions.map((transaction) => (
+                                <TableRow
+                                    key={transaction.id}
+                                    hover
+                                    sx={{ cursor: 'pointer' }}
+                                    onClick={() => handleTransactionClick(transaction.id)}
+                                >
+                                    <TableCell>{transaction.id}</TableCell>
+                                    <TableCell>{transaction.sender}</TableCell>
+                                    <TableCell>{transaction.receiver}</TableCell>
+                                    <TableCell>{transaction.amount}</TableCell>
+                                    <TableCell>{new Date(transaction.timestamp).toLocaleString()}</TableCell>
+                                    <TableCell>{transaction.status}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             </Container>
         </Box>
     );

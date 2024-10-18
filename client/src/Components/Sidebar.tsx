@@ -11,6 +11,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { styled, useTheme } from '@mui/material/styles';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import StoreIcon from '@mui/icons-material/Store';
+import { Padding } from '@mui/icons-material';
 
 const drawerWidth = 275;
 const collapsedDrawerWidth = 80; // Width when collapsed
@@ -71,9 +72,10 @@ const Sidebar: React.FC = () => {
           <ListItemIcon><StoreIcon /></ListItemIcon>
           <ListItemText primary="Market" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
-        <ListItem onClick={handleFiles} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
-          <ListItemIcon><FileCopyIcon /></ListItemIcon>
-          <ListItemText primary="Files" sx={{ display: { xs: 'none', sm: 'block' } }} />
+
+        <ListItem onClick={handleFiles} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
+          <ListItemIcon><FileCopyIcon/></ListItemIcon>
+          <ListItemText primary="View/Upload Files" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
         <ListItem onClick={handleWallet} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
           <ListItemIcon><AccountBalanceWalletIcon /></ListItemIcon>
@@ -150,9 +152,10 @@ const Sidebar: React.FC = () => {
       >
         <DrawerHeader>
           <img src="/squidcoin.png" alt="Squid Icon" width="30" />
-          <Typography variant="h6" noWrap component="div" sx={{ display: { xs: 'none', sm: 'block' } }}>
-            Squid Coin
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1, display: { xs: 'none', sm: 'block' }}}>
+            SquidNet
           </Typography>
+
         </DrawerHeader>
         <Divider />
         {drawer}

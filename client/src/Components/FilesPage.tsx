@@ -8,7 +8,6 @@ import {
   Typography, 
   List, 
   ListItem, 
-  ListItemText, 
   Switch,
   IconButton,
   Snackbar,
@@ -17,16 +16,19 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  ListItemText,
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
 
 // File model
 interface UploadedFile {
+  isPublished: boolean | undefined;
   id: string; 
   name: string;
   size: number; 
-  isPublished: boolean;
+  description: string; // Add description field
+  hash: string; // Add hash field
   fee?: number; // Add a fee property
 }
 
@@ -35,45 +37,58 @@ const collapsedDrawerWidth = 100;
 
 const FilesPage: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({}); // Track descriptions
+  const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({}); // Track hashes
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
-  const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({});
   const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
   const [currentFileId, setCurrentFileId] = useState<string | null>(null); // Track the file being published
   const [fee, setFee] = useState<number | undefined>(undefined); // Fee value for publishing
   
   const theme = useTheme();
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {    
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
+    if (files) {
+      const fileArray = Array.from(files);
+      setSelectedFiles(prevSelectedFiles => [...prevSelectedFiles, ...fileArray]);
+      // Compute hashes for each file
+      fileArray.forEach(file => computeSHA512(file));
+    }
+  };
+
+  const handleUpload = async () => {
     try {
-      if (files) {
-        const fileArray = Array.from(files);
-        // setSelectedFiles(fileArray);
-        // Compute hashes for each file
-        fileArray.forEach(file => computeSHA512(file));
-        // uploaded files
-        const newUploadedFiles: UploadedFile[] = fileArray.map((file) => ({
-          id: `${file.name}-${file.size}-${Date.now()}`, // Simple unique ID
-          name: file.name,
-          size: file.size,
-          isPublished: false,
-        }));
-  
-        setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
-        // setSelectedFiles([]);
-        setNotification({ open: true, message: "Files uploaded successfully!", severity: "success" });
-      }
+      // Simulate file upload delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Create uploaded file objects with descriptions and hashes
+      const newUploadedFiles: UploadedFile[] = selectedFiles.map((file) => ({
+        id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID
+        name: file.name,
+        size: file.size,
+        description: descriptions[file.name] || "", // Attach description
+        hash: fileHashes[file.name], // Attach the computed hash
+        isPublished: false,
+      }));
+
+      setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+      setSelectedFiles([]);
+      setDescriptions({}); // Reset descriptions after upload
+      setFileHashes({}); // Reset hashes after upload
+      setNotification({ open: true, message: "Files uploaded successfully!", severity: "success" });
     } catch (error) {
       setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
       console.error("Error uploading files:", error);
     }
-    
+  };
+
+  const handleDescriptionChange = (fileId: string, description: string) => {
+    setDescriptions((prev) => ({ ...prev, [fileId]: description }));
   };
 
   const handleTogglePublished = (id: string) => {
-    // fix logic 
-    setCurrentFileId(id); // Set the current file to publish
+    setCurrentFileId(id); 
     if (uploadedFiles.find(file => file.id === id)?.isPublished) {
       setPublishDialogOpen(false);
       setUploadedFiles((prev) =>
@@ -82,12 +97,13 @@ const FilesPage: React.FC = () => {
         )
       );
     } else {
-      setPublishDialogOpen(true); // Open the modal
+      setPublishDialogOpen(true); 
     }
   };
 
   const handleDeleteFile = (id: string) => {
     setUploadedFiles((prev) => prev.filter((file) => file.id !== id));
+    setSelectedFiles((prev) => prev.filter((file) => file.name !== id));
     setNotification({ open: true, message: "File deleted.", severity: "success" });
   };
 
@@ -113,15 +129,13 @@ const FilesPage: React.FC = () => {
     }));
   };
 
-  // comfirm publishing file to dht?
   const handleConfirmPublish = () => {
-    //implement actual logic later
     setUploadedFiles((prev) =>
       prev.map((file) =>
         file.id === currentFileId ? { ...file, isPublished: true, fee } : file
       )
     );
-    setPublishDialogOpen(false); // close modal
+    setPublishDialogOpen(false);
     setNotification({ open: true, message: "File published successfully!", severity: "success" });
   };
 
@@ -172,42 +186,80 @@ const FilesPage: React.FC = () => {
             Select Files
           </Typography>
         </Box>
-        {/* <Button 
+        <Button 
           variant="contained" 
           onClick={handleUpload} 
           disabled={selectedFiles.length === 0}
         >
           Upload Selected
-        </Button> */}
+        </Button>
 
-        {/* {selectedFiles.length > 0 && (
+        {selectedFiles.length > 0 && (
           <Box sx={{ marginTop: 2 }}>
             <Typography variant="h6">Selected Files:</Typography>
             <List>
               {selectedFiles.map((file, index) => (
-                <ListItem key={index}>
-                  <ListItemText 
-                    primary={file.name} 
-                    secondary={`Size: ${(file.size / 1024).toFixed(2)} KB`} 
-                  />
+                <ListItem key={index} divider>
+                  <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', // Align text and input fields vertically
+                      width: '100%', 
+                    }}
+                  >
+                    {/* File details (name, size) */}
+                    <ListItemText
+                      primary={file.name}
+                      secondary={
+                        <>
+                          {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
+                          {`SHA-512 Hash: ${fileHashes[file.name] || "Computing..."}`}
+                        </>
+                      }  
+                    />
+                    <IconButton 
+                      edge="end" 
+                      aria-label="delete" 
+                      onClick={() => handleDeleteFile(file.name)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                    {/* Description input and hash display */}
+                    
+                    <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: 1 }}>
+                      <TextField
+                        label="Description"
+                        variant="outlined"
+                        fullWidth
+                        margin="normal"
+                        value={descriptions[file.name] || ""}
+                        onChange={(e) => handleDescriptionChange(file.name, e.target.value)}
+                      />
+                    </Box>
+                  </Box>
                 </ListItem>
               ))}
             </List>
           </Box>
-        )} */}
-
+        )}
+        
         {uploadedFiles.length > 0 && (
           <Box sx={{ marginTop: 4 }}>
             <Typography variant="h5" gutterBottom>
-              Selected Files
+              Uploaded Files
             </Typography>
             <List>
               {uploadedFiles.map((file) => (
                 <ListItem key={file.id} divider>
                   <ListItemText 
                     primary={file.name} 
-                    secondary={`Size: ${(file.size / 1024).toFixed(2)} KB`} 
-                  />
+                    secondary={
+                      <>
+                        {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
+                        {`Description: ${file.description}`} <br />
+                        {`SHA-512: ${file.hash}`}
+                      </>
+                    }                  />
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Typography variant="body2" component="span" sx={{ marginRight: 1 }}>
                       Publish
@@ -217,7 +269,7 @@ const FilesPage: React.FC = () => {
                       onChange={() => handleTogglePublished(file.id)} 
                       checked={file.isPublished} 
                       color="primary"
-                      inputProps={{ 'aria-label': `publish ${file.name}` }}
+                      inputProps={{ 'aria-label': `make ${file.name} public` }}
                     />
                     <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteFile(file.id)}>
                       <DeleteIcon />
@@ -242,6 +294,7 @@ const FilesPage: React.FC = () => {
             fullWidth
             variant="outlined"
             value={fee}
+
             onChange={(e) => setFee(Number(e.target.value))}
           />
         </DialogContent>
