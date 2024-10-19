@@ -11,7 +11,7 @@ import {
   Button,
   Paper,
 } from "@mui/material";
-import Sidebar from "./Sidebar"; // Assuming Sidebar is a common component
+import Sidebar from "./Sidebar"; 
 import { useTheme } from '@mui/material/styles';
 
 const drawerWidth = 300;
@@ -23,8 +23,8 @@ const AccountViewPage: React.FC = () => {
   // Dummy account data
   const accountDetails = {
     name: "john_doe",
-    reputation: 150, // Dummy reputation score
-    balance: 1000.50, // Dummy account balance
+    reputation: 150, 
+    balance: 1000.50, 
   };
 
   // Dummy file data
