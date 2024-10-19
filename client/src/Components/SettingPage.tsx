@@ -44,7 +44,6 @@ const SettingPage: React.FC<SettingPageProps> = ({ darkMode, toggleTheme }) => {
                     <LogoutButton sx={{ display: 'block', visibility: 'visible' }} /> {/* Force visibility */}
                 </Box>
 
-
                 <IconButton sx={{ marginTop: '20px' }}> 
                     <DeleteIcon/>  Delete Account
                 </IconButton>
