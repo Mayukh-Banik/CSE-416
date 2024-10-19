@@ -8,10 +8,15 @@ import {
   IconButton,
   Tooltip,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  TextField,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import useRegisterPageStyles from "../Stylesheets/RegisterPageStyles";
 import Header from "./Header";
 
@@ -20,6 +25,7 @@ const WelcomePage: React.FC = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [privateKey, setPrivateKey] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false); // State for dialog open/close
   const navigate = useNavigate();
 
   const handleLogin = () => {
@@ -29,7 +35,6 @@ const WelcomePage: React.FC = () => {
   // Placeholder function for wallet generation
   const handleGenerateWallet = async () => {
     try {
-      // Replace this with actual backend call when ready
       const fakeResponse = {
         public_key: "gen-public-key-123",
         private_key: "gen-private-key-456",
@@ -64,6 +69,14 @@ const WelcomePage: React.FC = () => {
     navigate("/account/1");
   };
 
+  const handleOpenDialog = () => {
+    setIsDialogOpen(true); // Open the dialog
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false); // Close the dialog
+  };
+
   return (
     <>
       <Header />
@@ -79,9 +92,10 @@ const WelcomePage: React.FC = () => {
           marginTop: "2rem",
         }}
       >
-        {/* Change the title based on whether wallet is generated */}
-        <Typography variant="h3" sx={{ fontWeight: 600, mb: 2, marginTop:10 }}>
-          {isSubmitted ? "Wallet Successfully Generated" : "Welcome to Project Squid"}
+        <Typography variant="h3" sx={{ fontWeight: 600, mb: 2, marginTop: 10 }}>
+          {isSubmitted
+            ? "Wallet Successfully Generated"
+            : "Welcome to Project Squid"}
         </Typography>
         {!isSubmitted && (
           <Typography
@@ -91,6 +105,49 @@ const WelcomePage: React.FC = () => {
             Your go-to solution for secure file sharing.
           </Typography>
         )}
+
+        {/* Add the Connect Button */}
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={handleOpenDialog} // Open dialog on click
+          sx={{
+            mb: 2,
+            width: "100%",
+            padding: "10px 0",
+            fontSize: "1.2rem",
+            borderRadius: "8px",
+          }}
+        >
+          Connect
+        </Button>
+
+        <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
+          <DialogTitle>Connect?</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              You are about to connect to the following server:
+            </DialogContentText>
+            <TextField
+              fullWidth
+              value="cse416squidcoin.xyz"
+              InputProps={{
+                readOnly: true,
+              }}
+              variant="outlined"
+              margin="dense"
+              sx={{ marginTop: "1rem" }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog} color="primary">
+              Cancel
+            </Button>
+            <Button onClick={handleCloseDialog} color="primary">
+              Connect
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {!isSubmitted ? (
           <Button
