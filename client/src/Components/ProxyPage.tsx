@@ -30,7 +30,7 @@ const ProxyHosts: React.FC = () => {
       statistics: {
         uptime: '99.9%',
       },
-      bandwidth: '100 Mbps', // Added bandwidth
+      bandwidth: '100 Mbps',
       isEnabled: false,
       price: 'Free',
     },
@@ -41,11 +41,10 @@ const ProxyHosts: React.FC = () => {
       statistics: {
         uptime: '98.7%',
       },
-      bandwidth: '200 Mbps', // Added bandwidth
+      bandwidth: '200 Mbps', 
       isEnabled: false,
       price: 'Free',
     },
-    // Added private proxy node
     {
       access: 'Private',
       location: 'Berlin, Germany',
@@ -53,7 +52,7 @@ const ProxyHosts: React.FC = () => {
       statistics: {
         uptime: '95.5%',
       },
-      bandwidth: '150 Mbps', // Added bandwidth
+      bandwidth: '150 Mbps', 
       isEnabled: false,
       price: '$20',
     },
@@ -69,7 +68,7 @@ const ProxyHosts: React.FC = () => {
     statistics: {
       uptime: '',
     },
-    bandwidth: '', // Added bandwidth to newProxy
+    bandwidth: '', 
     isEnabled: false,
     price: '',
   });
@@ -218,7 +217,7 @@ const ProxyHosts: React.FC = () => {
                 <TableCell>Location</TableCell>
                 <TableCell>Price</TableCell>
                 <TableCell>Uptime</TableCell>
-                <TableCell>Bandwidth</TableCell> {/* Added Bandwidth column */}
+                <TableCell>Bandwidth</TableCell> 
                 <TableCell>Logs</TableCell>
                 <TableCell>Action</TableCell>
               </TableRow>
