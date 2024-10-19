@@ -175,6 +175,7 @@ const FilesPage: React.FC = () => {
             borderRadius: 2,
             cursor: 'pointer',
             marginBottom: 2,
+            background: 'white',
             '&:hover': {
               backgroundColor: '#e3f2fd',
             },

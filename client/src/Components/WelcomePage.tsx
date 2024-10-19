@@ -80,7 +80,7 @@ const WelcomePage: React.FC = () => {
         }}
       >
         {/* Change the title based on whether wallet is generated */}
-        <Typography variant="h3" sx={{ fontWeight: 600, mb: 2 }}>
+        <Typography variant="h3" sx={{ fontWeight: 600, mb: 2, marginTop:10 }}>
           {isSubmitted ? "Wallet Successfully Generated" : "Welcome to Project Squid"}
         </Typography>
         {!isSubmitted && (

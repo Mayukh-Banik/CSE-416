@@ -12,6 +12,7 @@ import { styled, useTheme } from '@mui/material/styles';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SecurityIcon from '@mui/icons-material/Security';
 import StoreIcon from '@mui/icons-material/Store';
+import PublicIcon from '@mui/icons-material/Public';
 
 const drawerWidth = 275;
 const collapsedDrawerWidth = 80; // Width when collapsed
@@ -122,17 +123,7 @@ const Sidebar: React.FC = () => {
           <ListItemText primary="Mining" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
-        <ListItem
-          onClick={handleAccount}
-          sx={{
-            cursor: 'pointer',
-            backgroundColor: isActive('/account/1') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
-            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
-          }}
-        >
-          <ListItemIcon><AccountCircleIcon /></ListItemIcon>
-          <ListItemText primary="Account" sx={{ display: { xs: 'none', sm: 'block' } }} />
-        </ListItem>
+        
 
         <ListItem
           onClick={handleGlobalTransactions}
@@ -142,7 +133,7 @@ const Sidebar: React.FC = () => {
             '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
           }}
         >
-          <ListItemIcon><AccountCircleIcon /></ListItemIcon>
+          <ListItemIcon><PublicIcon /></ListItemIcon>
           <ListItemText primary="Global Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
@@ -156,6 +147,18 @@ const Sidebar: React.FC = () => {
         >
           <ListItemIcon><SecurityIcon /></ListItemIcon>
           <ListItemText primary="Proxy" />
+        </ListItem>
+
+        <ListItem
+          onClick={handleAccount}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/account/1') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <ListItemIcon><AccountCircleIcon /></ListItemIcon>
+          <ListItemText primary="Account" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
         <ListItem

@@ -9,6 +9,7 @@ import {
   TableHead,
   TableRow,
   Button,
+  Paper,
 } from "@mui/material";
 import Sidebar from "./Sidebar"; // Assuming Sidebar is a common component
 import { useTheme } from '@mui/material/styles';
@@ -82,7 +83,7 @@ const AccountViewPage: React.FC = () => {
         <Typography variant="h6" sx={{ mt: 3 }}>
           Uploaded Files
         </Typography>
-        <Table>
+        <Table component={Paper}>
           <TableHead>
             <TableRow>
               <TableCell>File Name</TableCell>
@@ -120,7 +121,7 @@ const AccountViewPage: React.FC = () => {
         <Typography variant="h6" sx={{ mt: 3 }}>
           Downloaded Files
         </Typography>
-        <Table>
+        <Table component={Paper}>
           <TableHead>
             <TableRow>
               <TableCell>File Name</TableCell>
