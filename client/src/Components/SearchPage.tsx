@@ -1,7 +1,21 @@
 import React from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
-import { Box, Container, Typography, Accordion, AccordionSummary, AccordionDetails, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import {
+    Box,
+    Container,
+    Typography,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper
+} from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useTheme } from '@mui/material/styles';
 
@@ -27,9 +41,11 @@ const SearchPage: React.FC = () => {
     const queryParams = new URLSearchParams(location.search);
     const searchQuery = queryParams.get("q"); // Assuming the query parameter is 'q'
 
-    // Dummy data for testing
+    // Old dummy data for testing
     const accountsData: Account[] = [
         { id: 1, name: "john_doe" },
+        { id: 2, name: "jane_smith" },
+        { id: 3, name: "bob_jones" },
     ];
 
     const filesData: File[] = [
@@ -86,7 +102,14 @@ const SearchPage: React.FC = () => {
                                         filteredAccounts.map((account) => (
                                             <TableRow key={account.id}>
                                                 <TableCell>{account.id}</TableCell>
-                                                <TableCell>{account.name}</TableCell>
+                                                <TableCell>
+                                                    <Link 
+                                                        to={`/account/${account.name}`} 
+                                                        style={{ textDecoration: 'none', color: 'blue' }} // Blue color for clickable links
+                                                    >
+                                                        {account.name}
+                                                    </Link>
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
