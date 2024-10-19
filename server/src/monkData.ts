@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const PORT = process.env.PORT || 3000; // Use PORT from environment variables, default to 3000
+const PORT = process.env.PORT || 3000; 
 console.log(process.env.PORT);
 
 // monk data
@@ -266,78 +266,6 @@ export const createMonkUsers = async (): Promise<void> => {
     console.error('Error creating monk users:', error);
   }
 };
-
-// Function to create a single receiver and multiple sender users
-// export const createTempUsers = async (): Promise<{ receiver: mongoose.Document; tempReceiver: mongoose.Document; senders: mongoose.Document[] } | null> => {
-//   try {
-//     // Check if TempUser (Receiver) already exists
-//     let receiver = await User.findOne({ email: 'tempUser@example.com' });
-//     if (!receiver) {
-//       // Create TempUser if not exists
-//       receiver = new User({
-//         name: 'TempUser',
-//         email: 'tempUser@example.com',
-//         password: 'password123',
-//         publicKey: 'receiverPublicKey',
-//         balance: 1000,
-//         createdAt: new Date(),
-//       });
-//       await receiver.save();
-//       console.log('TempUser created successfully');
-//     } else {
-//       console.log('TempUser already exists');
-//     }
-
-//     // Check if TempReceiver already exists
-//     let tempReceiver = await User.findOne({ email: 'tempReceiver@example.com' });
-//     if (!tempReceiver) {
-//       // Create TempReceiver if not exists
-//       tempReceiver = new User({
-//         name: 'TempReceiver',
-//         email: 'tempReceiver@example.com',
-//         password: 'password123',
-//         publicKey: 'tempReceiverPublicKey',
-//         balance: 500,
-//         createdAt: new Date(),
-//       });
-//       await tempReceiver.save();
-//       console.log('TempReceiver created successfully');
-//     } else {
-//       console.log('TempReceiver already exists');
-//     }
-
-//     // Create multiple TempSender users
-//     const senders = [];
-//     for (let i = 1; i <= 3; i++) {
-//       const senderEmail = `sender${i}@example.com`;
-
-//       // Check if TempSender already exists
-//       let sender = await User.findOne({ email: senderEmail });
-//       if (!sender) {
-//         // Create TempSender if not exists
-//         sender = new User({
-//           name: `TempSender${i}`,
-//           email: senderEmail,
-//           password: 'password123',
-//           publicKey: `senderPublicKey${i}`,
-//           balance: Math.floor(Math.random() * 500),
-//           createdAt: new Date(),
-//         });
-//         await sender.save();
-//         console.log(`TempSender${i} created successfully`);
-//       } else {
-//         console.log(`TempSender${i} already exists`);
-//       }
-
-//       senders.push(sender);
-//     }
-
-//     return { receiver, tempReceiver, senders };
-//   } catch (error) {
-//     console.error('Error creating users:', error);
-//     return null;
-//   }
-// };
 
 export const createMonkTransactions = async () => {
   try {
