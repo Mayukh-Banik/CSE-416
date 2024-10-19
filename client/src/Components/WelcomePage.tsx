@@ -31,8 +31,8 @@ const WelcomePage: React.FC = () => {
     try {
       // Replace this with actual backend call when ready
       const fakeResponse = {
-        public_key: "fake-public-key-123",
-        private_key: "fake-private-key-456",
+        public_key: "gen-public-key-123",
+        private_key: "gen-private-key-456",
       };
       setWalletAddress(fakeResponse.public_key);
       setPrivateKey(fakeResponse.private_key);
@@ -60,6 +60,10 @@ const WelcomePage: React.FC = () => {
     }
   };
 
+  const handleContinueToAccount = () => {
+    navigate("/account/1");
+  };
+
   return (
     <>
       <Header />
@@ -70,42 +74,66 @@ const WelcomePage: React.FC = () => {
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          height: "80vh",
+          height: "75vh",
           textAlign: "center",
+          marginTop: "2rem",
         }}
       >
-        <Typography variant="h2" sx={{ fontWeight: 700, mb: 2 }}>
-          Welcome to Project Squid
+        {/* Change the title based on whether wallet is generated */}
+        <Typography variant="h3" sx={{ fontWeight: 600, mb: 2 }}>
+          {isSubmitted ? "Wallet Successfully Generated" : "Welcome to Project Squid"}
         </Typography>
-        <Typography
-          variant="body1"
-          sx={{ mb: 4, fontSize: "1.2rem", color: "#666" }}
-        >
-          Your go-to solution for secure file sharing.
-        </Typography>
+        {!isSubmitted && (
+          <Typography
+            variant="body1"
+            sx={{ mb: 4, fontSize: "1.2rem", color: "#888" }}
+          >
+            Your go-to solution for secure file sharing.
+          </Typography>
+        )}
 
         {!isSubmitted ? (
           <Button
             variant="contained"
             color="primary"
-            sx={{ mb: 2, width: "100%", padding: "15px 0", fontSize: "1.2rem" }}
+            sx={{
+              mb: 2,
+              width: "100%",
+              padding: "15px 0",
+              fontSize: "1.2rem",
+              borderRadius: "8px",
+              boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+              "&:hover": {
+                backgroundColor: "#1976d2",
+              },
+            }}
             onClick={handleGenerateWallet}
           >
             Generate Wallet
           </Button>
         ) : (
           <Box sx={{ mt: 4, width: "100%" }}>
-            <Paper elevation={2} sx={{ padding: 3, textAlign: "center" }}>
+            <Paper
+              elevation={4}
+              sx={{
+                padding: 4,
+                textAlign: "center",
+                width: "100%",
+                borderRadius: "12px",
+                boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+              }}
+            >
               <Box
                 sx={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
                   marginBottom: "1rem",
+                  marginTop: "-2rem",
                 }}
               >
-                <Typography variant="body1" sx={{ marginRight: "1rem" }}>
-                  <strong>Your wallet address (public key):</strong>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  Your wallet address (public key):
                 </Typography>
                 <Tooltip title="Copy to Clipboard">
                   <IconButton onClick={() => copyToClipboard(walletAddress)}>
@@ -135,8 +163,8 @@ const WelcomePage: React.FC = () => {
                   marginBottom: "1rem",
                 }}
               >
-                <Typography variant="body1" sx={{ marginRight: "1rem" }}>
-                  <strong>Your private key:</strong>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  Your private key:
                 </Typography>
                 <Tooltip title="Copy to Clipboard">
                   <IconButton onClick={() => copyToClipboard(privateKey)}>
@@ -161,7 +189,11 @@ const WelcomePage: React.FC = () => {
 
               <Typography
                 variant="body2"
-                sx={{ marginBottom: "1rem", fontWeight: "bold", color: "orange" }}
+                sx={{
+                  marginBottom: "1rem",
+                  fontWeight: "bold",
+                  color: "#ffa726",
+                }}
               >
                 Important: Keep your private key secure and do not share it with
                 anyone.
@@ -170,16 +202,47 @@ const WelcomePage: React.FC = () => {
               <Button
                 variant="contained"
                 color="secondary"
+                sx={{
+                  width: "100%",
+                  padding: "10px 0",
+                  fontSize: "1rem",
+                  borderRadius: "8px",
+                  boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+                }}
                 onClick={downloadPrivateKey}
               >
                 Download Private Key
               </Button>
             </Paper>
+
+            {/* Continue to Account Button */}
+            <Button
+              variant="contained"
+              color="success"
+              sx={{
+                mt: 3,
+                width: "100%",
+                padding: "12px 0",
+                fontSize: "1.2rem",
+                borderRadius: "8px",
+                boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+              }}
+              onClick={handleContinueToAccount}
+            >
+              Continue to Account
+            </Button>
           </Box>
         )}
 
         <Typography sx={{ marginTop: "2rem" }}>
-          <Link onClick={handleLogin} sx={{ cursor: "pointer" }}>
+          <Link
+            onClick={handleLogin}
+            sx={{
+              cursor: "pointer",
+              fontSize: "1rem",
+              textDecoration: "underline",
+            }}
+          >
             Already have an account? Log In
           </Link>
         </Typography>
