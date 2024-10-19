@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Box, CssBaseline, Drawer, List, ListItem, ListItemText,
   ListItemIcon, Toolbar, Typography, TextField, Divider
@@ -14,7 +14,7 @@ import SecurityIcon from '@mui/icons-material/Security';
 import StoreIcon from '@mui/icons-material/Store';
 
 const drawerWidth = 275;
-const collapsedDrawerWidth = 80;
+const collapsedDrawerWidth = 80; // Width when collapsed
 
 const Main = styled('main')(({ theme }) => ({
   flexGrow: 1,
@@ -23,9 +23,9 @@ const Main = styled('main')(({ theme }) => ({
     easing: theme.transitions.easing.easeInOut,
     duration: theme.transitions.duration.standard,
   }),
-  marginLeft: `${drawerWidth}px`, 
+  marginLeft: `${drawerWidth}px`, // Default expanded
   [theme.breakpoints.down('sm')]: {
-    marginLeft: `${collapsedDrawerWidth}px`,
+    marginLeft: `${collapsedDrawerWidth}px`, // Collapsed on small screens
   },
 }));
 
@@ -38,10 +38,10 @@ const AppBar = styled(MuiAppBar)<AppBarProps>(({ theme }) => ({
     easing: theme.transitions.easing.easeInOut,
     duration: theme.transitions.duration.standard,
   }),
-  width: `calc(100% - ${drawerWidth}px)`, 
+  width: `calc(100% - ${drawerWidth}px)`, // Default expanded
   marginLeft: `${drawerWidth}px`,
   [theme.breakpoints.down('sm')]: {
-    width: `calc(100% - ${collapsedDrawerWidth}px)`,
+    width: `calc(100% - ${collapsedDrawerWidth}px)`, // Adjust width when collapsed
     marginLeft: `${collapsedDrawerWidth}px`,
   },
 }));
@@ -51,46 +51,78 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   alignItems: 'center',
   padding: theme.spacing(0, 1),
   ...theme.mixins.toolbar,
-  justifyContent: 'center', 
+  justifyContent: 'center', // Center the content when collapsed
 }));
-
-// Reusable MenuItem component to avoid repetition
-const MenuItem = ({ text, icon, onClick, active }: { text: string, icon: React.ReactNode, onClick: () => void, active: boolean }) => {
-  return (
-    <ListItem 
-      onClick={onClick} 
-      sx={{ 
-        cursor: "pointer", 
-        backgroundColor: active ? 'rgba(0, 0, 0, 0.12)' : 'transparent',
-        "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
-      }}
-    >
-      <ListItemIcon>{icon}</ListItemIcon>
-      <ListItemText primary={text} sx={{ display: { xs: 'none', sm: 'block' } }} />
-    </ListItem>
-  );
-};
 
 const Sidebar: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const location = useLocation(); // Get the current route
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const isActive = (path: string) => location.pathname === path;
+  const handleSearchKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter') {
+        navigate(`/search-page?q=${searchQuery}`); // Include search query in the URL
+    }
+};
 
-  const menuItems = [
-    { text: 'Market', icon: <StoreIcon />, onClick: () => navigate('/market'), path: '/market' },
-    { text: 'View/Upload Files', icon: <FileCopyIcon />, onClick: () => navigate('/files'), path: '/files' },
-    { text: 'Wallet', icon: <AccountBalanceWalletIcon />, onClick: () => navigate('/wallet'), path: '/wallet' },
-    { text: 'Mining', icon: <img src={`${process.env.PUBLIC_URL}/pickaxe.png`} 
-      alt="Pickaxe Icon" 
-      style={{ width: '24px', height: '24px', filter: 'invert' }} />, 
-      onClick: () => navigate('/mining'), 
-      path: '/mining' },
-    { text: 'Account', icon: <AccountCircleIcon />, onClick: () => navigate('/account'), path: '/account' },
-    { text: 'Proxy', icon: <SecurityIcon />, onClick: () => navigate('/proxy'), path: '/proxy' },
-    { text: 'Settings', icon: <SettingsIcon />, onClick: () => navigate('/settings'), path: '/settings' },
-  ];
+  const handleFiles = async () => navigate('/files');
+  const handleWallet = async () => navigate('/wallet');
+  const handleMining = async () => navigate('/mining');
+  const handleAccount = async () => navigate('/account/1');
+  const handleSettings = async () => navigate('/settings');
+  const handleMarket = async () => navigate('/market');
+  const handleProxy = async () => navigate('/proxy');
+  const handleGlobalTransactions = async () => navigate('/global-transactions');
+
+  const drawer = (
+    <div>
+      <List>
+        <ListItem onClick={handleMarket} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon><StoreIcon /></ListItemIcon>
+          <ListItemText primary="Market" sx={{ display: { xs: 'none', sm: 'block' } }} />
+        </ListItem>
+
+        <ListItem onClick={handleFiles} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
+          <ListItemIcon><FileCopyIcon/></ListItemIcon>
+          <ListItemText primary="View/Upload Files" sx={{ display: { xs: 'none', sm: 'block' } }} />
+        </ListItem>
+
+        <ListItem onClick={handleMining} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon>
+            <img
+              src={`${process.env.PUBLIC_URL}/pickaxe.png`}
+              alt="Pickaxe Icon"
+              style={{ width: '24px', height: '24px', filter: 'invert' }}
+            />
+          </ListItemIcon>
+          <ListItemText primary="Mining" sx={{ display: { xs: 'none', sm: 'block' } }} />
+        </ListItem>
+
+        <ListItem onClick={handleAccount} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon><AccountCircleIcon /></ListItemIcon>
+          <ListItemText primary="Account" sx={{ display: { xs: 'none', sm: 'block' } }} />
+        </ListItem>
+
+        <ListItem onClick={handleGlobalTransactions} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon><AccountCircleIcon /></ListItemIcon>
+          <ListItemText primary="Global Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
+        </ListItem>
+
+        <ListItem onClick={handleProxy} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon>
+            <SecurityIcon />
+          </ListItemIcon>
+          <ListItemText primary="Proxy" />
+        </ListItem>
+
+        <ListItem onClick={handleSettings} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+          <ListItemIcon><SettingsIcon /></ListItemIcon>
+          <ListItemText primary="Settings" sx={{ display: { xs: 'none', sm: 'block' } }} />
+        </ListItem>
+        <Divider />
+      </List>
+    </div>
+  );
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -102,6 +134,9 @@ const Sidebar: React.FC = () => {
             variant="outlined"
             placeholder="Search…"
             size="small"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)} // Update search query state
+            onKeyPress={handleSearchKeyPress} // Handle Enter key press
             sx={{
               width: '250px',
               ml: 4,
@@ -131,7 +166,7 @@ const Sidebar: React.FC = () => {
               duration: theme.transitions.duration.standard,
             }),
             [theme.breakpoints.down('sm')]: {
-              width: collapsedDrawerWidth,
+              width: collapsedDrawerWidth, // Collapse sidebar on small screens
             },
           },
         }}
@@ -140,26 +175,15 @@ const Sidebar: React.FC = () => {
       >
         <DrawerHeader>
           <img src={`${process.env.PUBLIC_URL}/squidcoin.png`} alt="Squid Icon" width="30" />
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1, display: { xs: 'none', sm: 'block' } }}>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1, display: { xs: 'none', sm: 'block' }}}>
             SquidNet
           </Typography>
         </DrawerHeader>
         <Divider />
-        <List>
-          {menuItems.map((item, index) => (
-            <MenuItem 
-              key={index}
-              text={item.text}
-              icon={item.icon}
-              onClick={item.onClick}
-              active={isActive(item.path)} // Highlight the active page
-            />
-          ))}
-        </List>
-        <Divider />
+        {drawer}
       </Drawer>
     </Box>
   );
-};
+}
 
 export default Sidebar;
