@@ -22,9 +22,9 @@ const AccountViewPage: React.FC = () => {
   
   // Dummy account data
   const accountDetails = {
-    name: "john_doe",
+    walletId: "gen-public-key-123", // Dummy wallet ID
     reputation: 150, // Dummy reputation score
-    balance: 1000.50, // Dummy account balance
+    balance: 100, // Dummy account balance
   };
 
   // Dummy file data
@@ -66,8 +66,8 @@ const AccountViewPage: React.FC = () => {
 
         {/* Account details */}
         <Box sx={{ mt: 2 }}>
-          <Typography variant="h6">Account Name:</Typography>
-          <Typography variant="body1">{accountDetails.name}</Typography>
+          <Typography variant="h6">Wallet Id:</Typography>
+          <Typography variant="body1">{accountDetails.walletId}</Typography>
           <Divider sx={{ my: 2 }} />
 
           <Typography variant="h6">Reputation:</Typography>
@@ -75,7 +75,7 @@ const AccountViewPage: React.FC = () => {
           <Divider sx={{ my: 2 }} />
 
           <Typography variant="h6">Account Balance:</Typography>
-          <Typography variant="body1">${accountDetails.balance.toFixed(2)}</Typography>
+          <Typography variant="body1">{accountDetails.balance.toFixed(2)} coins</Typography>
           <Divider sx={{ my: 2 }} />
         </Box>
 
