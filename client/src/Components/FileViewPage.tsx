@@ -17,7 +17,7 @@ const collapsedDrawerWidth = 100;
 
 const files: File[] = [
   { id: "tx001", name: "file001.pdf", size: 102400, uploadedAt: "2024-10-01", rating: 4 },
-  { id: "tx002", name: "file009.docx", size: 204800, uploadedAt: "2024-10-05", rating: 5 },
+  { id: "tx009", name: "file009.docx", size: 204800, uploadedAt: "2024-10-05", rating: 5 },
   { id: "file1.txt", name: "file1.txt", size: 51200, uploadedAt: "2024-10-10", rating: 3 },
   { id: "file2.txt", name: "file2.txt", size: 76800, uploadedAt: "2024-10-12", rating: 4 },
   // Add more files as needed...

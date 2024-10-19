@@ -1,24 +1,15 @@
 import React, { useState } from 'react';
 import {
   Box, Table, TableBody, TableCell, TableHead, TableRow,
-  TableSortLabel, Typography, Button
+  TableSortLabel, Typography, Button,
+  Paper
 } from '@mui/material';
 import Sidebar from './Sidebar'; // Adjust the path as necessary
-import { styled } from '@mui/material/styles';
+import { styled, useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
-const Main = styled('main')(({ theme }) => ({
-  flexGrow: 1,
-  padding: theme.spacing(3),
-  transition: theme.transitions.create(['margin'], {
-    easing: theme.transitions.easing.easeInOut,
-    duration: theme.transitions.duration.standard,
-  }),
-  marginLeft: `275px`, // Default expanded
-  [theme.breakpoints.down('sm')]: {
-    marginLeft: '80px', // Collapsed on small screens
-  },
-}));
+const drawerWidth = 300;
+const collapsedDrawerWidth = 100;
 
 interface Transaction {
   date: string;
@@ -39,6 +30,7 @@ const initialData: Transaction[] = [
 ];
 
 const GlobalTransactions = () => {
+  const theme = useTheme();
   const [transactionData, setTransactionData] = useState<Transaction[]>(initialData);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction; direction: 'asc' | 'desc' }>({
     key: 'date',
@@ -67,15 +59,25 @@ const GlobalTransactions = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box
+      sx={{
+        padding: 2,
+        marginTop: '70px',
+        marginLeft: `${drawerWidth}px`, 
+        transition: 'margin-left 0.3s ease',
+        [theme.breakpoints.down('sm')]: {
+          marginLeft: `${collapsedDrawerWidth}px`,
+        },
+      }}
+    >
       <Sidebar />
-      <Main>
+      {/* <Main> */}
         {/* Header for Global Transactions */}
-        <Typography variant="h4" component="h1" gutterBottom sx={{ textAlign: 'center', marginBottom: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom sx={{ textAlign: 'left', marginBottom: 4 }}>
           Global Transactions
         </Typography>
 
-        <Table>
+        <Table component={Paper}>
           <TableHead>
             <TableRow>
               <TableCell>
@@ -173,7 +175,7 @@ const GlobalTransactions = () => {
             ))}
           </TableBody>
         </Table>
-      </Main>
+      {/* </Main> */}
     </Box>
   );
 };
