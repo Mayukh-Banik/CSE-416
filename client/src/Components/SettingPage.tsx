@@ -35,10 +35,10 @@ const SettingPage: React.FC<SettingPageProps> = ({ darkMode, toggleTheme }) => {
                 <Typography variant="h4">Identification</Typography>
                 <Typography variant="body1">Your public key: </Typography>
 
-                <Typography variant="h6" sx={{ marginTop: '20px' }}>Theme</Typography>
+                {/* <Typography variant="h6" sx={{ marginTop: '20px' }}>Theme</Typography>
                 <IconButton onClick={toggleTheme}>
                     {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
-                </IconButton>
+                </IconButton> */}
 
                 <Box sx={{ marginTop: '20px' }}>
                     <LogoutButton sx={{ display: 'block', visibility: 'visible' }} /> {/* Force visibility */}

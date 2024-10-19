@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination, Paper } from '@mui/material';
 import Sidebar from './Sidebar';
 import { useTheme } from '@mui/material/styles';
 
@@ -79,9 +79,9 @@ const MarketplacePage: React.FC = () => {
         fullWidth
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        sx={{ marginBottom: 2 }}
+        sx={{ marginBottom: 2, background: "white" }}
       />
-      <TableContainer>
+      <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>

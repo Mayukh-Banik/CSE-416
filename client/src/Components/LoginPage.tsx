@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { TextField, Button, Container, Typography, Link, Box } from '@mui/material';
+import { TextField, Button, Container, Typography, Link, Box, IconButton, Tooltip, Paper } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import useRegisterPageStyles from '../Stylesheets/RegisterPageStyles';
 import Header from './Header';
@@ -12,23 +12,12 @@ const LoginPage: React.FC = () => {
     const classes = useRegisterPageStyles();
     const navigate = useNavigate();
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [publicKey, setPublicKey] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     const validateForm = () => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-        if (!email || !password) {
-            setError('All fields are required.');
-            return false;
-        }
-        if (!emailRegex.test(email)) {
-            setError('Invalid email format.');
-            return false;
-        }
-        if (password.length < 8) {
-            setError('Password must be at least 8 characters long.');
+        if (!publicKey) {
+            setError('Public key is required.');
             return false;
         }
         setError(null);
@@ -36,97 +25,94 @@ const LoginPage: React.FC = () => {
     };
 
     const handleLogin = async () => {
-        if (!validateForm()) {
-            return;
-        }
-
-        const userData = {
-            email,
-            password,
-        };
-
-
-        try {
-            const response = await axios.post(`http://localhost:${PORT}/api/users/login`, userData, {
-              withCredentials: true
-            });
-            if (response.data && response.data.error) {
-              setError(response.data.error);
-            } else {
-              navigate('/wallet'); // ToDo: navigate to dashboard after implemented
-            }
-        } catch (error: any) {
-            console.error('Error during login:', error);
-            if (error.response && error.response.data && error.response.data.message) {
-                setError(error.response.data.message);
-            } else {
-                setError('Failed to login. Please try again later.');
-            }
+        if (validateForm()) {
+            navigate("/account/1"); // Simply navigate to the account page if public key is not empty
         }
     };
 
     const handleSignup = () => {
-        navigate('/signup');
+        navigate('/');
     };
 
     return (
         <>
-            <Header></Header>
-            <Container className={classes.container}>
-                {/* Icon */}
-                <LockOutlinedIcon className={classes.icon} />
+            <Header />
+            <Container
+              maxWidth="sm"
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "80vh", 
+                textAlign: "center",
+                marginTop: "2rem",
+              }}
+            >
+                {/* Icon centered and blue */}
+                <LockOutlinedIcon sx={{ color: "primary.main", fontSize: "3rem", marginBottom: "0.5rem" }} />
 
-                {/* Form Title */}
-                <Typography variant="h4" gutterBottom>
+                {/* Log In text, no bold */}
+                <Typography variant="h4" sx={{ fontWeight: "normal", mb: 2 }}>
                     Log In
                 </Typography>
 
                 {/* Error Message */}
                 {error && (
-                    <Typography color="error" style={{ marginBottom: '1rem' }}>
+                    <Typography color="error" sx={{ marginBottom: '1rem' }}>
                         {error}
                     </Typography>
                 )}
 
                 {/* Form */}
-                <Box component="form" className={classes.form}>
+                <Box
+                  component="form"
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
+                    width: "100%",
+                    maxWidth: "450px", // Made the form wider
+                    padding: "2rem",
+                    borderRadius: "12px",
+                    boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+                  }}
+                >
                     <TextField
-                        label="Email Address"
-                        type="email"
+                        label="Public Key"
+                        type="text"
                         variant="outlined"
-                        className={classes.inputField}
+                        fullWidth
                         required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                    <TextField
-                        label="Password"
-                        type="password"
-                        variant="outlined"
-                        className={classes.inputField}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        value={publicKey}
+                        onChange={(e) => setPublicKey(e.target.value)}
                     />
                     <Button
                         variant="contained"
-                        className={classes.button}
+                        color="primary"
+                        sx={{
+                          padding: "12px 0",
+                          fontSize: "1.2rem",
+                          borderRadius: "8px",
+                          boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+                          "&:hover": {
+                            backgroundColor: "#1976d2",
+                          },
+                        }}
                         onClick={handleLogin}
                     >
-                        Log In
+                        Authenticate with Public Key
                     </Button>
                 </Box>
 
                 {/* Don't have an account link */}
-                <Typography>
+                <Typography sx={{ marginTop: "1rem" }}>
                     <Link
                         onClick={handleSignup}
-                        className={classes.link}
+                        sx={{ cursor: "pointer", textDecoration: "underline", fontSize: "1rem", color: "#1976d2" }}
                     >
-                        Don't have an account? Sign Up
+                        Don't have a wallet? Generate One
                     </Link>
-                    <div>tempUser@example.com</div>
-                    <div>password123</div>
                 </Typography>
             </Container>
         </>

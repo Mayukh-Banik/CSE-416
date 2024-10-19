@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from "./Sidebar";
 import useProxyHostsStyles from '../Stylesheets/ProxyPageStyles';
-import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Box, TextField } from '@mui/material';
+import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Box, TextField, Paper } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 
 interface ProxyHost {
@@ -204,13 +204,13 @@ const ProxyHosts: React.FC = () => {
         )}
 
         {connectedProxy && (
-          <Typography variant="h6" sx={{ marginBottom: 2 }}>
+          <Typography variant="h6" sx={{ marginTop: 2 }}>
             Connected Proxy: {connectedProxy.location}
           </Typography>
         )}
 
         <TableContainer>
-          <Table className={styles.table}>
+          <Table className={styles.table} component={Paper} sx={{marginTop:2}}>
             <TableHead>
               <TableRow>
                 <TableCell>Access</TableCell>
