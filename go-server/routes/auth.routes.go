@@ -1,25 +1,17 @@
 package routes
 
 import (
+    "net/http"
 	"go-server/controllers"
-	"github.com/gorilla/mux"
+    "github.com/gorilla/mux"
 )
 
-// AuthRoutes initializes authentication-related routes.
-func AuthRoutes() *mux.Router {
-	router := mux.NewRouter()
-
-	// 회원가입 경로
-	router.HandleFunc("/users/signup", controllers.Signup).Methods("POST")
-
-	// 로그인 (지갑 ID를 사용한 로그인)
-	router.HandleFunc("/users/login", controllers.LoginWithWalletID).Methods("POST")
-
-	// 로그인 도전 과제 요청
-	router.HandleFunc("/users/login/challenge", controllers.RequestChallenge).Methods("POST")
-
-	// 로그인 서명 검증
-	router.HandleFunc("/users/login/verify", controllers.VerifyLogin).Methods("POST")
-
-	return router
+func AuthRoutes(router *mux.Router) {
+    router.HandleFunc("/api/auth/signup", controllers.Signup).Methods("POST")
+    router.HandleFunc("/api/auth/login", loginHandler).Methods("POST")
+	router.HandleFunc("/api/auth/request-challenge", controllers.RequestChallenge).Methods("POST")
+    router.HandleFunc("/api/auth/verify-challenge", controllers.VerifyChallenge).Methods("POST")
+    router.HandleFunc("/api/auth/login-with-wallet", controllers.LoginWithWalletID).Methods("POST")
+    // Check auth status (JWT validation)
+    // router.HandleFunc("/api/auth/status", controllers.AuthStatus).Methods("GET")
 }

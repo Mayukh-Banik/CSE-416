@@ -1,19 +1,14 @@
 package routes
 
 import (
-    // "go-server/controllers"
+    "net/http"
     "github.com/gorilla/mux"
 )
 
-// UserRoutes는 /users 관련 경로들을 설정합니다.
-func UserRoutes() *mux.Router {
-    router := mux.NewRouter()
+func UserRoutes(router *mux.Router) {
+    router.HandleFunc("/api/user/profile", profileHandler).Methods("GET")
+}
 
-    // // /users/info 경로
-    // router.HandleFunc("/api/auth/info", controllers.GetUserInfo).Methods("GET")
-
-    // // /users/{id} 경로
-    // router.HandleFunc("/api/auth/{id}", controllers.GetUserByID).Methods("GET")
-
-    return router
+func profileHandler(w http.ResponseWriter, r *http.Request) {
+    w.Write([]byte("User profile endpoint"))
 }

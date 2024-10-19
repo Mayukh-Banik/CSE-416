@@ -104,25 +104,13 @@ const MiningPage: React.FC = () => {
 
     const handleStopMining = async () => {
         try {
-<<<<<<< HEAD
-=======
             console.log("Attempting to stop mining...");
->>>>>>> origin/dev
             const response = await fetch(`${API_BASE_URL}/api/stop-mining`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
             });
-<<<<<<< HEAD
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || "Failed to stop mining");
-            }
-
-            const data: MiningStatus = await response.json();
-=======
     
             if (!response.ok) {
                 const errorData = await response.json();
@@ -132,26 +120,19 @@ const MiningPage: React.FC = () => {
     
             const data: MiningStatus = await response.json();
             console.log("Mining stopped successfully:", data);
->>>>>>> origin/dev
             setSuccess("Mining stopped");
             setMiningStatus(data);
             setIsMining(data.isMining);
         } catch (error: unknown) {
             if (error instanceof Error) {
-<<<<<<< HEAD
-=======
                 console.error("Error in handleStopMining:", error.message);
->>>>>>> origin/dev
                 setError(error.message);
             } else {
                 setError("An unknown error occurred.");
             }
         }
     };
-<<<<<<< HEAD
-=======
     
->>>>>>> origin/dev
 
     const handleCloseSnackbar = () => {
         setError(null);
@@ -251,11 +232,7 @@ const MiningPage: React.FC = () => {
                 </Grid>
 
                 {/* feedback */}
-<<<<<<< HEAD
-                {/* <Snackbar
-=======
                 <Snackbar
->>>>>>> origin/dev
                     open={!!error}
                     autoHideDuration={6000}
                     onClose={handleCloseSnackbar}
@@ -275,11 +252,7 @@ const MiningPage: React.FC = () => {
                     <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: "100%" }}>
                         {success}
                     </Alert>
-<<<<<<< HEAD
-                </Snackbar> */}
-=======
                 </Snackbar>
->>>>>>> origin/dev
             </MiningContainer>
         </Box>
     );

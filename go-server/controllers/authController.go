@@ -12,6 +12,8 @@ import (
 func Signup(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
 
+	log.Println("Signup request received")
+
     // Call the wallet service to generate a key pair
     walletResponse, err := services.GenerateWallet()
     if err != nil {
@@ -47,7 +49,7 @@ func RequestChallenge(w http.ResponseWriter, r *http.Request) {
 }
 
 // VerifyLogin handles the login process by verifying the signature
-func VerifyLogin(w http.ResponseWriter, r *http.Request) {
+func VerifyChallenge(w http.ResponseWriter, r *http.Request) {
     var challengeResponse models.ChallengeResponse
     json.NewDecoder(r.Body).Decode(&challengeResponse)
 
