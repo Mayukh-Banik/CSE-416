@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, CssBaseline, Drawer, List, ListItem, ListItemText,
   ListItemIcon, Toolbar, Typography, TextField, Divider
@@ -57,13 +57,16 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 const Sidebar: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation(); // To track the current route
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearchKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter') {
         navigate(`/search-page?q=${searchQuery}`); // Include search query in the URL
     }
-};
+  };
+
+  const isActive = (path: string) => location.pathname === path; // Check if the current route matches the path
 
   const handleFiles = async () => navigate('/files');
   const handleWallet = async () => navigate('/wallet');
@@ -77,17 +80,38 @@ const Sidebar: React.FC = () => {
   const drawer = (
     <div>
       <List>
-        <ListItem onClick={handleMarket} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+        <ListItem
+          onClick={handleMarket}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/market') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
           <ListItemIcon><StoreIcon /></ListItemIcon>
           <ListItemText primary="Market" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
-        <ListItem onClick={handleFiles} sx={{cursor:"pointer", "&:hover": {backgroundColor: 'rgba(0, 0, 0, 0.08)', },}}>
-          <ListItemIcon><FileCopyIcon/></ListItemIcon>
+        <ListItem
+          onClick={handleFiles}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/files') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <ListItemIcon><FileCopyIcon /></ListItemIcon>
           <ListItemText primary="View/Upload Files" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
-        <ListItem onClick={handleMining} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+        <ListItem
+          onClick={handleMining}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/mining') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
           <ListItemIcon>
             <img
               src={`${process.env.PUBLIC_URL}/pickaxe.png`}
@@ -98,27 +122,54 @@ const Sidebar: React.FC = () => {
           <ListItemText primary="Mining" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
-        <ListItem onClick={handleAccount} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+        <ListItem
+          onClick={handleAccount}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/account/1') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
           <ListItemIcon><AccountCircleIcon /></ListItemIcon>
           <ListItemText primary="Account" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
-        <ListItem onClick={handleGlobalTransactions} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+        <ListItem
+          onClick={handleGlobalTransactions}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/global-transactions') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
           <ListItemIcon><AccountCircleIcon /></ListItemIcon>
           <ListItemText primary="Global Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
-        <ListItem onClick={handleProxy} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
-          <ListItemIcon>
-            <SecurityIcon />
-          </ListItemIcon>
+        <ListItem
+          onClick={handleProxy}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/proxy') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <ListItemIcon><SecurityIcon /></ListItemIcon>
           <ListItemText primary="Proxy" />
         </ListItem>
 
-        <ListItem onClick={handleSettings} sx={{ cursor: "pointer", "&:hover": { backgroundColor: 'rgba(0, 0, 0, 0.08)', }, }}>
+        <ListItem
+          onClick={handleSettings}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/settings') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
           <ListItemIcon><SettingsIcon /></ListItemIcon>
           <ListItemText primary="Settings" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
+
         <Divider />
       </List>
     </div>
@@ -176,7 +227,7 @@ const Sidebar: React.FC = () => {
         <DrawerHeader>
           <img src={`${process.env.PUBLIC_URL}/squidcoin.png`} alt="Squid Icon" width="30" />
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1, display: { xs: 'none', sm: 'block' }}}>
-            SquidNet
+            Squid Coin
           </Typography>
         </DrawerHeader>
         <Divider />
