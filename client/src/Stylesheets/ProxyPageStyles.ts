@@ -1,6 +1,7 @@
 import { makeStyles } from '@mui/styles';
-import { Theme } from '@mui/material/styles'; // Import Theme
-
+import { Theme } from '@mui/material/styles';
+const drawerWidth = 300;
+const collapsedDrawerWidth = 100;
 const useProxyHostsStyles = makeStyles((theme: Theme) => ({
   container: {
     padding: '20px',
@@ -46,8 +47,9 @@ const useProxyHostsStyles = makeStyles((theme: Theme) => ({
     height: '10px',
     borderRadius: '50%',
     marginRight: '5px',
-  },buttonContainer: {
-    margin: '20px 0'
+  },
+  buttonContainer: {
+    margin: '20px 0',
   },
   form: {
     display: 'flex',
@@ -62,7 +64,30 @@ const useProxyHostsStyles = makeStyles((theme: Theme) => ({
     cursor: 'pointer',
     border: 'none',
   },
-  
+  proxyTable: {
+    marginTop: 2,
+  },
+  proxyButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 1,
+  },
+  historyContainer: {
+    marginTop: 2,
+  },
+  historyTable: {
+    marginTop: 2,
+  },
+  boxContainer: {
+    padding: '16px', 
+    marginTop: '70px',
+    marginLeft: `${drawerWidth}px`,
+    transition: 'margin-left 0.3s ease',
+    [theme.breakpoints.down('sm')]: {
+      marginLeft: `${collapsedDrawerWidth}px`,
+    },
+  },
 }));
 
 export default useProxyHostsStyles;
