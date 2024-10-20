@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination, Paper } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import Sidebar from './Sidebar';
 import { useTheme } from '@mui/material/styles';
 
 export interface IFile {
   fileName: string;
   hash: string;
-  reputation: string;
+  reputation: number;
   fileSize: number; // in bytes
   createdAt: Date;
+  providers: IProvider[];
+}
+
+// adjust model schema to figure out how to connect different hosts and fees to the same file 
+export interface IProvider {
+  providerId: string;
+  providerName: string;
+  fee: number;
 }
 
 const drawerWidth = 300;
@@ -16,31 +24,63 @@ const collapsedDrawerWidth = 100;
 
 const MarketplacePage: React.FC = () => {
   const theme = useTheme();
-  //dummy data from chat
+  
   const [files, setFiles] = useState<IFile[]>([
-    { fileName: 'Vacation_Snapshot.png', hash: 'img001', reputation: 'High', fileSize: 2048000, createdAt: new Date('2023-09-15') },
-    { fileName: 'Project_Proposal.pdf', hash: 'doc002', reputation: 'Medium', fileSize: 512000, createdAt: new Date('2023-08-10') },
-    { fileName: 'Family_Photo.jpg', hash: 'img003', reputation: 'High', fileSize: 1500000, createdAt: new Date('2023-07-22') },
-    { fileName: 'Recipe_Book.pdf', hash: 'doc004', reputation: 'Low', fileSize: 1000000, createdAt: new Date('2023-10-01') },
-    { fileName: 'Nature_Wallpaper.jpg', hash: 'img005', reputation: 'High', fileSize: 2500000, createdAt: new Date('2023-06-05') },
-    { fileName: 'User_Manual.png', hash: 'img006', reputation: 'Medium', fileSize: 350000, createdAt: new Date('2023-05-14') },
-    { fileName: 'Presentation_Slides.pptx', hash: 'doc007', reputation: 'Medium', fileSize: 700000, createdAt: new Date('2023-09-20') },
-    { fileName: 'Financial_Report.pdf', hash: 'doc008', reputation: 'High', fileSize: 800000, createdAt: new Date('2023-10-05') },
-    { fileName: 'Tech_Article.jpg', hash: 'img009', reputation: 'Low', fileSize: 600000, createdAt: new Date('2023-04-30') },
-    { fileName: 'Game_Screenshots.png', hash: 'img010', reputation: 'Medium', fileSize: 1200000, createdAt: new Date('2023-09-30') },
+    {
+      fileName: 'Vacation_Snapshot.png',
+      hash: 'img001',
+      reputation: 4,
+      fileSize: 2048000,
+      createdAt: new Date('2023-09-15'),
+      providers: [
+        { providerId: '123', providerName: 'John', fee: 0.2 },
+        { providerId: '124', providerName: 'Alice', fee: 0.5 },
+      ],
+    },
+    {
+      fileName: 'Project_Proposal.pdf',
+      hash: 'doc002',
+      reputation: 5,
+      fileSize: 512000,
+      createdAt: new Date('2023-08-10'),
+      providers: [
+        { providerId: '125', providerName: 'Bob', fee: 1.0 },
+      ],
+    },
+    {
+      fileName: 'Family_Photo.jpg',
+      hash: 'img003',
+      reputation: 3,
+      fileSize: 1500000,
+      createdAt: new Date('2023-07-22'),
+      providers: [{ providerId: '127', providerName: 'Jim', fee: 0.4 }],
+    },
   ]);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [selectedFile, setSelectedFile] = useState<IFile | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const [providers, setProviders] = useState<IProvider[]>([
+    {providerId: '123', providerName: 'John', fee: 0.2},
+    {providerId: '127', providerName: 'Bob', fee: 1.2},
+  ]);
 
   const filteredFiles = files.filter(file => 
     file.fileName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDownloadRequest = (file: IFile) => {
-    //add implementation later
-    console.log(`Requesting download for: ${file.fileName}`);
+    setSelectedFile(file);
+    setOpen(true); // Open the modal for provider selection
+  };
+
+  const handleProviderSelect = (provider: string) => {
+    console.log(`Selected provider: ${provider} for file: ${selectedFile?.fileName}`);
+    // Implement actual download logic here
+    setOpen(false); // Close the modal after selecting a provider
   };
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -119,6 +159,32 @@ const MarketplacePage: React.FC = () => {
         rowsPerPageOptions={[5, 10, 25]}
         sx={{ marginTop: 2 }}
       />
+
+      <Dialog open={open} onClose={() => setOpen(false)}>
+        <DialogTitle>Select a Provider for {selectedFile?.fileName}</DialogTitle>
+        <DialogContent>
+          {selectedFile?.providers.length ? (
+            selectedFile.providers.map((provider) => (
+              <Button
+                key={provider.providerId}
+                variant="outlined"
+                onClick={() => handleProviderSelect(provider.providerName)}
+                sx={{ margin: 1, display: 'flex', justifyContent: 'space-between', width: '100%' }}
+              >
+                <span>{provider.providerName}</span>
+                <span>{provider.fee} ORC/MB</span>
+              </Button>
+            ))
+          ) : (
+            <Typography>No providers available for this file.</Typography>  // Message if no providers
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+
     </Box>
   );
 };
