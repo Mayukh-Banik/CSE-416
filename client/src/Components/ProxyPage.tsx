@@ -5,6 +5,7 @@ import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRo
 import { useTheme } from '@mui/material/styles';
 
 interface ProxyHost {
+  name: string;
   access: string;
   location: string;
   logs: string[];
@@ -16,8 +17,6 @@ interface ProxyHost {
   price: string;
 }
 
-const drawerWidth = 300;
-const collapsedDrawerWidth = 100;
 
 const ProxyHosts: React.FC = () => {
   const styles = useProxyHostsStyles();
@@ -25,6 +24,7 @@ const ProxyHosts: React.FC = () => {
   
   const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([
     {
+      name:'p1',
       access: 'Public',
       location: 'New York, USA',
       logs: ['Log entry 1', 'Log entry 2'],
@@ -34,6 +34,7 @@ const ProxyHosts: React.FC = () => {
       price: 'Free',
     },
     {
+      name:'p2',
       access: 'Public',
       location: 'London, UK',
       logs: ['Log entry 1', 'Log entry 2'],
@@ -43,6 +44,7 @@ const ProxyHosts: React.FC = () => {
       price: 'Free',
     },
     {
+      name:'private1',
       access: 'Private',
       location: 'Berlin, Germany',
       logs: ['Log entry 1', 'Log entry 2'],
@@ -53,20 +55,22 @@ const ProxyHosts: React.FC = () => {
     },
   ]);
 
+  //dummy ip address, tentative to change
   const [currentIP, setCurrentIP] = useState<string>('192.168.0.1');
   const [connectedProxy, setConnectedProxy] = useState<ProxyHost | null>(null);
 
   // Dummy history
-  const [proxyHistory, setProxyHistory] = useState<{ location: string; timestamp: string }[]>([
-    { location: 'New York, USA', timestamp: '2024-10-15 10:00:00' },
-    { location: 'London, UK', timestamp: '2024-10-14 14:30:00' },
+  const [proxyHistory, setProxyHistory] = useState<{ name: string, location: string; timestamp: string }[]>([
+    { name:'p1',location: 'New York, USA', timestamp: '2024-10-15 10:00:00' },
+    { name:'priavte1',location: 'London, UK', timestamp: '2024-10-14 14:30:00' },
   ]);
 
   const [showHistoryOnly, setShowHistoryOnly] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
 
   const [newProxy, setNewProxy] = useState<ProxyHost>({
-    access: 'Private',
+    name:'',
+    access:'',
     location: '',
     logs: [],
     statistics: { uptime: '' },
@@ -85,7 +89,7 @@ const ProxyHosts: React.FC = () => {
     setConnectedProxy(host);
 
     // Update proxy history
-    const newHistoryEntry = { location: host.location, timestamp: new Date().toLocaleString() };
+    const newHistoryEntry = { name: host.name,location: host.location, timestamp: new Date().toLocaleString() };
     setProxyHistory([...proxyHistory, newHistoryEntry]);
 
     alert(`Connected to ${host.location}`);
@@ -101,7 +105,8 @@ const ProxyHosts: React.FC = () => {
 
     // Reset new proxy fields
     setNewProxy({
-      access: 'Private',
+      name:'',
+      access: '',
       location: '',
       logs: [],
       statistics: { uptime: '' },
@@ -138,21 +143,11 @@ const ProxyHosts: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <Box
-        sx={{
-          padding: 2,
-          marginTop: '70px',
-          marginLeft: `${drawerWidth}px`,
-          transition: 'margin-left 0.3s ease',
-          [theme.breakpoints.down('sm')]: {
-            marginLeft: `${collapsedDrawerWidth}px`,
-          },
-        }}
-      >
+      <Box className={styles.boxContainer}>
         <Sidebar />
         <Box sx={{ marginTop: 2 }}>
           <Typography variant="h4">Proxy</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box className={styles.header}>
             <Typography variant="h6">Your Current IP: {currentIP}</Typography>
             {/* Show Proxy History Button */}
             {!showHistoryOnly && (
@@ -162,15 +157,16 @@ const ProxyHosts: React.FC = () => {
             )}
           </Box>
           <br />
-
+          {/* Show the history*/}
           {showHistoryOnly ? (
             <>
-              <Box sx={{ marginTop: 2 }}>
+              <Box className={styles.historyContainer}>
                 <Typography variant="h5">Proxy Connection History</Typography>
-                <TableContainer>
+                <TableContainer className={styles.historyTable}>
                   <Table>
                     <TableHead>
                       <TableRow>
+                      <TableCell>Name</TableCell>
                         <TableCell>Location</TableCell>
                         <TableCell>Connected At</TableCell>
                       </TableRow>
@@ -178,8 +174,20 @@ const ProxyHosts: React.FC = () => {
                     <TableBody>
                       {proxyHistory.map((entry, index) => (
                         <TableRow key={index}>
+                          <TableCell>{entry.name}</TableCell>
                           <TableCell>{entry.location}</TableCell>
                           <TableCell>{entry.timestamp}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="contained"
+                              onClick={() => {
+                                const host = proxyHosts.find(h => h.location === entry.location);
+                                if (host) handleConnect(host);
+                              }}
+                             >
+                              Connect
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -192,8 +200,8 @@ const ProxyHosts: React.FC = () => {
             </>
           ) : (
             <>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 1 }}>
-                {/* Add Yourself as Proxy Button */}
+              <Box className={styles.proxyButton}>
+                {/* Add Yourself as Proxy  */}
                 <Button variant="contained" onClick={() => setShowForm(prev => !prev)}>
                   {showForm ? 'Hide Form' : 'Add Yourself as Proxy'}
                 </Button>
@@ -207,7 +215,7 @@ const ProxyHosts: React.FC = () => {
 
               {/* Expandable Form Section */}
               {showForm && (
-                <Box sx={{ marginTop: 1 }}>
+                <Box sx={{ marginTop: 1 }} className={styles.form}>
                   <Typography variant="h6">Fill in your proxy details</Typography>
                   <Box sx={{ display: 'flex', gap: 2 }}>
                     <TextField
@@ -236,15 +244,16 @@ const ProxyHosts: React.FC = () => {
                       value={newProxy.bandwidth}
                       onChange={(e) => setNewProxy({ ...newProxy, bandwidth: e.target.value })}
                     />
-                    <Button variant="contained" onClick={handleAddProxy}>Add Proxy</Button>
+                    <Button variant="contained" className={styles.submitButton} onClick={handleAddProxy}>Add Proxy</Button>
                   </Box>
                 </Box>
               )}
 
-              <TableContainer>
+              <TableContainer className={styles.proxyTable}>
                 <Table className={styles.table}>
                   <TableHead>
                     <TableRow>
+                    <TableCell>Name</TableCell>
                       <TableCell>Access</TableCell>
                       <TableCell>Location</TableCell>
                       <TableCell>Price</TableCell>
@@ -257,6 +266,7 @@ const ProxyHosts: React.FC = () => {
                   <TableBody>
                     {proxyHosts.map((host, index) => (
                       <TableRow key={index}>
+                        <TableCell>{host.name}</TableCell>
                         <TableCell>{host.access}</TableCell>
                         <TableCell>{host.location}</TableCell>
                         <TableCell>{host.price}</TableCell>
