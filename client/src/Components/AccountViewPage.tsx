@@ -11,50 +11,76 @@ import {
   Button,
   Paper,
 } from "@mui/material";
-import Sidebar from "./Sidebar"; 
-import { useTheme } from '@mui/material/styles';
+import Sidebar from "./Sidebar";
+import { useTheme } from "@mui/material/styles";
 
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
 const AccountViewPage: React.FC = () => {
   const theme = useTheme();
-  
-  // Dummy account data
-  const accountDetails = {
-    name: "john_doe",
-    reputation: 150, 
-    balance: 1000.50, 
-  };
+
+  // Initial account data
+  const [accountDetails, setAccountDetails] = useState({
+    walletId: "gen-public-key-123",
+    totalVotes: 10, // Starting with 10 votes
+    totalScore: 50,  // Starting with 10 votes, all 5 stars (10 * 5 = 50)
+    balance: 100,
+  });
 
   // Dummy file data
   const [files, setFiles] = useState([
-    { name: "file1.txt", size: 15, date: "2024-10-01", rating: 0 },
-    { name: "file2.txt", size: 30, date: "2024-10-02", rating: 0 },
+    { name: "file1.txt", size: 15, date: "2024-10-01", rating: 0, hasVoted: false },
+    { name: "file2.txt", size: 30, date: "2024-10-02", rating: 0, hasVoted: false },
   ]);
 
-  // Functions to handle upvote and downvote
-  const handleUpvote = (index: number) => {
-    const newFiles = [...files];
-    newFiles[index].rating += 1;
-    setFiles(newFiles);
+  // Function to calculate reputation out of 5 stars
+  const calculateReputation = () => {
+    return (accountDetails.totalScore / accountDetails.totalVotes).toFixed(2); // Round to 2 decimal points
   };
 
+  // Function to handle upvote (equivalent to a 5-star vote)
+  const handleUpvote = (index: number) => {
+    const newFiles = [...files];
+    if (!newFiles[index].hasVoted) {
+      newFiles[index].rating += 5;
+      newFiles[index].hasVoted = true;
+      setFiles(newFiles);
+
+      // Add 5 stars to the total score and increase vote count by 1
+      setAccountDetails((prevAccountDetails) => ({
+        ...prevAccountDetails,
+        totalVotes: prevAccountDetails.totalVotes + 1,
+        totalScore: prevAccountDetails.totalScore + 5,
+      }));
+    }
+  };
+
+  // Function to handle downvote (equivalent to a 0-star vote)
   const handleDownvote = (index: number) => {
     const newFiles = [...files];
-    newFiles[index].rating -= 1;
-    setFiles(newFiles);
+    if (!newFiles[index].hasVoted) {
+      newFiles[index].rating += 0; // No change in rating for a downvote
+      newFiles[index].hasVoted = true;
+      setFiles(newFiles);
+
+      // Add 0 stars to the total score and increase vote count by 1
+      setAccountDetails((prevAccountDetails) => ({
+        ...prevAccountDetails,
+        totalVotes: prevAccountDetails.totalVotes + 1,
+      }));
+    }
   };
 
   return (
     <Box
       sx={{
         padding: 2,
-        marginTop: '70px',
-        marginLeft: `${drawerWidth}px`, // Default expanded margin
-        transition: 'margin-left 0.3s ease', // Smooth transition
-        [theme.breakpoints.down('sm')]: {
-          marginLeft: `${collapsedDrawerWidth}px`, // Adjust left margin for small screens
+        marginTop: "70px",
+        marginLeft: `${drawerWidth}px`,
+        transition: "margin-left 0.3s ease",
+        [theme.breakpoints.down("sm")]: {
+          marginLeft: `${collapsedDrawerWidth}px`,
         },
       }}
     >
@@ -66,16 +92,18 @@ const AccountViewPage: React.FC = () => {
 
         {/* Account details */}
         <Box sx={{ mt: 2 }}>
-          <Typography variant="h6">Account Name:</Typography>
-          <Typography variant="body1">{accountDetails.name}</Typography>
+          <Typography variant="h6">Wallet Id:</Typography>
+          <Typography variant="body1">{accountDetails.walletId}</Typography>
           <Divider sx={{ my: 2 }} />
 
-          <Typography variant="h6">Reputation:</Typography>
-          <Typography variant="body1">{accountDetails.reputation}</Typography>
+          <Typography variant="h6">Reputation (out of 5 stars):</Typography>
+          <Typography variant="body1">{calculateReputation()} / 5</Typography>
           <Divider sx={{ my: 2 }} />
 
           <Typography variant="h6">Account Balance:</Typography>
-          <Typography variant="body1">${accountDetails.balance.toFixed(2)}</Typography>
+          <Typography variant="body1">
+            {accountDetails.balance.toFixed(2)} coins
+          </Typography>
           <Divider sx={{ my: 2 }} />
         </Box>
 
@@ -102,8 +130,18 @@ const AccountViewPage: React.FC = () => {
                   <TableCell>{file.date}</TableCell>
                   <TableCell>{file.rating}</TableCell>
                   <TableCell>
-                    <Button onClick={() => handleUpvote(index)}>Upvote</Button>
-                    <Button onClick={() => handleDownvote(index)}>Downvote</Button>
+                    <Button
+                      onClick={() => handleUpvote(index)}
+                      disabled={file.hasVoted} // Disable button if already voted
+                    >
+                      Upvote
+                    </Button>
+                    <Button
+                      onClick={() => handleDownvote(index)}
+                      disabled={file.hasVoted} // Disable button if already voted
+                    >
+                      Downvote
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
