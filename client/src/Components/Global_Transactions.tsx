@@ -24,9 +24,8 @@ interface Transaction {
 }
 
 const initialData: Transaction[] = [
-  { date: '2024-10-18', time: '12:30 PM', fileName: 'file1.txt', sender: 'john_doe', senderAddress: 'john_doe', receiver: 'john_doe', receiverAddress: 'john_doe', amount: '$100', status: 'Completed' },
-  { date: '2024-10-17', time: '11:00 AM', fileName: 'file2.txt', sender: 'john_doe', senderAddress: 'john_doe', receiver: 'john_doe', receiverAddress: 'john_doe', amount: '$200', status: 'Pending' },
-  // Add more dummy data here
+  { date: '2024-10-18', time: '12:30 PM', fileName: 'file1.txt', sender: 'john_doe', senderAddress: 'john_doe', receiver: 'john_doe', receiverAddress: 'john_doe', amount: '1.2 ORC', status: 'Completed' },
+  { date: '2024-10-17', time: '11:00 AM', fileName: 'file2.txt', sender: 'john_doe', senderAddress: 'john_doe', receiver: 'john_doe', receiverAddress: 'john_doe', amount: '0.4 ORC', status: 'Pending' },
 ];
 
 const GlobalTransactions = () => {
