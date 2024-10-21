@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Box, Typography, Container, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, TableContainer, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
 import { QRCodeCanvas } from "qrcode.react";
-import Sidebar from "./Sidebar"; // Ensure this is imported correctly
+import Sidebar from "./Sidebar";
 import { useTheme } from '@mui/material/styles';
 import { Link } from "react-router-dom";
 
@@ -25,7 +25,6 @@ interface WalletDetailsProps {
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
-// Sorting helper function
 const sortTransactions = (transactions: Transaction[], orderBy: keyof Transaction, order: 'asc' | 'desc') => {
     return transactions.sort((a, b) => {
         if (order === 'asc') {
@@ -49,14 +48,12 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [isDialogOpen, setDialogOpen] = useState(false);
 
-    // Handle sorting click
     const handleSort = (property: keyof Transaction) => {
         const isAsc = orderBy === property && order === 'asc';
         setOrder(isAsc ? 'desc' : 'asc');
         setOrderBy(property);
     };
 
-    // Handle transaction click (open dialog)
     const handleTransactionClick = (transaction: Transaction) => {
         setSelectedTransaction(transaction);
         setDialogOpen(true);
@@ -86,7 +83,6 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                     {walletLabel || 'Wallet Details'}
                 </Typography>
 
-                {/* Balance and Wallet Address */}
                 <Box
                     sx={{
                         display: 'flex',
@@ -97,7 +93,6 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                         gap: 2,
                     }}
                 >
-                    {/* Balance Box */}
                     <Box
                         sx={{
                             display: 'flex',
@@ -117,7 +112,6 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                         </Box>
                     </Box>
 
-                    {/* Wallet Address Box */}
                     <Box
                         sx={{
                             display: 'flex',
@@ -141,7 +135,6 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
 
                 <Typography variant="h6" sx={{ mt: 4 }}>Transaction History</Typography>
 
-                {/* Transaction Table */}
                 <TableContainer component={Paper}>
                     <Table>
                         <TableHead>
@@ -214,40 +207,38 @@ const WalletPage: React.FC<WalletDetailsProps> = ({
                     </Table>
                 </TableContainer>
 
-                {/* Dialog for Transaction Details */}
                 <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
                     <DialogTitle>Transaction Details</DialogTitle>
                     <DialogContent>
                         {selectedTransaction && (
-                        <Box>
-                            <Typography variant="body1">
-                                <strong>ID:</strong> {selectedTransaction.id} <br/>
-                                <strong>Sender:</strong> {selectedTransaction.sender} <br/>
-                                <strong>Receiver:</strong> {selectedTransaction.receiver} <br/>
-                                <strong>Amount:</strong> {selectedTransaction.amount} <br/>
-                                <strong>Date:</strong>{" "} 
-                                    {new Date(selectedTransaction.timestamp).toLocaleString()} <br/>
-                                <strong>Status:</strong> {selectedTransaction.status} <br/>
-                            </Typography>
-                            
-                            {/* Center the buttons in the dialog */}
-                            <Box 
-                            sx={{ 
-                                display: "flex", 
-                                flexDirection: "column", 
-                                alignItems: "center", 
-                                marginTop: "20px" 
-                            }}
-                            >
-                                <Button
-                                    variant="contained"
-                                    component={Link}
-                                    to={`/fileview/${selectedTransaction.id}`}
+                            <Box>
+                                <Typography variant="body1">
+                                    <strong>ID:</strong> {selectedTransaction.id} <br />
+                                    <strong>Sender:</strong> {selectedTransaction.sender} <br />
+                                    <strong>Receiver:</strong> {selectedTransaction.receiver} <br />
+                                    <strong>Amount:</strong> {selectedTransaction.amount} <br />
+                                    <strong>Date:</strong>{" "}
+                                    {new Date(selectedTransaction.timestamp).toLocaleString()} <br />
+                                    <strong>Status:</strong> {selectedTransaction.status} <br />
+                                </Typography>
+
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        marginTop: "20px"
+                                    }}
                                 >
-                                    View File
-                                </Button>
+                                    <Button
+                                        variant="contained"
+                                        component={Link}
+                                        to={`/fileview/${selectedTransaction.id}`}
+                                    >
+                                        View File
+                                    </Button>
+                                </Box>
                             </Box>
-                        </Box>
                         )}
                     </DialogContent>
                     <DialogActions sx={{ marginTop: "-10px", justifyContent: "center" }}>

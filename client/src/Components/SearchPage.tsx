@@ -19,7 +19,6 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useTheme } from '@mui/material/styles';
 
-// Define types for Account and File
 interface Account {
     id: number;
     name: string;
@@ -37,11 +36,9 @@ const SearchPage: React.FC = () => {
     const theme = useTheme();
     const location = useLocation();
     
-    // Extract search query from URL
     const queryParams = new URLSearchParams(location.search);
-    const searchQuery = queryParams.get("q"); // Assuming the query parameter is 'q'
+    const searchQuery = queryParams.get("q"); 
 
-    // Old dummy data for testing
     const accountsData: Account[] = [
         { id: 1, name: "john_doe" },
         { id: 2, name: "jane_smith" },
@@ -53,7 +50,6 @@ const SearchPage: React.FC = () => {
         { id: 2, name: "file2.txt" },
     ];
 
-    // Filter accounts and files based on search query
     const filteredAccounts = accountsData.filter(account =>
         account.name.toLowerCase().includes(searchQuery?.toLowerCase() || '')
     );
@@ -67,10 +63,10 @@ const SearchPage: React.FC = () => {
             sx={{
                 padding: 2,
                 marginTop: '70px',
-                marginLeft: `${drawerWidth}px`, // Default expanded margin
-                transition: 'margin-left 0.3s ease', // Smooth transition
+                marginLeft: `${drawerWidth}px`, 
+                transition: 'margin-left 0.3s ease', 
                 [theme.breakpoints.down('sm')]: {
-                    marginLeft: `${collapsedDrawerWidth}px`, // Adjust left margin for small screens
+                    marginLeft: `${collapsedDrawerWidth}px`, 
                 },
             }}
         >
@@ -105,7 +101,7 @@ const SearchPage: React.FC = () => {
                                                 <TableCell>
                                                     <Link 
                                                         to={`/account/${account.name}`} 
-                                                        style={{ textDecoration: 'none', color: 'blue' }} // Blue color for clickable links
+                                                        style={{ textDecoration: 'none', color: 'blue' }} 
                                                     >
                                                         {account.name}
                                                     </Link>
@@ -125,7 +121,6 @@ const SearchPage: React.FC = () => {
                     </AccordionDetails>
                 </Accordion>
 
-                {/* Files Table */}
                 <Accordion>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Typography variant="h6">Files</Typography>

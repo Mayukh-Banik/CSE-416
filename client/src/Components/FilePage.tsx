@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import FilePageStyles from '../Stylesheets/FilePageStyle';
 
+// declutter this stuff, idk why 3 file pages exist
+
 const FilePage = () => {
-    const classes = FilePageStyles(); // Custom styles
+    const classes = FilePageStyles();
     const [files, setFiles] = useState<File[]>([]); 
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const newFiles = event.target.files;
-
+        // make this more clear later
         if (newFiles) {
-            // Convert the FileList to an array and merge it with the existing files
             setFiles((prevFiles) => [
                 ...prevFiles,
                 ...Array.from(newFiles)

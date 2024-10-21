@@ -24,7 +24,7 @@ const AccountViewPage: React.FC = () => {
   const [accountDetails, setAccountDetails] = useState({
     walletId: "gen-public-key-123",
     totalVotes: 10, // Starting with 10 votes
-    totalScore: 50,  // Starting with 10 votes, all 5 stars (10 * 5 = 50)
+    totalScore: 50,  // Starting with 10 votes, all 5 stars
     balance: 100,
   });
 
@@ -36,10 +36,10 @@ const AccountViewPage: React.FC = () => {
 
   // Function to calculate reputation out of 5 stars
   const calculateReputation = () => {
-    return (accountDetails.totalScore / accountDetails.totalVotes).toFixed(2); // Round to 2 decimal points
+    return (accountDetails.totalScore / accountDetails.totalVotes); 
   };
 
-  // Function to handle upvote (equivalent to a 5-star vote)
+  // New 5 star vote
   const handleUpvote = (index: number) => {
     const newFiles = [...files];
     if (!newFiles[index].hasVoted) {
@@ -47,7 +47,7 @@ const AccountViewPage: React.FC = () => {
       newFiles[index].hasVoted = true;
       setFiles(newFiles);
 
-      // Add 5 stars to the total score and increase vote count by 1
+      // temp to be deleted
       setAccountDetails((prevAccountDetails) => ({
         ...prevAccountDetails,
         totalVotes: prevAccountDetails.totalVotes + 1,
@@ -56,15 +56,15 @@ const AccountViewPage: React.FC = () => {
     }
   };
 
-  // Function to handle downvote (equivalent to a 0-star vote)
+  // delete later
   const handleDownvote = (index: number) => {
     const newFiles = [...files];
     if (!newFiles[index].hasVoted) {
-      newFiles[index].rating += 0; // No change in rating for a downvote
+      newFiles[index].rating += 0; 
       newFiles[index].hasVoted = true;
       setFiles(newFiles);
 
-      // Add 0 stars to the total score and increase vote count by 1
+      // delete
       setAccountDetails((prevAccountDetails) => ({
         ...prevAccountDetails,
         totalVotes: prevAccountDetails.totalVotes + 1,
@@ -90,7 +90,6 @@ const AccountViewPage: React.FC = () => {
           Account Information
         </Typography>
 
-        {/* Account details */}
         <Box sx={{ mt: 2 }}>
           <Typography variant="h6">Wallet Id:</Typography>
           <Typography variant="body1">{accountDetails.walletId}</Typography>
@@ -107,7 +106,6 @@ const AccountViewPage: React.FC = () => {
           <Divider sx={{ my: 2 }} />
         </Box>
 
-        {/* Uploaded files table */}
         <Typography variant="h6" sx={{ mt: 3 }}>
           Uploaded Files
         </Typography>
@@ -130,15 +128,15 @@ const AccountViewPage: React.FC = () => {
                   <TableCell>{file.date}</TableCell>
                   <TableCell>{file.rating}</TableCell>
                   <TableCell>
-                    <Button
+                    <Button // rework buttons later
                       onClick={() => handleUpvote(index)}
-                      disabled={file.hasVoted} // Disable button if already voted
+                      disabled={file.hasVoted} 
                     >
                       Upvote
                     </Button>
                     <Button
                       onClick={() => handleDownvote(index)}
-                      disabled={file.hasVoted} // Disable button if already voted
+                      disabled={file.hasVoted} 
                     >
                       Downvote
                     </Button>

@@ -4,21 +4,21 @@ import {
   TableSortLabel, Typography, Button,
   Paper
 } from '@mui/material';
-import Sidebar from './Sidebar'; // Adjust the path as necessary
+import Sidebar from './Sidebar';
 import { styled, useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
-
+// reformat to use data sent back from the server
 interface Transaction {
   date: string;
   time: string;
   fileName: string;
   sender: string;
-  senderAddress: string; // New field for sender's address
+  senderAddress: string; 
   receiver: string;
-  receiverAddress: string; // New field for receiver's address
+  receiverAddress: string; 
   amount: string;
   status: string;
 }
@@ -26,7 +26,6 @@ interface Transaction {
 const initialData: Transaction[] = [
   { date: '2024-10-18', time: '12:30 PM', fileName: 'file1.txt', sender: 'john_doe', senderAddress: 'john_doe', receiver: 'john_doe', receiverAddress: 'john_doe', amount: '$100', status: 'Completed' },
   { date: '2024-10-17', time: '11:00 AM', fileName: 'file2.txt', sender: 'john_doe', senderAddress: 'john_doe', receiver: 'john_doe', receiverAddress: 'john_doe', amount: '$200', status: 'Pending' },
-  // Add more dummy data here
 ];
 
 const GlobalTransactions = () => {
@@ -51,13 +50,13 @@ const GlobalTransactions = () => {
   };
 
   const handleFileClick = (fileName: string) => {
-    navigate(`/fileview/${fileName}`); // Navigate to the file's page
+    navigate(`/fileview/${fileName}`);
   };
 
   const handleAccountClick = (address: string) => {
-    navigate(`/account/${address}`); // Navigate to the account page
+    navigate(`/account/${address}`); 
   };
-
+// make this an actual adjustable thing later
   return (
     <Box
       sx={{
@@ -71,8 +70,8 @@ const GlobalTransactions = () => {
       }}
     >
       <Sidebar />
-      {/* <Main> */}
-        {/* Header for Global Transactions */}
+      {}
+        {}
         <Typography variant="h4" component="h1" gutterBottom sx={{ textAlign: 'left', marginBottom: 4 }}>
           Global Transactions
         </Typography>

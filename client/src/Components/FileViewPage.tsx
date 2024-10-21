@@ -4,10 +4,12 @@ import { Box, Typography } from "@mui/material";
 import Sidebar from "./Sidebar";
 import { useTheme } from '@mui/material/styles';
 
+
+// gotta make this entire file removed later
 interface File {
   id: string;
   name: string;
-  size: number; // size in bytes
+  size: number; 
   uploadedAt: string;
   rating: number;
 }
@@ -20,7 +22,6 @@ const files: File[] = [
   { id: "tx009", name: "file009.docx", size: 204800, uploadedAt: "2024-10-05", rating: 5 },
   { id: "file1.txt", name: "file1.txt", size: 51200, uploadedAt: "2024-10-10", rating: 3 },
   { id: "file2.txt", name: "file2.txt", size: 76800, uploadedAt: "2024-10-12", rating: 4 },
-  // Add more files as needed...
 ];
 
 const FileViewPage: React.FC = () => {

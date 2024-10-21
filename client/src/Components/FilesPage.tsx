@@ -21,61 +21,62 @@ import {
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
 
-// File model
+// Reformat these files
+
+// dummy
 interface UploadedFile {
   isPublished: boolean | undefined;
   id: string; 
   name: string;
   size: number; 
-  description: string; // Add description field
-  hash: string; // Add hash field
-  fee?: number; // Add a fee property
+  description: string; 
+  hash: string; 
+  fee?: number; 
 }
-
+// move all functionality to backend this is annoying
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
 const FilesPage: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({}); // Track descriptions
-  const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({}); // Track hashes
+  const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({}); 
+  const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({}); 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
-  const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
-  const [currentFileId, setCurrentFileId] = useState<string | null>(null); // Track the file being published
-  const [fee, setFee] = useState<number | undefined>(undefined); // Fee value for publishing
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false); 
+  const [currentFileId, setCurrentFileId] = useState<string | null>(null);
+  const [fee, setFee] = useState<number | undefined>(undefined); 
   
   const theme = useTheme();
-
+  // goota make hash somewhere else
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
       const fileArray = Array.from(files);
       setSelectedFiles(prevSelectedFiles => [...prevSelectedFiles, ...fileArray]);
-      // Compute hashes for each file
       fileArray.forEach(file => computeSHA512(file));
     }
   };
 
   const handleUpload = async () => {
     try {
-      // Simulate file upload delay
+      // delete later
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Create uploaded file objects with descriptions and hashes
+      //metadata, make it less hackable later
       const newUploadedFiles: UploadedFile[] = selectedFiles.map((file) => ({
-        id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID
+        id: `${file.name}-${file.size}-${Date.now()}`, 
         name: file.name,
         size: file.size,
-        description: descriptions[file.name] || "", // Attach description
-        hash: fileHashes[file.name], // Attach the computed hash
+        description: descriptions[file.name] || "", 
+        hash: fileHashes[file.name], 
         isPublished: false,
       }));
 
       setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
       setSelectedFiles([]);
-      setDescriptions({}); // Reset descriptions after upload
-      setFileHashes({}); // Reset hashes after upload
+      setDescriptions({}); 
+      setFileHashes({}); 
       setNotification({ open: true, message: "Files uploaded successfully!", severity: "success" });
     } catch (error) {
       setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
@@ -138,7 +139,7 @@ const FilesPage: React.FC = () => {
     setPublishDialogOpen(false);
     setNotification({ open: true, message: "File published successfully!", severity: "success" });
   };
-
+// just redo all of this, can only be edited with chatgpt at this point
   return (
       <Box
         sx={{
@@ -204,11 +205,11 @@ const FilesPage: React.FC = () => {
                   <Box 
                     sx={{ 
                       display: 'flex', 
-                      flexDirection: 'column', // Align text and input fields vertically
+                      flexDirection: 'column',
                       width: '100%', 
                     }}
                   >
-                    {/* File details (name, size) */}
+                    {}
                     <ListItemText
                       primary={file.name}
                       secondary={
@@ -225,7 +226,7 @@ const FilesPage: React.FC = () => {
                     >
                       <DeleteIcon />
                     </IconButton>
-                    {/* Description input and hash display */}
+                    {}
                     
                     <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: 1 }}>
                       <TextField
@@ -283,7 +284,7 @@ const FilesPage: React.FC = () => {
         )}
       </Box>
 
-      {/* Publish Modal */}
+      {}
       <Dialog open={publishDialogOpen} onClose={() => setPublishDialogOpen(false)}>
         <DialogTitle>Set Download Fee</DialogTitle>
         <DialogContent>
@@ -309,7 +310,7 @@ const FilesPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Notification Snackbar */}
+      {}
       <Snackbar 
         open={notification.open} 
         autoHideDuration={6000} 
