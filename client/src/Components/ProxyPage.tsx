@@ -51,7 +51,7 @@ const ProxyHosts: React.FC = () => {
       statistics: { uptime: '95.5%' },
       bandwidth: '150 Mbps',
       isEnabled: false,
-      price: '$20',
+      price: '20 SQD',
     },
   ]);
 

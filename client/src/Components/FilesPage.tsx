@@ -208,24 +208,22 @@ const FilesPage: React.FC = () => {
                       width: '100%', 
                     }}
                   >
-                    {/* File details (name, size) */}
+                    {/* selected file details */}
                     <ListItemText
+                      sx={{
+                        width:'100%',
+                        whiteSpace: 'normal',  // wrap text
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                      }}
                       primary={file.name}
                       secondary={
                         <>
                           {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
-                          {`SHA-512 Hash: ${fileHashes[file.name] || "Computing..."}`}
+                          {`SHA-512 Hash: ${fileHashes[file.name] || "Computing..."}`}                       
                         </>
                       }  
                     />
-                    <IconButton 
-                      edge="end" 
-                      aria-label="delete" 
-                      onClick={() => handleDeleteFile(file.name)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                    {/* Description input and hash display */}
                     
                     <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: 1 }}>
                       <TextField
@@ -238,6 +236,14 @@ const FilesPage: React.FC = () => {
                       />
                     </Box>
                   </Box>
+                  <IconButton 
+                      edge="end" 
+                      aria-label="delete" 
+                      onClick={() => handleDeleteFile(file.name)}
+                      sx={{marginTop:15}}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
                 </ListItem>
               ))}
             </List>
@@ -258,9 +264,10 @@ const FilesPage: React.FC = () => {
                       <>
                         {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
                         {`Description: ${file.description}`} <br />
-                        {`SHA-512: ${file.hash}`}
-                      </>
-                    }                  />
+                        {`SHA-512: ${file.hash.slice(0, 10)}...${file.hash.slice(-10)}`}
+                        </>
+                    }                  
+                    />
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Typography variant="body2" component="span" sx={{ marginRight: 1 }}>
                       Publish
