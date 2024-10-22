@@ -5,7 +5,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// User 구조체는 사용자 정보를 정의합니다.
 type User struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"` // MongoDB에서 사용하는 ObjectID
 	Name      string             `bson:"name" json:"name"`

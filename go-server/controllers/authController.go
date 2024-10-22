@@ -2,32 +2,31 @@ package controllers
 
 import (
 	"encoding/json"
+	"go-server/models"
 	"go-server/services"
 	"log"
 	"net/http"
-	"go-server/models"
 )
 
 // Signup handles the signup request
 func Signup(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 
 	log.Println("Signup request received")
 
-    // Call the wallet service to generate a key pair
-    walletResponse, err := services.GenerateWallet()
-    if err != nil {
-        http.Error(w, "Error generating wallet", http.StatusInternalServerError)
-        return
-    }
+	// Call the wallet service to generate a key pair
+	walletResponse, err := services.GenerateWallet()
+	if err != nil {
+		http.Error(w, "Error generating wallet", http.StatusInternalServerError)
+		return
+	}
 
-    // Log success message
-    log.Printf("User %s created successfully", walletResponse.PublicKey)
+	// Log success message
+	log.Printf("User %s created successfully", walletResponse.PublicKey)
 
-    // Return the wallet response to the frontend
-    json.NewEncoder(w).Encode(walletResponse)
+	// Return the wallet response to the frontend
+	json.NewEncoder(w).Encode(walletResponse)
 }
-
 
 // Login handles the login process (to be implemented)
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -36,31 +35,65 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 // RequestChallenge handles the request for a login challenge
 func RequestChallenge(w http.ResponseWriter, r *http.Request) {
-    var challengeReq models.ChallengeRequest
-    json.NewDecoder(r.Body).Decode(&challengeReq)
+	var challengeReq models.ChallengeRequest
+	if err := json.NewDecoder(r.Body).Decode(&challengeReq); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
 
-    challenge, err := services.GenerateChallenge(challengeReq.PublicKey)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusUnauthorized)
+	// Find user by public key
+	user, err := services.FindUserByPublicKey(challengeReq.PublicKey)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	// Get existing challenge or generate a new one
+    challengeData, exists := services.GetChallenge(user.PublicKey)
+    if exists {
+        log.Printf("Returning existing challenge for publicKey: %s", user.PublicKey)
+        response := map[string]string{"challenge": challengeData.Challenge}
+        if err := json.NewEncoder(w).Encode(response); err != nil {
+            http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+            return
+        }
         return
     }
 
-    json.NewEncoder(w).Encode(map[string]string{"challenge": challenge})
+	// Generate a new challenge
+	challenge, err := services.GenerateChallenge()
+	if err != nil {
+		http.Error(w, "Error generating challenge", http.StatusInternalServerError)
+		return
+	}
+
+	// Store the challenge in memory
+	if err := services.StoreChallenge(user.PublicKey, challenge); err != nil {
+		http.Error(w, "Error storing challenge", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the challenge to the client
+	response := map[string]string{"challenge": challenge}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // VerifyLogin handles the login process by verifying the signature
 func VerifyChallenge(w http.ResponseWriter, r *http.Request) {
-    var challengeResponse models.ChallengeResponse
-    json.NewDecoder(r.Body).Decode(&challengeResponse)
+	var challengeResponse models.ChallengeResponse
+	json.NewDecoder(r.Body).Decode(&challengeResponse)
 
-    verified, err := services.VerifySignature(challengeResponse.UserID, challengeResponse.Signature)
-    if err != nil || !verified {
-        http.Error(w, `{"error": "Invalid signature. Login failed."}`, http.StatusUnauthorized)
-        return
-    }
+	verified, err := services.VerifySignature(challengeResponse.UserID, challengeResponse.Signature)
+	if err != nil || !verified {
+		http.Error(w, `{"error": "Invalid signature. Login failed."}`, http.StatusUnauthorized)
+		return
+	}
 
-    // Successfully authenticated
-    json.NewEncoder(w).Encode(map[string]string{"status": "login successful"})
+	// Successfully authenticated
+	json.NewEncoder(w).Encode(map[string]string{"status": "login successful"})
 }
 
 // LoginWithWalletID handles the login using only the walletId (public key)

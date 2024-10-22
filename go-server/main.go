@@ -2,103 +2,103 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
-	"github.com/btcsuite/btcd/rpcclient"
-	"github.com/joho/godotenv"
-	"github.com/rs/cors"
 	"go-server/routes"
 	"go-server/utils"
+
+	"go-server/services"
+
+	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
-// current mining status
-type MiningStatus struct {
-	MinedBlocks    int    `json:"minedBlocks"`
-	LastMinedBlock string `json:"lastMinedBlock"`
-	IsMining       bool   `json:"isMining"`
-}
+// // current mining status
+// type MiningStatus struct {
+// 	MinedBlocks    int    `json:"minedBlocks"`
+// 	LastMinedBlock string `json:"lastMinedBlock"`
+// 	IsMining       bool   `json:"isMining"`
+// }
 
-var (
-	miningStatus MiningStatus
-	client       *rpcclient.Client
-	mu           sync.Mutex
-)
+// var (
+// 	miningStatus MiningStatus
+// 	client       *rpcclient.Client
+// 	mu           sync.Mutex
+// )
 
-// fetch current mining status
-func getMiningStatus(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	defer mu.Unlock()
+// // fetch current mining status
+// func getMiningStatus(w http.ResponseWriter, r *http.Request) {
+// 	mu.Lock()
+// 	defer mu.Unlock()
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(miningStatus)
-}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(miningStatus)
+// }
 
-// begins mining process
-func startMining(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	defer mu.Unlock()
+// // begins mining process
+// func startMining(w http.ResponseWriter, r *http.Request) {
+// 	mu.Lock()
+// 	defer mu.Unlock()
 
-	if miningStatus.IsMining {
-		http.Error(w, "Mining is already in progress", http.StatusBadRequest)
-		return
-	}
+// 	if miningStatus.IsMining {
+// 		http.Error(w, "Mining is already in progress", http.StatusBadRequest)
+// 		return
+// 	}
 
-	miningStatus.IsMining = true
-	miningStatus.MinedBlocks = 0
-	miningStatus.LastMinedBlock = ""
-	go mine()
+// 	miningStatus.IsMining = true
+// 	miningStatus.MinedBlocks = 0
+// 	miningStatus.LastMinedBlock = ""
+// 	go mine()
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(miningStatus)
-}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(miningStatus)
+// }
 
-// stopMining handles POST requests to stop the mining process
-func stopMining(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	defer mu.Unlock()
+// // stopMining handles POST requests to stop the mining process
+// func stopMining(w http.ResponseWriter, r *http.Request) {
+// 	mu.Lock()
+// 	defer mu.Unlock()
 
-	if !miningStatus.IsMining {
-		http.Error(w, "Mining is not currently active", http.StatusBadRequest)
-		return
-	}
+// 	if !miningStatus.IsMining {
+// 		http.Error(w, "Mining is not currently active", http.StatusBadRequest)
+// 		return
+// 	}
 
-	miningStatus.IsMining = false
+// 	miningStatus.IsMining = false
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(miningStatus)
-}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(miningStatus)
+// }
 
 // mine simulates the mining process by incrementing mined blocks periodically
-func mine() {
-	for {
-		mu.Lock()
-		if !miningStatus.IsMining {
-			mu.Unlock()
-			return
-		}
+// func mine() {
+// 	for {
+// 		mu.Lock()
+// 		if !miningStatus.IsMining {
+// 			mu.Unlock()
+// 			return
+// 		}
 
-		// implement our own block generation
-		blockHashes, err := client.Generate(1)
-		if err != nil {
-			log.Printf("Failed to generate block: %v", err)
-			miningStatus.IsMining = false
-			mu.Unlock()
-			return
-		}
+// 		// implement our own block generation
+// 		blockHashes, err := client.Generate(1)
+// 		if err != nil {
+// 			log.Printf("Failed to generate block: %v", err)
+// 			miningStatus.IsMining = false
+// 			mu.Unlock()
+// 			return
+// 		}
 
-		miningStatus.MinedBlocks++
-		miningStatus.LastMinedBlock = blockHashes[0].String()
-		mu.Unlock()
+// 		miningStatus.MinedBlocks++
+// 		miningStatus.LastMinedBlock = blockHashes[0].String()
+// 		mu.Unlock()
 
-		// mining delay
-		time.Sleep(10 * time.Second)
-	}
-}
+// 		// mining delay
+// 		time.Sleep(10 * time.Second)
+// 	}
+// }
 
 func main() {
 	// set up btcd connection
@@ -122,11 +122,11 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 	// default mining status
-	miningStatus = MiningStatus{
-		MinedBlocks:    0,
-		LastMinedBlock: "",
-		IsMining:       false,
-	}
+	// miningStatus = MiningStatus{
+	// 	MinedBlocks:    0,
+	// 	LastMinedBlock: "",
+	// 	IsMining:       false,
+	// }
 
 	// Initialize MongoDB connection using the environment variable
 	MONGODB_URI := os.Getenv("MONGODB_URI")
@@ -139,6 +139,14 @@ func main() {
 	defer func() {
 		if err := utils.MongoClient.Disconnect(context.TODO()); err != nil {
 			log.Fatalf("Error disconnecting from MongoDB: %v", err)
+		}
+	}()
+
+	// Periodically clean up expired Challenges
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+			services.CleanupExpiredChallenges(time.Minute * 5)
 		}
 	}()
 
