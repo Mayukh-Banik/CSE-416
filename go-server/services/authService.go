@@ -40,21 +40,23 @@ func FindUserByPublicKey(publicKey string) (*models.User, error) {
 
 // GenerateChallenge generates a random challenge
 func GenerateChallenge() (string, error) {
-
 	challengeBytes := make([]byte, 16)
-	_, err := rand.Read(challengeBytes)
+	_, err := rand.Read(challengeBytes) // crypto/rand 사용
 	if err != nil {
 		log.Printf("Failed to generate challenge")
 		return "", errors.New("failed to generate challenge")
 	}
 
 	challenge := base64.StdEncoding.EncodeToString(challengeBytes)
+
+	// 생성된 챌린지를 로그로 출력
+	log.Printf("Generated challenge: %s", challenge)
+
 	return challenge, nil
 }
 
 // StoreChallenge stores the generated challenge in memory with creation time
 func StoreChallenge(publicKey, challenge string) error {
-
 	challengeStore[publicKey] = models.ChallengeData{
 		Challenge: challenge,
 		CreatedAt: time.Now(),
