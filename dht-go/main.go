@@ -31,7 +31,7 @@ import (
 )
 
 var (
-	node_id             = "SBU_Id" // give your SBU ID
+	node_id             = "114271046" // give your SBU ID
 	relay_node_addr     = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
 	bootstrap_node_addr = "/ip4/130.245.173.222/tcp/61000/p2p/12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE"
 	globalCtx           context.Context
@@ -47,6 +47,27 @@ func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {
 		return nil, fmt.Errorf("failed to generate private key: %w", err)
 	}
 	return privKey, nil
+}
+
+func setupDHT(ctx context.Context, h host.Host) *dht.IpfsDHT {
+	// Set up the DHT instance
+	kadDHT, err := dht.New(ctx, h, dht.Mode(dht.ModeClient))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Bootstrap the DHT (connect to other peers to join the DHT network)
+	err = kadDHT.Bootstrap(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Configure the DHT to use the custom validator - idk if this even goes here
+	kadDHT.Validator = record.NamespacedValidator{
+		"orcanet": &CustomValidator{}, // Add a custom validator for the "orcanet" namespace
+	}
+
+	return kadDHT
 }
 
 func createNode() (host.Host, *dht.IpfsDHT, error) {
