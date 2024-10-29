@@ -44,7 +44,7 @@ const MiningPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    const API_BASE_URL = "http://localhost:8080"; 
+    const API_BASE_URL = "http://localhost:8081"; 
 
     // check on mining status
     useEffect(() => {

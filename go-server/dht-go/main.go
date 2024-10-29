@@ -26,6 +26,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
+
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/multiformats/go-multiaddr"
@@ -292,6 +293,8 @@ func main() {
 
 	// Set up HTTP handlers
 	router := mux.NewRouter()
+
+	//file routes
 	router.HandleFunc("/upload", uploadFileHandler).Methods("POST")
 	router.HandleFunc("/publish", func(w http.ResponseWriter, r *http.Request) {
 		publishFileHandler(w, r, dht) // Pass the `dht` instance here

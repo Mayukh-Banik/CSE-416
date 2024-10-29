@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -101,59 +99,6 @@ func mine() {
 	}
 }
 
-// modularize later - just here for the demo
-
-// Define the structure for the file metadata
-type FileMetadata struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Size        int64  `json:"size"`
-	FileData    string `json:"file_data"`
-	Description string `json:"description"`
-	Hash        string `json:"hash"`
-}
-
-// Response structure for the upload response
-type UploadResponse struct {
-	Message string `json:"message"`
-	ID      string `json:"id"`
-}
-
-// Handle the file upload
-func uploadFile(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Read the request body
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	// Parse the JSON into the FileMetadata struct
-	var fileMetadata FileMetadata
-	if err := json.Unmarshal(body, &fileMetadata); err != nil {
-		http.Error(w, "Invalid JSON format", http.StatusBadRequest)
-		return
-	}
-
-	// Process the file metadata
-	fileID := fmt.Sprintf("%s-%d", fileMetadata.Name, time.Now().Unix())
-	log.Printf("Received file upload: %+v\n", fileMetadata)
-
-	// Respond with a success message and the generated ID
-	w.Header().Set("Content-Type", "application/json")
-	response := UploadResponse{
-		Message: "File upload successful",
-		ID:      fileID,
-	}
-	json.NewEncoder(w).Encode(response)
-}
-
 // main initializes the server, routing, and CORS
 func main() {
 	// set up btcd connection
@@ -186,8 +131,6 @@ func main() {
 	router.HandleFunc("/api/start-mining", startMining).Methods("POST")
 	router.HandleFunc("/api/stop-mining", stopMining).Methods("POST")
 
-	router.HandleFunc("/upload", uploadFile).Methods("POST")
-
 	// Configure CORS
 	corsOptions := cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"}, // Adjust as needed
@@ -201,7 +144,7 @@ func main() {
 
 	// Create server with context for graceful shutdown
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":8081",
 		Handler: handler,
 	}
 
@@ -210,7 +153,7 @@ func main() {
 	signal.Notify(shutdownChan, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		log.Println("Starting server on :8080")
+		log.Println("Starting server on :8081")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Could not start server: %s\n", err.Error())
 		}
