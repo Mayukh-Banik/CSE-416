@@ -57,31 +57,125 @@ const FilesPage: React.FC = () => {
     }
   };
 
+  // const handleUpload = async () => {
+  //   try {
+  //     // Simulate file upload delay
+  //     await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  //     // Create uploaded file objects with descriptions and hashes
+  //     const newUploadedFiles: UploadedFile[] = selectedFiles.map((file) => ({
+  //       id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID
+  //       name: file.name,
+  //       size: file.size,
+  //       description: descriptions[file.name] || "", // Attach description
+  //       hash: fileHashes[file.name], // Attach the computed hash
+  //       isPublished: false,
+  //     }));
+
+  //     setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+  //     setSelectedFiles([]);
+  //     setDescriptions({}); // Reset descriptions after upload
+  //     setFileHashes({}); // Reset hashes after upload
+  //     setNotification({ open: true, message: "Files uploaded successfully!", severity: "success" });
+  //   } catch (error) {
+  //     setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
+  //     console.error("Error uploading files:", error);
+  //   }
+  // };
+
+  // // jerry's upload function
+  // const handleUpload = async () => {
+  //   if (selectedFiles.length === 0) return;
+
+  //   for (const file of selectedFiles) {
+  //     const filedata = await toString(file);
+  //     const metadata = {
+  //       name: file.name,
+  //       type: file.type,
+  //       size: file.size,
+  //       file_data: filedata,
+  //     };
+  //     console.log("Uploading file:", file.name);
+
+  //     await fetch("http://localhost:8000/upload", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(metadata),
+  //     })
+  //       .then((response) => response.json())
+  //       .then((data) => {
+  //         console.log("Success", data);
+  //       })
+  //       .catch((error) => {
+  //         console.log("Error", error);
+  //       });
+  //   }
+  // };
+
+
   const handleUpload = async () => {
+    if (selectedFiles.length === 0) return;
+  
     try {
-      // Simulate file upload delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Create uploaded file objects with descriptions and hashes
-      const newUploadedFiles: UploadedFile[] = selectedFiles.map((file) => ({
-        id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID
-        name: file.name,
-        size: file.size,
-        description: descriptions[file.name] || "", // Attach description
-        hash: fileHashes[file.name], // Attach the computed hash
-        isPublished: false,
-      }));
-
+      // Create uploaded file objects with descriptions, hashes, and metadata
+      const newUploadedFiles = await Promise.all(
+        selectedFiles.map(async (file) => {
+          const fileData = file.toString(); // Convert file to string data
+          const metadata = {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            file_data: fileData,
+            description: descriptions[file.name] || "",
+            hash: fileHashes[file.name],
+          };
+  
+          // Send the metadata to the server
+          const response = await fetch("http://localhost:8000/upload", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(metadata),
+          });
+          
+          const data = await response.json();
+          console.log("File upload successful:", data);
+  
+          // Return file info for the uploadedFiles state
+          return {
+            id: `${file.name}-${file.size}-${Date.now()}`,
+            name: file.name,
+            size: file.size,
+            description: descriptions[file.name] || "",
+            hash: fileHashes[file.name],
+            isPublished: false,
+          };
+        })
+      );
+  
+      // Update uploadedFiles state
       setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+  
+      // Clear selected files, descriptions, and hashes after successful upload
       setSelectedFiles([]);
-      setDescriptions({}); // Reset descriptions after upload
-      setFileHashes({}); // Reset hashes after upload
+      setDescriptions({});
+      setFileHashes({});
+  
+      // Show success notification
       setNotification({ open: true, message: "Files uploaded successfully!", severity: "success" });
     } catch (error) {
-      setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
       console.error("Error uploading files:", error);
+  
+      // Show error notification
+      setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
     }
   };
+  
+
+
 
   const handleDescriptionChange = (fileId: string, description: string) => {
     setDescriptions((prev) => ({ ...prev, [fileId]: description }));
