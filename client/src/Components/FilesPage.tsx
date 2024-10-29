@@ -23,6 +23,7 @@ import { useTheme } from '@mui/material/styles';
 
 // File model
 interface UploadedFile {
+  type: any;
   isPublished: boolean | undefined;
   id: string; 
   name: string;
@@ -114,86 +115,154 @@ const FilesPage: React.FC = () => {
   //   }
   // };
 
+  // const handleUpload = async () => {
+  //   if (selectedFiles.length === 0) return;
+  
+  //   try {
+  //     // Create uploaded file objects with descriptions, hashes, and metadata
+  //     const newUploadedFiles = await Promise.all(
+  //       selectedFiles.map(async (file) => {
+  //         const fileData = await file.arrayBuffer(); // Use File API to read file as ArrayBuffer
+  //         const metadata = {
+  //           name: file.name,
+  //           type: file.type,
+  //           size: file.size,
+  //           file_data: fileData, // You can encode it as Base64 if required by the server
+  //           description: descriptions[file.name] || "",
+  //           hash: fileHashes[file.name],
+  //         };
+  
+  //         // Send the metadata to the server
+  //         const response = await fetch("http://localhost:8080/upload", {
+  //           method: "POST",
+  //           headers: {
+  //             "Content-Type": "application/json",
+  //           },
+  //           body: JSON.stringify(metadata),
+  //         });
+  
+  //         const data = await response.json();
+  //         console.log("File upload successful:", data);
+  
+  //         // Return file info for the uploadedFiles state
+  //         return {
+  //           id: `${file.name}-${file.size}-${Date.now()}`, // or use hash if you prefer
+  //           name: file.name,
+  //           type: file.type,
+  //           size: file.size,
+  //           description: descriptions[file.name] || "",
+  //           hash: fileHashes[file.name],
+  //           isPublished: false,
+  //         };
+  //       })
+  //     );
+  
+  //     // Update uploadedFiles state
+  //     setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+  
+  //     // Clear selected files, descriptions, and hashes after successful upload
+  //     setSelectedFiles([]);
+  //     setDescriptions({});
+  //     setFileHashes({});
+  
+  //     // Show success notification
+  //     setNotification({ open: true, message: "Files uploaded successfully!", severity: "success" });
+  //   } catch (error) {
+  //     console.error("Error uploading files:", error);
+  
+  //     // Show error notification
+  //     setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
+  //   }
+  // };
+  
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
-  
+
     try {
-      // Create uploaded file objects with descriptions, hashes, and metadata
-      const newUploadedFiles = await Promise.all(
-        selectedFiles.map(async (file) => {
-          const fileData = file.toString(); // Convert file to string data
-          const metadata = {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            file_data: fileData,
-            description: descriptions[file.name] || "",
-            hash: fileHashes[file.name],
-          };
-  
-          // Send the metadata to the server
-          const response = await fetch("http://localhost:8000/upload", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(metadata),
-          });
-          
-          const data = await response.json();
-          console.log("File upload successful:", data);
-  
-          // Return file info for the uploadedFiles state
-          return {
-            id: `${file.name}-${file.size}-${Date.now()}`,
-            name: file.name,
-            size: file.size,
-            description: descriptions[file.name] || "",
-            hash: fileHashes[file.name],
-            isPublished: false,
-          };
-        })
-      );
-  
-      // Update uploadedFiles state
-      setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
-  
-      // Clear selected files, descriptions, and hashes after successful upload
-      setSelectedFiles([]);
-      setDescriptions({});
-      setFileHashes({});
-  
-      // Show success notification
-      setNotification({ open: true, message: "Files uploaded successfully!", severity: "success" });
+        // Create uploaded file objects with descriptions, hashes, and metadata
+        const newUploadedFiles = await Promise.all(
+            selectedFiles.map(async (file) => {
+                const fileData = await file.arrayBuffer(); // Read file as ArrayBuffer
+                // const base64FileData = btoa(String.fromCharCode(...new Uint8Array(fileData))); // Convert to Base64
+
+                const metadata = {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    // file_data: base64FileData, // Encode file data as Base64 if required
+                    description: descriptions[file.name] || "",
+                    hash: fileHashes[file.name], // Store the computed hash
+                };
+
+                // Send the metadata to the server
+                const response = await fetch("http://localhost:8080/upload", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(metadata),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("File upload successful:", data, metadata);
+
+                // Return file info for the uploadedFiles state
+                return {
+                    id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    description: descriptions[file.name] || "",
+                    hash: fileHashes[file.name],
+                    isPublished: false, // Initially not published
+                };
+            })
+        );
+
+        // Update uploadedFiles state
+        setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+
+        // Clear selected files, descriptions, and hashes after successful upload
+        setSelectedFiles([]);
+        setDescriptions({});
+        setFileHashes({});
+
+        // Show success notification
+        setNotification({ open: true, message: "Files uploaded successfully!", severity: "success" });
     } catch (error) {
-      console.error("Error uploading files:", error);
-  
-      // Show error notification
-      setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
+        console.error("Error uploading files:", error);
+
+        // Show error notification
+        setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
     }
-  };
-  
-
-
+};
 
   const handleDescriptionChange = (fileId: string, description: string) => {
     setDescriptions((prev) => ({ ...prev, [fileId]: description }));
   };
 
   const handleTogglePublished = (id: string) => {
-    setCurrentFileId(id); 
-    if (uploadedFiles.find(file => file.id === id)?.isPublished) {
-      setPublishDialogOpen(false);
-      setUploadedFiles((prev) =>
-        prev.map((file) =>
-          file.id === currentFileId ? { ...file, isPublished: false } : file
-        )
-      );
+    const file = uploadedFiles.find(file => file.id === id); // Get the current file
+
+    if (file?.isPublished) {
+        // If the file is already published, set the unpublished state
+        setUploadedFiles((prev) =>
+            prev.map((f) =>
+                f.id === id ? { ...f, isPublished: false } : f
+            )
+        );
     } else {
-      setPublishDialogOpen(true); 
+        // If the file is not published, open the publish dialog
+        setCurrentFileId(id); // Set the current file ID to the one being published
+        setPublishDialogOpen(true); 
     }
   };
+
 
   const handleDeleteFile = (id: string) => {
     setUploadedFiles((prev) => prev.filter((file) => file.id !== id));
@@ -223,15 +292,61 @@ const FilesPage: React.FC = () => {
     }));
   };
 
-  const handleConfirmPublish = () => {
-    setUploadedFiles((prev) =>
-      prev.map((file) =>
-        file.id === currentFileId ? { ...file, isPublished: true, fee } : file
-      )
-    );
-    setPublishDialogOpen(false);
-    setNotification({ open: true, message: "File published successfully!", severity: "success" });
-  };
+  // const handleConfirmPublish = () => {
+  //   setUploadedFiles((prev) =>
+  //     prev.map((file) =>
+  //       file.id === currentFileId ? { ...file, isPublished: true, fee } : file
+  //     )
+  //   );
+  //   setPublishDialogOpen(false);
+  //   setNotification({ open: true, message: "File published successfully!", severity: "success" });
+  // };
+
+  const handleConfirmPublish = async () => {
+    const fileToPublish = uploadedFiles.find(file => file.id === currentFileId);
+    
+    if (!fileToPublish) {
+      setNotification({ open: true, message: "File not found", severity: "error" });
+      return;
+    }
+
+    const metadata = {
+      name: fileToPublish.name,
+      type: fileToPublish.type,
+      size: fileToPublish.size,
+      description: fileToPublish.description || "",
+      hash: fileToPublish.hash, // assuming hash has already been computed
+    };
+
+    try {
+      // Make the API request to publish the file's metadata to the server for DHT registration
+      const response = await fetch("http://localhost:8080/publish", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(metadata),
+      });
+
+      if (response.ok) {
+        setUploadedFiles((prev) =>
+          prev.map((file) =>
+            file.id === currentFileId ? { ...file, isPublished: true, fee } : file
+          )
+        );
+        setNotification({ open: true, message: "File published successfully!", severity: "success" });
+        const data = await response.text();
+        console.log("Publish response: ", data);
+      } else {
+        setNotification({ open: true, message: "Failed to publish file", severity: "error" });
+      }
+    } catch (error) {
+      console.error("Error publishing file:", error);
+      setNotification({ open: true, message: "An error occurred", severity: "error" });
+    } finally {
+      setPublishDialogOpen(false);
+    }
+};
 
   return (
       <Box

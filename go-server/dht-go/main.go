@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -28,6 +30,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
+	"github.com/rs/cors"
 )
 
 var (
@@ -281,17 +284,57 @@ func main() {
 	fmt.Println("Node Peer ID:", node.ID())
 
 	connectToPeer(node, relay_node_addr) // connect to relay node
-	makeReservation(node)                // make reservation on realy node
+	makeReservation(node)                // make reservation on relay node
 	go refreshReservation(node, 10*time.Minute)
 	connectToPeer(node, bootstrap_node_addr) // connect to bootstrap node
 	go handlePeerExchange(node)
 	go handleInput(ctx, dht)
 
-	// receiveDataFromPeer(node)
-	// sendDataToPeer(node, "12D3KooWKNWVMpDh5ZWpFf6757SngZfyobsTXA8WzAWqmAjgcdE6")
+	// Set up HTTP handlers
+	router := mux.NewRouter()
+	router.HandleFunc("/upload", uploadFileHandler).Methods("POST")
+	router.HandleFunc("/publish", func(w http.ResponseWriter, r *http.Request) {
+		publishFileHandler(w, r, dht) // Pass the `dht` instance here
+	}).Methods("POST")
+	router.HandleFunc("/file/", func(w http.ResponseWriter, r *http.Request) {
+		getFileHandler(w, r, dht) // Pass the `dht` instance here
+	}).Methods("GET")
 
-	defer node.Close()
+	// Configure CORS
+	corsOptions := cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"}, // Adjust this to your frontend origin
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type"},
+		AllowCredentials: true,
+	}
 
+	// CORS handler
+	handler := cors.New(corsOptions).Handler(router)
+
+	// Create server with CORS handler
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: handler,
+	}
+
+	// Start the server in a goroutine
+	go func() {
+		log.Println("Starting server on :8080")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Could not start server: %s\n", err.Error())
+		}
+	}()
+
+	// Graceful shutdown
+	defer func() {
+		log.Println("Shutting down server...")
+		if err := server.Shutdown(ctx); err != nil {
+			log.Fatalf("Server forced to shutdown: %v", err)
+		}
+		log.Println("Server exited")
+	}()
+
+	// Block until a signal is received
 	select {}
 }
 
@@ -424,4 +467,93 @@ func refreshReservation(node host.Host, interval time.Duration) {
 			return
 		}
 	}
+}
+
+func publishFileHandler(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var requestBody struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	ctx := globalCtx
+	err := dht.PutValue(ctx, "/orcanet/"+requestBody.Key, []byte(requestBody.Value))
+	if err != nil {
+		http.Error(w, "Failed to publish file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("File published successfully"))
+}
+
+// Handler for retrieving a file
+func getFileHandler(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
+	key := r.URL.Path[len("/file/"):] // Extract the key from the URL
+	ctx := globalCtx
+
+	res, err := dht.GetValue(ctx, "/orcanet/"+key)
+	if err != nil {
+		http.Error(w, "Failed to retrieve file: "+err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(res) // Return the file content
+}
+
+// FileMetadata represents the metadata for an uploaded file
+type FileMetadata struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Size        int64  `json:"size"`
+	Description string `json:"description"`
+	Hash        string `json:"hash"`
+}
+
+var files = make(map[string]FileMetadata) // Store uploaded files metadata by hash
+func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var requestBody struct {
+		Name        string `json:"name"`
+		Type        string `json:"type"`
+		Size        int64  `json:"size"`
+		Description string `json:"description"`
+		Hash        string `json:"hash"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Create file metadata from the request
+	fileMetadata := FileMetadata{
+		Name:        requestBody.Name,
+		Type:        requestBody.Type,
+		Size:        requestBody.Size,
+		Description: requestBody.Description,
+		Hash:        requestBody.Hash,
+	}
+
+	// Store the file metadata using the hash as the key
+	files[requestBody.Hash] = fileMetadata
+
+	// Respond with a success message
+	response := map[string]string{"message": "File metadata uploaded successfully", "hash": requestBody.Hash}
+	w.Header().Set("Content-Type", "application/json") // Set content type to JSON
+	w.WriteHeader(http.StatusOK)                       // Set response status
+	json.NewEncoder(w).Encode(response)                // Encode response as JSON
 }
