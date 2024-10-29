@@ -52,8 +52,16 @@ func RequestChallenge(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Received PublicKey: %s", challengeReq.PublicKey)
 
+		// Check if the user exists for the given public key
+	user, err := services.FindUserByPublicKey(challengeReq.PublicKey)
+	if err != nil {
+		// User not found, return 401 Unauthorized
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
 	// 퍼블릭 키가 존재하든 존재하지 않든 난수를 생성하여 반환
-	challengeData, exists := services.GetChallenge(challengeReq.PublicKey)
+	challengeData, exists := services.GetChallenge(user.PublicKey)
 	if exists {
 		log.Printf("Returning existing challenge for publicKey: %s", challengeReq.PublicKey)
 		response := map[string]string{"challenge": challengeData.Challenge}

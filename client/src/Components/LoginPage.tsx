@@ -133,7 +133,7 @@ const LoginPage: React.FC = () => {
     };
 
     // PEM 형식의 RSA 프라이빗 키를 ArrayBuffer로 변환하는 함수
-    const pemToArrayBuffer = (pem: string): ArrayBuffer => {
+    const pemToArrayBuffer0 = (pem: string): ArrayBuffer => {
         const pemHeader = "-----BEGIN RSA PRIVATE KEY-----";
         const pemFooter = "-----END RSA PRIVATE KEY-----";
 
@@ -149,6 +149,26 @@ const LoginPage: React.FC = () => {
             console.error("Error converting PEM to ArrayBuffer:", error);
             throw new Error("Invalid PEM format or Base64 encoding");
         }
+    };
+
+    const pemToArrayBuffer = (pem: string): ArrayBuffer => {
+        const pemHeader = "-----BEGIN PRIVATE KEY-----";  // Adjust this if necessary
+        const pemFooter = "-----END PRIVATE KEY-----";
+    
+        // Check if the headers and footers are present
+        if (!pem.includes(pemHeader) || !pem.includes(pemFooter)) {
+            console.error("Invalid PEM format: Missing headers or footers.");
+            throw new Error("Invalid PEM format.");
+        }
+    
+        // Remove headers, footers, and whitespace
+        let pemContents = pem.replace(pemHeader, "").replace(pemFooter, "").replace(/\s+/g, "");
+    
+        // Log the content to verify
+        console.log("Cleaned PEM Content for Base64 decoding:", pemContents);
+    
+        // Convert to ArrayBuffer
+        return base64ToArrayBuffer(pemContents);
     };
     // Base64 문자열을 ArrayBuffer로 변환하는 함수
     const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
