@@ -61,4 +61,11 @@ Follow these steps to set up the Electron desktop application:
     npm run electron
     ```
 
+1. Tentative
+    ```
+    cd client
+    npm install
+    npm run run-build
+    ```
+
 
