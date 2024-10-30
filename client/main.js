@@ -14,7 +14,7 @@ function createWindow() {
     });
 
     mainWindow.loadURL(
-        `file://${path.join(__dirname, 'client/build/index.html')}`
+        `file://${path.join(__dirname, 'build/index.html')}`
     );
 
    // mainWindow.webContents.openDevTools();
