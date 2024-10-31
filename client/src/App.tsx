@@ -1,13 +1,4 @@
 import React, { useState } from "react";
-// Replace the BrowserRouter import with HashRouter-02-01
-
-// import {
-//   BrowserRouter as Router,
-//   Routes,
-//   Route,
-//   Outlet,
-//   Navigate,
-// } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -17,13 +8,6 @@ import {
   CssBaseline,
 } from "@mui/material";
 import { HashRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
-// Remove the BrowserRouter import and replace it with HashRouter
-
-
-
-
-
-import GeneralTheme from "./Stylesheets/GeneralTheme";
 import WelcomePage from "./Components/WelcomePage";
 import RegisterPage from "./Components/RegisterPage";
 import LoginPage from "./Components/LoginPage";

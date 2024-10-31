@@ -482,6 +482,7 @@ func publishFileHandler(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT
 		Key   string `json:"key"`
 		Value string `json:"value"`
 	}
+
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -523,6 +524,7 @@ type FileMetadata struct {
 }
 
 var files = make(map[string]FileMetadata) // Store uploaded files metadata by hash
+
 func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
