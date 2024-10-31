@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/btcsuite/btcd/rpcclient"
@@ -12,7 +16,7 @@ import (
 	"github.com/rs/cors"
 )
 
-// current mining status
+// MiningStatus represents the current mining state
 type MiningStatus struct {
 	MinedBlocks    int    `json:"minedBlocks"`
 	LastMinedBlock string `json:"lastMinedBlock"`
@@ -53,7 +57,7 @@ func startMining(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(miningStatus)
 }
 
-// stopMining handles POST requests to stop the mining process
+// stops the mining process
 func stopMining(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -64,7 +68,6 @@ func stopMining(w http.ResponseWriter, r *http.Request) {
 	}
 
 	miningStatus.IsMining = false
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(miningStatus)
 }
@@ -78,7 +81,7 @@ func mine() {
 			return
 		}
 
-		// implement our own block generation
+		// Generate a new block
 		blockHashes, err := client.Generate(1)
 		if err != nil {
 			log.Printf("Failed to generate block: %v", err)
@@ -91,15 +94,16 @@ func mine() {
 		miningStatus.LastMinedBlock = blockHashes[0].String()
 		mu.Unlock()
 
-		// mining delay
+		// Delay between block generations
 		time.Sleep(10 * time.Second)
 	}
 }
 
+// main initializes the server, routing, and CORS
 func main() {
 	// set up btcd connection
 	connCfg := &rpcclient.ConnConfig{
-		Host:         "localhost:8334", // btcd RPC server
+		Host:         "localhost:8334",
 		User:         "user",
 		Pass:         "password",
 		HTTPPostMode: true,
@@ -129,7 +133,7 @@ func main() {
 
 	// Configure CORS
 	corsOptions := cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"}, // Frontend origin
+		AllowedOrigins:   []string{"http://localhost:3000"}, // Adjust as needed
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type"},
 		AllowCredentials: true,
@@ -138,9 +142,32 @@ func main() {
 	// CORS handler
 	handler := cors.New(corsOptions).Handler(router)
 
-	// server
-	log.Println("Starting server on :8080")
-	if err := http.ListenAndServe(":8080", handler); err != nil {
-		log.Fatalf("Could not start server: %s\n", err.Error())
+	// Create server with context for graceful shutdown
+	server := &http.Server{
+		Addr:    ":8081",
+		Handler: handler,
 	}
+
+	// Set up signal handling for graceful shutdown
+	shutdownChan := make(chan os.Signal, 1)
+	signal.Notify(shutdownChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		log.Println("Starting server on :8081")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Could not start server: %s\n", err.Error())
+		}
+	}()
+
+	<-shutdownChan
+	log.Println("Shutting down server...")
+
+	// Gracefully shut down server with a timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exited")
 }
