@@ -1,0 +1,30 @@
+.
+├── Dockerfile
+├── controllers
+│   ├── authController.go
+│   ├── transactionController.go
+│   └── userController.go
+├── go-server-structure.txt
+├── go.mod
+├── go.sum
+├── main.go
+├── models
+│   ├── auth.go
+│   ├── file.go
+│   ├── transaction.go
+│   └── user.go
+├── routes
+│   ├── auth.routes.go
+│   ├── routes.go
+│   ├── transaction.routes.go
+│   └── user.routes.go
+├── services
+│   ├── authService.go
+│   ├── transactionCreationService.go
+│   └── walletService.go
+└── utils
+    ├── cryptoUtil.go
+    ├── idUtil.go
+    └── mongoUtil.go
+
+6 directories, 22 files

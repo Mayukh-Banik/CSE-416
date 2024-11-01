@@ -1,32 +1,115 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { TextField, Button, Container, Typography, Link, Box, IconButton, Tooltip, Paper } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { TextField, Button, Container, Typography, Link, Box } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import useRegisterPageStyles from '../Stylesheets/RegisterPageStyles';
 import Header from './Header';
 import { useNavigate } from 'react-router-dom';
+import forge from 'node-forge';
 
-const PORT = 5000;
+const PORT = 8080;
 
 const LoginPage: React.FC = () => {
     const classes = useRegisterPageStyles();
     const navigate = useNavigate();
 
     const [publicKey, setPublicKey] = useState('');
+    const [privateKey, setPrivateKey] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [challenge, setChallenge] = useState<string | null>(null);
 
-    const validateForm = () => {
-        if (!publicKey) {
-            setError('Public key is required.');
-            return false;
-        }
-        setError(null);
-        return true;
-    };
+    // Automatically request challenge on page load
+    useEffect(() => {
+        console.log("Requesting challenge on component mount"); 
+        const requestChallenge = async () => {
+            try {
+                const response = await fetch(`http://localhost:${PORT}/api/auth/request-challenge`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
 
+                if (!response.ok) {
+                    const errorMessage = await response.text();
+                    console.error("Server Error:", errorMessage);
+                    throw new Error('Failed to request challenge');
+                }
+
+                const data = await response.json();
+                setChallenge(data.challenge);
+                console.log("Challenge received:", data.challenge);
+            } catch (err) {
+                console.error("Error requesting challenge:", err);
+                setError('Failed to request challenge.');
+            }
+        };
+
+        requestChallenge();
+    }, []);
+
+    // Signature and authentication function
     const handleLogin = async () => {
-        if (validateForm()) {
-            navigate("/account/1"); // Simply navigate to the account page if public key is not empty
+        if (!publicKey || !privateKey || !challenge) {
+            setError('Public key, private key, and challenge are required.');
+            return;
+        }
+
+        try {
+            // Parse the private key
+            const rsaPrivateKey = forge.pki.privateKeyFromPem(privateKey);
+            console.log('Private key parsed successfully:', rsaPrivateKey);
+
+            // Decode the challenge
+            const challengeBytes = forge.util.decode64(challenge);
+            console.log('Decoded challenge bytes:', challengeBytes);
+
+            // Generate signature
+            const md = forge.md.sha256.create();
+            md.update(challengeBytes);
+            const signature = rsaPrivateKey.sign(md);
+            console.log('Signature generated:', signature);
+
+            // Encode the signature in Base64
+            const signatureBase64 = forge.util.encode64(signature);
+
+            // Modify the signature to simulate an incorrect signature
+            //signatureBase64 = signatureBase64.substring(0, signatureBase64.length - 1) + 'X'; // Modify last character
+            //console.log("Modified Signature (Base64):", signatureBase64);
+
+            // Send signature and public key to the server
+            const response = await fetch(`http://localhost:${PORT}/api/auth/verify-challenge`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ public_key: publicKey, signature: signatureBase64 }),
+                credentials: 'include' // Send request with cookies
+            });
+
+            if (!response.ok) {
+                const errorMessage = await response.text();
+                console.error('Server Error:', errorMessage);
+                throw new Error('Failed to verify signature');
+            }
+    
+            // Process login success
+            const data = await response.json();
+            console.log('Verification Response:', data);
+
+            // Attempt to access cookie
+            // const tokenCookie = document.cookie
+            //     .split('; ')
+            //     .find(row => row.startsWith('token='));
+            
+            // if (tokenCookie) {
+            //     console.log('Token cookie found:', tokenCookie);
+            // } else {
+            //     console.warn('HttpOnly token cookie is not accessible by JavaScript.');
+            // }
+
+        } catch (err) {
+            console.error('Error during login:', err);
+            setError('Failed to login.');
         }
     };
 
@@ -37,81 +120,38 @@ const LoginPage: React.FC = () => {
     return (
         <>
             <Header />
-            <Container
-              maxWidth="sm"
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "80vh", 
-                textAlign: "center",
-                marginTop: "2rem",
-              }}
-            >
-                {/* Icon centered and blue */}
-                <LockOutlinedIcon sx={{ color: "primary.main", fontSize: "3rem", marginBottom: "0.5rem" }} />
-
-                {/* Log In text, no bold */}
-                <Typography variant="h4" sx={{ fontWeight: "normal", mb: 2 }}>
-                    Log In
+            <Container maxWidth="sm" sx={{ mt: 4 }}>
+                <LockOutlinedIcon sx={{ fontSize: 40, mb: 2 }} />
+                <Typography variant="h4" component="h1" gutterBottom>
+                    Login
                 </Typography>
-
-                {/* Error Message */}
-                {error && (
-                    <Typography color="error" sx={{ marginBottom: '1rem' }}>
-                        {error}
-                    </Typography>
-                )}
-
-                {/* Form */}
-                <Box
-                  component="form"
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 2,
-                    width: "100%",
-                    maxWidth: "450px", // Made the form wider
-                    padding: "2rem",
-                    borderRadius: "12px",
-                    boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
-                  }}
-                >
+                {error && <Typography color="error">{error}</Typography>}
+                <Box sx={{ mt: 2 }}>
                     <TextField
                         label="Public Key"
-                        type="text"
-                        variant="outlined"
+                        multiline
+                        rows={6}
                         fullWidth
-                        required
                         value={publicKey}
                         onChange={(e) => setPublicKey(e.target.value)}
+                        sx={{ mb: 2 }}
                     />
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        sx={{
-                          padding: "12px 0",
-                          fontSize: "1.2rem",
-                          borderRadius: "8px",
-                          boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
-                          "&:hover": {
-                            backgroundColor: "#1976d2",
-                          },
-                        }}
-                        onClick={handleLogin}
-                    >
-                        Authenticate with Public Key
+                    <TextField
+                        label="Private Key"
+                        multiline
+                        rows={6}
+                        fullWidth
+                        value={privateKey}
+                        onChange={(e) => setPrivateKey(e.target.value)}
+                    />
+                    <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleLogin}>
+                        Login
                     </Button>
                 </Box>
-
-                {/* Don't have an account link */}
-                <Typography sx={{ marginTop: "1rem" }}>
-                    <Link
-                        onClick={handleSignup}
-                        sx={{ cursor: "pointer", textDecoration: "underline", fontSize: "1rem", color: "#1976d2" }}
-                    >
-                        Don't have a wallet? Generate One
+                <Typography sx={{ mt: 2 }}>
+                    Don't have a wallet?{' '}
+                    <Link onClick={handleSignup} sx={{ cursor: 'pointer' }}>
+                        Generate One
                     </Link>
                 </Typography>
             </Container>

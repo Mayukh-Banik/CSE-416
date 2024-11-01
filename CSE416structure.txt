@@ -1,0 +1,59 @@
+.
+├── CSE416structure.txt
+├── Caddy
+│   ├── Caddyfile
+│   └── Dockerfile
+├── IPFS-Server
+│   └── Dockerfile
+├── README.md
+├── Shared
+│   └── swarm.key
+├── application
+│   ├── btcd
+│   └── btcwallet
+├── client
+│   ├── Dockerfile
+│   ├── README.md
+│   ├── README_DOCKER
+│   ├── build
+│   ├── clientstructure.txt
+│   ├── config-overrides.js
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── public
+│   ├── src
+│   ├── structure.txt
+│   ├── tsconfig.json
+│   └── webpack.config.js
+├── coin
+│   ├── btcd
+│   └── btcwallet
+├── coins
+│   ├── btcctl.config
+│   ├── btcd
+│   ├── btcd.config
+│   ├── btcwallet
+│   └── btcwallet.config
+├── detailed_structure.txt
+├── docker-compose.yml
+├── electron-builder.yml
+├── go-server
+│   ├── go.mod
+│   ├── go.sum
+│   └── main.go
+├── main.js
+├── package-lock.json
+├── package.json
+├── preload.js
+├── server
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── src
+│   └── tsconfig.json
+├── structure.txt
+├── structure2.txt
+├── tsconfig.json
+├── vite.config.ts
+└── yarn.lock
+
+20 directories, 37 files

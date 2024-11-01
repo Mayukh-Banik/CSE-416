@@ -8,6 +8,8 @@ import {
   CssBaseline,
 } from "@mui/material";
 import { HashRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+
+import GeneralTheme from "./Stylesheets/GeneralTheme";
 import WelcomePage from "./Components/WelcomePage";
 import RegisterPage from "./Components/RegisterPage";
 import LoginPage from "./Components/LoginPage";
@@ -19,7 +21,7 @@ import MarketPage from "./Components/MarketPage";
 import FileViewPage from "./Components/FileViewPage";
 import AccountViewPage from "./Components/AccountViewPage";
 import ProxyPage from "./Components/ProxyPage";
-import GlobalTransactions from "./Components/Global_Transactions";
+import GlobalTransactions from "./Components/GlobalTransactions";
 import SearchPage from "./Components/SearchPage";
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
@@ -49,8 +51,6 @@ const transactions= [
   // Add other transactions...
 ];
 
-const publicKey = "publicKeyExample";
-const privateKey = "privateKeyExample";
 
 interface PrivateRouteProps {
   isAuthenticated: boolean;
@@ -102,11 +102,11 @@ const App: React.FC = () => {
       <CssBaseline /> {/* This resets CSS to a consistent baseline */}
       <Router>
         <Routes>
-          <Route path="/" element={<WelcomePage />} />
+          <Route path="/" element={<SignupPage />} />
           <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          {/* <Route path="/signup" element={<SignupPage />} /> */}
           <Route path="/market" element={<MarketPage />} />
           <Route path="/files" element={<FilesPage />} />
           <Route path="/global-transactions" element={<GlobalTransactions />} />

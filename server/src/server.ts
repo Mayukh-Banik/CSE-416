@@ -1,9 +1,11 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import router from './routes';
-import {createMonkUsers, createMonkTransactions} from './monkData';
+// import {createMonkUsers, createMonkTransactions} from './monkData';
+// import {createMonkUsers, createMonkTransactions} from './monkData';
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +24,7 @@ app.use(cors({
 
 // Middleware for parsing JSON request bodies
 app.use(express.json());
+app.use(cookieParser());
 
 // Use routes
 app.use('/api', router);
@@ -46,8 +49,8 @@ const startServer = async (): Promise<void> => {
   });
 
   //monk data
-  await createMonkUsers();
-  await createMonkTransactions();
+  // await createMonkUsers();
+  // await createMonkTransactions();
 
 };
 

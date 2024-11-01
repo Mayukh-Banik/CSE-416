@@ -9,6 +9,31 @@ services:
     # volumes:
       # - ./Shared:/Shared
 
+  go-server:
+    build: ./go-server
+    ports:
+      - "8080:8080"
+    networks:
+      - caddy_network
+    container_name: go_server
+
+  btcd:
+    build: ./application/btcd
+    ports:
+      - "8333:8333"
+      - "8334:8334"
+    networks:
+      - caddy_network
+    container_name: btcd_node
+
+  btcwallet:
+    build: ./application/btcwallet
+    ports:
+      - "8334:8334"
+    networks:
+      - caddy_network
+    container_name: btcwallet_node
+
   caddy:
     build:
       context: ./Caddy
@@ -36,6 +61,7 @@ services:
         read_only: false
     networks:
       - caddy_network
+
 
 networks:
   caddy_network:

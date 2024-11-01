@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from "./Sidebar";
 import useProxyHostsStyles from '../Stylesheets/ProxyPageStyles';
-import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Box, TextField, Paper } from '@mui/material';
+import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Box, TextField } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 
 interface ProxyHost {
@@ -145,7 +145,7 @@ const ProxyHosts: React.FC = () => {
     <div className={styles.container}>
       <Box className={styles.boxContainer}>
         <Sidebar />
-        <Box>
+        <Box sx={{ marginTop: 2 }}>
           <Typography variant="h4">Proxy</Typography>
           <Box className={styles.header}>
             <Typography variant="h6">Your Current IP: {currentIP}</Typography>
@@ -163,7 +163,7 @@ const ProxyHosts: React.FC = () => {
               <Box className={styles.historyContainer}>
                 <Typography variant="h5">Proxy Connection History</Typography>
                 <TableContainer className={styles.historyTable}>
-                  <Table component={Paper}>
+                  <Table>
                     <TableHead>
                       <TableRow>
                       <TableCell>Name</TableCell>
@@ -250,7 +250,7 @@ const ProxyHosts: React.FC = () => {
               )}
 
               <TableContainer className={styles.proxyTable}>
-                <Table className={styles.table} component={Paper} sx={{marginTop:4}}>
+                <Table className={styles.table}>
                   <TableHead>
                     <TableRow>
                     <TableCell>Name</TableCell>
