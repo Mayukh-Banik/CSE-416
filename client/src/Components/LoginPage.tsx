@@ -19,6 +19,7 @@ const LoginPage: React.FC = () => {
 
     // 페이지 로드 시 챌린지 자동 요청
     useEffect(() => {
+        console.log("Requesting challenge on component mount"); 
         const requestChallenge = async () => {
             try {
                 const response = await fetch(`http://localhost:${PORT}/api/auth/request-challenge`, {
@@ -69,7 +70,11 @@ const LoginPage: React.FC = () => {
             console.log('Signature generated:', signature);
 
             // 서명을 Base64로 인코딩
-            const signatureBase64 = forge.util.encode64(signature);
+            let signatureBase64 = forge.util.encode64(signature);
+
+            // Modify the signature to simulate an incorrect signature
+            signatureBase64 = signatureBase64.substring(0, signatureBase64.length - 1) + 'X'; // Modify last character
+            console.log("Modified Signature (Base64):", signatureBase64);
 
             // 서버로 서명과 퍼블릭 키 전송
             const response = await fetch(`http://localhost:${PORT}/api/auth/verify-challenge`, {

@@ -111,57 +111,76 @@ func formatPublicKey(key string) string {
 
 // VerifySignature verifies if the signature matches the stored challenge
 func VerifySignature(publicKeyPem, signatureBase64 string) (bool, error) {
-
-	// 퍼블릭 키 형식 보정
+	// Format and log the received public key and signature
 	publicKeyPem = formatPublicKey(publicKeyPem)
+	log.Printf("Received PublicKey: %s", publicKeyPem)
+    log.Printf("Received Signature (Base64): %s", signatureBase64)
 
-	// 현재 저장된 챌린지 가져오기
+	// Retrieve stored challenge
 	challenge, err := GetChallenge()
 	if err != nil {
+		log.Printf("Error retrieving challenge: %v", err)
 		return false, err
 	}
+	log.Printf("Retrieved stored challenge for verification: %s", challenge)
 
-	// 서명 디코딩
+	// Decode the Base64-encoded signature
 	signatureBytes, err := base64.StdEncoding.DecodeString(signatureBase64)
 	if err != nil {
+		log.Printf("Error decoding Base64 signature: %v", err)
 		return false, errors.New("invalid signature format")
 	}
+	log.Printf("Decoded Signature Bytes: %v", signatureBytes)
 
-	// 퍼블릭 키 디코딩
+	// Decode the public key PEM
 	block, _ := pem.Decode([]byte(publicKeyPem))
 	if block == nil {
+		log.Printf("Failed to decode public key PEM block")
 		return false, errors.New("invalid public key PEM")
 	}
+	log.Printf("PEM Block decoded successfully")
 
+	// Parse the public key
 	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
+		log.Printf("Error parsing public key: %v", err)
 		return false, errors.New("invalid public key")
 	}
+	log.Printf("Public key parsed successfully")
 
+	// Assert the public key type
 	pubKey, ok := pubInterface.(*rsa.PublicKey)
 	if !ok {
+		log.Printf("Parsed key is not RSA type")
 		return false, errors.New("public key is not RSA")
 	}
+	log.Printf("Public key is RSA type")
 
-	// 챌린지 디코딩
+	// Decode and log the challenge bytes
 	challengeBytes, err := base64.StdEncoding.DecodeString(challenge)
 	if err != nil {
+		log.Printf("Error decoding challenge: %v", err)
 		return false, errors.New("invalid challenge data")
 	}
+	log.Printf("Challenge decoded: %v", challengeBytes)
 
-	// 챌린지 해싱
+	// Hash the challenge for verification
 	hashed := sha256.Sum256(challengeBytes)
+	log.Printf("Hashed Challenge: %x", hashed)
 
-	// 서명 검증
+	// Perform the signature verification
 	err = rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hashed[:], signatureBytes)
 	if err != nil {
+		log.Printf("Signature verification failed: %v", err)
 		return false, errors.New("signature verification failed")
 	}
+	log.Printf("Signature verification succeeded")
 
-	// 챌린지 사용 후 삭제
+	// Clear the current challenge after successful verification
 	challengeMutex.Lock()
 	currentChallenge = ""
 	challengeMutex.Unlock()
+	log.Printf("Challenge cleared from storage after successful verification")
 
 	return true, nil
 }
