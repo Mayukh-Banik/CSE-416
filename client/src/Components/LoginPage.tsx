@@ -77,7 +77,8 @@ const LoginPage: React.FC = () => {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ public_key: publicKey, signature: signatureBase64 })
+                body: JSON.stringify({ public_key: publicKey, signature: signatureBase64 }),
+                credentials: 'include' // 쿠키 포함 요청
             });
 
             if (!response.ok) {
