@@ -53,7 +53,7 @@ const FilesPage: React.FC = () => {
       const fileArray = Array.from(files);
       setSelectedFiles(prevSelectedFiles => [...prevSelectedFiles, ...fileArray]);
       // Compute hashes for each file
-      fileArray.forEach(file => computeSHA512(file));
+      fileArray.forEach(file => computeSHA256(file));
     }
   };
 
@@ -115,9 +115,9 @@ const FilesPage: React.FC = () => {
     document.getElementById("file-input")?.click();
   };
 
-  const computeSHA512 = async (file: File) => {
+  const computeSHA256 = async (file: File) => {
     const arrayBuffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest("SHA-512", arrayBuffer);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray
       .map(byte => byte.toString(16).padStart(2, "0"))
@@ -175,6 +175,7 @@ const FilesPage: React.FC = () => {
             borderRadius: 2,
             cursor: 'pointer',
             marginBottom: 2,
+            background: 'white',
             '&:hover': {
               backgroundColor: '#e3f2fd',
             },
@@ -207,24 +208,22 @@ const FilesPage: React.FC = () => {
                       width: '100%', 
                     }}
                   >
-                    {/* File details (name, size) */}
+                    {/* selected file details */}
                     <ListItemText
+                      sx={{
+                        width:'100%',
+                        whiteSpace: 'normal',  // wrap text
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                      }}
                       primary={file.name}
                       secondary={
                         <>
                           {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
-                          {`SHA-512 Hash: ${fileHashes[file.name] || "Computing..."}`}
+                          {`SHA-256 Hash: ${fileHashes[file.name] || "Computing..."}`}                       
                         </>
                       }  
                     />
-                    <IconButton 
-                      edge="end" 
-                      aria-label="delete" 
-                      onClick={() => handleDeleteFile(file.name)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                    {/* Description input and hash display */}
                     
                     <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: 1 }}>
                       <TextField
@@ -237,6 +236,14 @@ const FilesPage: React.FC = () => {
                       />
                     </Box>
                   </Box>
+                  <IconButton 
+                      edge="end" 
+                      aria-label="delete" 
+                      onClick={() => handleDeleteFile(file.name)}
+                      sx={{marginTop:15}}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
                 </ListItem>
               ))}
             </List>
@@ -257,9 +264,10 @@ const FilesPage: React.FC = () => {
                       <>
                         {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
                         {`Description: ${file.description}`} <br />
-                        {`SHA-512: ${file.hash}`}
-                      </>
-                    }                  />
+                        {`SHA-256: ${file.hash.slice(0, 10)}...${file.hash.slice(-10)}`}
+                        </>
+                    }                  
+                    />
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Typography variant="body2" component="span" sx={{ marginRight: 1 }}>
                       Publish
