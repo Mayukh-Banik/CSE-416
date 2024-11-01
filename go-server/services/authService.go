@@ -85,16 +85,16 @@ func formatPublicKey(key string) string {
 	header := "-----BEGIN PUBLIC KEY-----"
 	footer := "-----END PUBLIC KEY-----"
 
-	// 헤더와 푸터 제거
+	// Remove header and footer
 	key = strings.ReplaceAll(key, header, "")
 	key = strings.ReplaceAll(key, footer, "")
 
-	// 공백 및 줄바꿈 제거
+	// Remove spaces and newlines
 	key = strings.ReplaceAll(key, " ", "")
 	key = strings.ReplaceAll(key, "\n", "")
 	key = strings.ReplaceAll(key, "\r", "")
 
-	// 64자마다 줄바꿈 추가
+	// Insert a newline every 64 characters
 	var formattedKey strings.Builder
 	formattedKey.WriteString(header + "\n")
 	for i := 0; i < len(key); i += 64 {
@@ -112,22 +112,22 @@ func formatPublicKey(key string) string {
 // VerifySignature verifies if the signature matches the stored challenge
 func VerifySignature(publicKeyPem, signatureBase64 string) (bool, error) {
 
-	// 퍼블릭 키 형식 보정
+	// Correct public key format
 	publicKeyPem = formatPublicKey(publicKeyPem)
 
-	// 현재 저장된 챌린지 가져오기
+	// Retrieve the current stored challenge
 	challenge, err := GetChallenge()
 	if err != nil {
 		return false, err
 	}
 
-	// 서명 디코딩
+	// Decode the signature
 	signatureBytes, err := base64.StdEncoding.DecodeString(signatureBase64)
 	if err != nil {
 		return false, errors.New("invalid signature format")
 	}
 
-	// 퍼블릭 키 디코딩
+	// Decode the public key
 	block, _ := pem.Decode([]byte(publicKeyPem))
 	if block == nil {
 		return false, errors.New("invalid public key PEM")
@@ -143,22 +143,22 @@ func VerifySignature(publicKeyPem, signatureBase64 string) (bool, error) {
 		return false, errors.New("public key is not RSA")
 	}
 
-	// 챌린지 디코딩
+	// Decode the challenge
 	challengeBytes, err := base64.StdEncoding.DecodeString(challenge)
 	if err != nil {
 		return false, errors.New("invalid challenge data")
 	}
 
-	// 챌린지 해싱
+	// Hash the challenge
 	hashed := sha256.Sum256(challengeBytes)
 
-	// 서명 검증
+	// Verify the signature
 	err = rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hashed[:], signatureBytes)
 	if err != nil {
 		return false, errors.New("signature verification failed")
 	}
 
-	// 챌린지 사용 후 삭제
+	// Delete the challenge after use
 	challengeMutex.Lock()
 	currentChallenge = ""
 	challengeMutex.Unlock()

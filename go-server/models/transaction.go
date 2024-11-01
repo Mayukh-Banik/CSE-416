@@ -2,10 +2,11 @@ package models
 
 import (
 	"time"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Transaction 구조체는 하나의 거래 내역을 나타냅니다.
+// Transaction structure represents a single transaction record.
 type Transaction struct {
 	TransactionID string             `bson:"transaction_id" json:"transaction_id"`
 	Sender        primitive.ObjectID `bson:"sender" json:"sender"`
