@@ -5,7 +5,23 @@ import (
 	"go-server/services"
 	"log"
 	"net/http"
+	"os"
+	"time"
+
+	"github.com/dgrijalva/jwt-go"
 )
+
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+
+// JWT 생성 함수
+func generateJWT(publicKey string) (string, error) {
+	claims := jwt.MapClaims{
+		"publicKey": publicKey,
+		"exp":       time.Now().Add(time.Hour * 24).Unix(), // 만료 시간 24시간 후
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtSecret)
+}
 
 // Signup handles the signup request
 func Signup(w http.ResponseWriter, r *http.Request) {
@@ -75,8 +91,22 @@ func VerifyChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 사용자 인증 성공 처리 (예: 토큰 발행)
-	// ...
+	// 서명 검증 성공 시 JWT 토큰 생성
+	token, err := generateJWT(req.PublicKey)
+	if err != nil {
+		log.Printf("Error generating JWT: %v", err)
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	// 토큰을 HttpOnly 쿠키로 설정
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		HttpOnly: true,
+		Path:     "/",
+		Expires:  time.Now().Add(24 * time.Hour),
+	})
 
 	// 성공 응답
 	json.NewEncoder(w).Encode(map[string]string{"status": "login successful"})
