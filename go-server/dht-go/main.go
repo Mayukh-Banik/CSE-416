@@ -316,13 +316,13 @@ func main() {
 
 	// Create server with CORS handler
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":8081",
 		Handler: handler,
 	}
 
 	// Start the server in a goroutine
 	go func() {
-		log.Println("Starting server on :8080")
+		log.Println("Starting server on :8081")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Could not start server: %s\n", err.Error())
 		}
@@ -473,6 +473,7 @@ func refreshReservation(node host.Host, interval time.Duration) {
 }
 
 func publishFileHandler(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
+	log.Println("publishing file - dht")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return

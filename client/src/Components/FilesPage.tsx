@@ -20,7 +20,7 @@ import {
   ListItemText,
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
-import { saveFileMetadata, getFilesForUser, deleteFileMetadata, FileMetadata } from '../utils/localStorage'
+import { saveFileMetadata, getFilesForUser, deleteFileMetadata, updateFileMetadata, FileMetadata } from '../utils/localStorage'
 
 // user id/wallet id is hardcoded for now
 
@@ -126,6 +126,12 @@ const FilesPage: React.FC = () => {
   const handleTogglePublished = (id: string) => {
     const file = uploadedFiles.find(file => file.id === id); // Get the current file
 
+    if (file) {
+      updateFileMetadata('123', {
+        ...file,
+        isPublished: !file.isPublished,
+ })
+    }
     if (file?.isPublished) {
         // If the file is already published, set the unpublished state
         setUploadedFiles((prev) =>
@@ -138,6 +144,7 @@ const FilesPage: React.FC = () => {
         setCurrentFileId(id); // Set the current file ID to the one being published
         setPublishDialogOpen(true); 
     }
+    
   };
 
 
@@ -183,7 +190,7 @@ const FilesPage: React.FC = () => {
         type: fileToPublish.type,
         size: fileToPublish.size,
         description: fileToPublish.description,
-        hash: fileToPublish.hash,
+        // hash: fileToPublish.hash,
     };
 
     console.log("Publishing file metadata:", metadata);
@@ -194,7 +201,10 @@ const FilesPage: React.FC = () => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(metadata),
+            body: JSON.stringify({
+              key: fileToPublish.hash,           // The hash ID generated on upload
+              value: metadata,      // Any metadata to be stored in DHT
+          }),
         });
 
         if (response.ok) {
@@ -203,8 +213,13 @@ const FilesPage: React.FC = () => {
                     file.id === currentFileId ? { ...file, isPublished: true, fee } : file
                 )
             );
+
             setNotification({ open: true, message: "File published successfully!", severity: "success" });
             const data = await response.text();
+            updateFileMetadata('123', {
+                ...fileToPublish,
+                isPublished: true, 
+           })
             console.log("Publish response: ", data);
         } else {
             const errorData = await response.text();
