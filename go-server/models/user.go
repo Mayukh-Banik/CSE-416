@@ -5,8 +5,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+//this has to be changed!
 type User struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty"` // MongoDB에서 사용하는 ObjectID
+	ID        primitive.ObjectID `bson:"_id,omitempty"`  // ObjectID used in MongoDB
 	Name      string             `bson:"name" json:"name"`
 	Email     string             `bson:"email" json:"email"`
 	Password  string             `bson:"password" json:"-"`

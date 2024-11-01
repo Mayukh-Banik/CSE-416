@@ -17,7 +17,7 @@ const LoginPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [challenge, setChallenge] = useState<string | null>(null);
 
-    // 페이지 로드 시 챌린지 자동 요청
+    // Automatically request challenge on page load
     useEffect(() => {
         console.log("Requesting challenge on component mount"); 
         const requestChallenge = async () => {
@@ -47,7 +47,7 @@ const LoginPage: React.FC = () => {
         requestChallenge();
     }, []);
 
-    // 서명 및 인증 함수
+    // Signature and authentication function
     const handleLogin = async () => {
         if (!publicKey || !privateKey || !challenge) {
             setError('Public key, private key, and challenge are required.');
@@ -55,35 +55,35 @@ const LoginPage: React.FC = () => {
         }
 
         try {
-            // 프라이빗 키 파싱
+            // Parse the private key
             const rsaPrivateKey = forge.pki.privateKeyFromPem(privateKey);
             console.log('Private key parsed successfully:', rsaPrivateKey);
 
-            // 챌린지 디코딩
+            // Decode the challenge
             const challengeBytes = forge.util.decode64(challenge);
             console.log('Decoded challenge bytes:', challengeBytes);
 
-            // 서명 생성
+            // Generate signature
             const md = forge.md.sha256.create();
             md.update(challengeBytes);
             const signature = rsaPrivateKey.sign(md);
             console.log('Signature generated:', signature);
 
-            // 서명을 Base64로 인코딩
+            // Encode the signature in Base64
             const signatureBase64 = forge.util.encode64(signature);
 
             // Modify the signature to simulate an incorrect signature
             //signatureBase64 = signatureBase64.substring(0, signatureBase64.length - 1) + 'X'; // Modify last character
             //console.log("Modified Signature (Base64):", signatureBase64);
 
-            // 서버로 서명과 퍼블릭 키 전송
+            // Send signature and public key to the server
             const response = await fetch(`http://localhost:${PORT}/api/auth/verify-challenge`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ public_key: publicKey, signature: signatureBase64 }),
-                credentials: 'include' // 쿠키 포함 요청
+                credentials: 'include' // Send request with cookies
             });
 
             if (!response.ok) {
@@ -91,10 +91,22 @@ const LoginPage: React.FC = () => {
                 console.error('Server Error:', errorMessage);
                 throw new Error('Failed to verify signature');
             }
-
+    
+            // Process login success
             const data = await response.json();
             console.log('Verification Response:', data);
-            // 로그인 성공 처리 (예: 토큰 저장, 페이지 이동 등)
+
+            // Attempt to access cookie
+            // const tokenCookie = document.cookie
+            //     .split('; ')
+            //     .find(row => row.startsWith('token='));
+            
+            // if (tokenCookie) {
+            //     console.log('Token cookie found:', tokenCookie);
+            // } else {
+            //     console.warn('HttpOnly token cookie is not accessible by JavaScript.');
+            // }
+
         } catch (err) {
             console.error('Error during login:', err);
             setError('Failed to login.');

@@ -13,11 +13,11 @@ import (
 
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
-// JWT 생성 함수
+// JWT generation function
 func generateJWT(publicKey string) (string, error) {
 	claims := jwt.MapClaims{
 		"publicKey": publicKey,
-		"exp":       time.Now().Add(time.Hour * 24).Unix(), // 만료 시간 24시간 후
+		"exp":       time.Now().Add(time.Hour * 24).Unix(), // Expiration time set to 24 hours later
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
@@ -49,10 +49,9 @@ func Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // RequestChallenge handles the request for a login challenge
-// RequestChallenge handles the request for a login challenge
 func RequestChallenge(w http.ResponseWriter, r *http.Request) {
 	log.Printf("RequestChallenge@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-	// 새로운 챌린지 생성
+	// Generate a new challenge
 	challenge, err := services.GenerateChallenge()
 	if err != nil {
 		http.Error(w, "Failed to generate challenge", http.StatusInternalServerError)
@@ -61,10 +60,10 @@ func RequestChallenge(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[challenge]: %s", challenge)
 
-	// 챌린지를 세션이나 쿠키에 저장할 수 있습니다. 여기서는 간단히 메모리에 저장합니다.
+	// The challenge can be stored in a session or cookie. Here, it's simply stored in memory.
 	services.StoreChallenge(challenge)
 
-	// 챌린지를 클라이언트로 전송
+	// Send the challenge to the client
 	json.NewEncoder(w).Encode(map[string]string{"challenge": challenge})
 }
 
@@ -83,7 +82,7 @@ func VerifyChallenge(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[Received PublicKey]: \n %s", req.PublicKey)
 	log.Printf("[Received Signature]: \n %s", req.Signature)
 
-	// 서명 검증
+	// Signature verification
 	verified, err := services.VerifySignature(req.PublicKey, req.Signature)
 	if err != nil || !verified {
 		log.Printf("Error verifying signature: %v", err)
@@ -91,7 +90,7 @@ func VerifyChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 서명 검증 성공 시 JWT 토큰 생성
+	// On successful signature verification, generate a JWT token
 	token, err := generateJWT(req.PublicKey)
 	if err != nil {
 		log.Printf("Error generating JWT: %v", err)
@@ -99,7 +98,7 @@ func VerifyChallenge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 토큰을 HttpOnly 쿠키로 설정
+	// Set the token as an HttpOnly cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
 		Value:    token,
@@ -108,7 +107,7 @@ func VerifyChallenge(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Now().Add(24 * time.Hour),
 	})
 
-	// 성공 응답
+	// Success response
 	json.NewEncoder(w).Encode(map[string]string{"status": "login successful"})
 }
 
@@ -139,7 +138,7 @@ func LoginWithWalletID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// AuthStatusResponse는 상태 확인 응답 구조체입니다.
+// AuthStatusResponse is the structure for the status check response
 type AuthStatusResponse struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`

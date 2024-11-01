@@ -85,16 +85,16 @@ func formatPublicKey(key string) string {
 	header := "-----BEGIN PUBLIC KEY-----"
 	footer := "-----END PUBLIC KEY-----"
 
-	// 헤더와 푸터 제거
+	// Remove header and footer
 	key = strings.ReplaceAll(key, header, "")
 	key = strings.ReplaceAll(key, footer, "")
 
-	// 공백 및 줄바꿈 제거
+	// Remove spaces and newlines
 	key = strings.ReplaceAll(key, " ", "")
 	key = strings.ReplaceAll(key, "\n", "")
 	key = strings.ReplaceAll(key, "\r", "")
 
-	// 64자마다 줄바꿈 추가
+	// Insert a newline every 64 characters
 	var formattedKey strings.Builder
 	formattedKey.WriteString(header + "\n")
 	for i := 0; i < len(key); i += 64 {
@@ -112,11 +112,13 @@ func formatPublicKey(key string) string {
 // VerifySignature verifies if the signature matches the stored challenge
 func VerifySignature(publicKeyPem, signatureBase64 string) (bool, error) {
 	// Format and log the received public key and signature
+
+	// Correct public key format
 	publicKeyPem = formatPublicKey(publicKeyPem)
 	log.Printf("Received PublicKey: %s", publicKeyPem)
     log.Printf("Received Signature (Base64): %s", signatureBase64)
 
-	// Retrieve stored challenge
+	// Retrieve the current stored challenge
 	challenge, err := GetChallenge()
 	if err != nil {
 		log.Printf("Error retrieving challenge: %v", err)
@@ -124,7 +126,7 @@ func VerifySignature(publicKeyPem, signatureBase64 string) (bool, error) {
 	}
 	log.Printf("Retrieved stored challenge for verification: %s", challenge)
 
-	// Decode the Base64-encoded signature
+	// Decode the signature
 	signatureBytes, err := base64.StdEncoding.DecodeString(signatureBase64)
 	if err != nil {
 		log.Printf("Error decoding Base64 signature: %v", err)
@@ -132,7 +134,7 @@ func VerifySignature(publicKeyPem, signatureBase64 string) (bool, error) {
 	}
 	log.Printf("Decoded Signature Bytes: %v", signatureBytes)
 
-	// Decode the public key PEM
+	// Decode the public key
 	block, _ := pem.Decode([]byte(publicKeyPem))
 	if block == nil {
 		log.Printf("Failed to decode public key PEM block")
@@ -156,7 +158,7 @@ func VerifySignature(publicKeyPem, signatureBase64 string) (bool, error) {
 	}
 	log.Printf("Public key is RSA type")
 
-	// Decode and log the challenge bytes
+	// Decode the challenge
 	challengeBytes, err := base64.StdEncoding.DecodeString(challenge)
 	if err != nil {
 		log.Printf("Error decoding challenge: %v", err)
@@ -164,11 +166,11 @@ func VerifySignature(publicKeyPem, signatureBase64 string) (bool, error) {
 	}
 	log.Printf("Challenge decoded: %v", challengeBytes)
 
-	// Hash the challenge for verification
+	// Hash the challenge
 	hashed := sha256.Sum256(challengeBytes)
 	log.Printf("Hashed Challenge: %x", hashed)
 
-	// Perform the signature verification
+	// Verify the signature
 	err = rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hashed[:], signatureBytes)
 	if err != nil {
 		log.Printf("Signature verification failed: %v", err)
@@ -176,7 +178,7 @@ func VerifySignature(publicKeyPem, signatureBase64 string) (bool, error) {
 	}
 	log.Printf("Signature verification succeeded")
 
-	// Clear the current challenge after successful verification
+	// Delete the challenge after use
 	challengeMutex.Lock()
 	currentChallenge = ""
 	challengeMutex.Unlock()
