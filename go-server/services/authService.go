@@ -1,11 +1,17 @@
 package services
 
 import (
+	"crypto"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"context"
@@ -18,51 +24,51 @@ import (
 // Temporary store for challenges (in-memory for now)
 var challengeStore = make(map[string]models.ChallengeData)
 
-func GetChallenge(publicKey string) (models.ChallengeData, bool) {
-	challenge, exists := challengeStore[publicKey]
-	return challenge, exists
+var (
+	currentChallenge string
+	challengeMutex   sync.Mutex
+)
+
+// GetChallenge retrieves the current challenge
+func GetChallenge() (string, error) {
+	challengeMutex.Lock()
+	defer challengeMutex.Unlock()
+	if currentChallenge == "" {
+		return "", errors.New("no challenge stored")
+	}
+	return currentChallenge, nil
 }
 
 // FindUserByPublicKey checks if a user exists in the database by their public key.
 // It also cleans the public key by removing any newlines.
 func FindUserByPublicKey(publicKey string) (*models.User, error) {
-
-	cleanPublicKey := strings.ReplaceAll(publicKey, "\n", "")
 	collection := utils.GetCollection("squidcoinDB", "users")
 	var user models.User
-	err := collection.FindOne(context.TODO(), bson.M{"public_key": cleanPublicKey}).Decode(&user)
+	err := collection.FindOne(context.TODO(), bson.M{"public_key": publicKey}).Decode(&user)
 	if err != nil {
-		log.Printf("User not found for publicKey: %s", cleanPublicKey)
+		log.Printf("User not found for publicKey")
 		return nil, errors.New("user not found")
 	}
 	return &user, nil
 }
 
-// GenerateChallenge generates a random challenge
+// GenerateChallenge generates a new challenge
 func GenerateChallenge() (string, error) {
-	challengeBytes := make([]byte, 16)
-	_, err := rand.Read(challengeBytes) // crypto/rand 사용
+	challengeBytes := make([]byte, 32)
+	_, err := rand.Read(challengeBytes)
 	if err != nil {
-		log.Printf("Failed to generate challenge")
-		return "", errors.New("failed to generate challenge")
+		return "", err
 	}
 
 	challenge := base64.StdEncoding.EncodeToString(challengeBytes)
-
-	// 생성된 챌린지를 로그로 출력
-	log.Printf("Generated challenge: %s", challenge)
-
 	return challenge, nil
 }
 
-// StoreChallenge stores the generated challenge in memory with creation time
-func StoreChallenge(publicKey, challenge string) error {
-	challengeStore[publicKey] = models.ChallengeData{
-		Challenge: challenge,
-		CreatedAt: time.Now(),
-	}
-	log.Printf("Challenge stored for publicKey: %s", publicKey)
-	return nil
+// StoreChallenge stores the current challenge
+func StoreChallenge(challenge string) {
+	challengeMutex.Lock()
+	defer challengeMutex.Unlock()
+	currentChallenge = challenge
 }
 
 // Delete expired Challenges periodically
@@ -74,52 +80,88 @@ func CleanupExpiredChallenges(expirationTime time.Duration) {
 		}
 	}
 }
+func formatPublicKey(key string) string {
+	key = strings.TrimSpace(key)
+	header := "-----BEGIN PUBLIC KEY-----"
+	footer := "-----END PUBLIC KEY-----"
+
+	// 헤더와 푸터 제거
+	key = strings.ReplaceAll(key, header, "")
+	key = strings.ReplaceAll(key, footer, "")
+
+	// 공백 및 줄바꿈 제거
+	key = strings.ReplaceAll(key, " ", "")
+	key = strings.ReplaceAll(key, "\n", "")
+	key = strings.ReplaceAll(key, "\r", "")
+
+	// 64자마다 줄바꿈 추가
+	var formattedKey strings.Builder
+	formattedKey.WriteString(header + "\n")
+	for i := 0; i < len(key); i += 64 {
+		end := i + 64
+		if end > len(key) {
+			end = len(key)
+		}
+		formattedKey.WriteString(key[i:end] + "\n")
+	}
+	formattedKey.WriteString(footer + "\n")
+
+	return formattedKey.String()
+}
 
 // VerifySignature verifies if the signature matches the stored challenge
-func VerifySignature(publicKey, signature string) (bool, error) {
-	// Clean up the public key
-	cleanPublicKey := strings.ReplaceAll(publicKey, "\n", "")
+func VerifySignature(publicKeyPem, signatureBase64 string) (bool, error) {
 
-	log.Printf("Received publicKey: %s", cleanPublicKey)
-	log.Printf("Received signature: %s", signature)
+	// 퍼블릭 키 형식 보정
+	publicKeyPem = formatPublicKey(publicKeyPem)
 
-	// Fetch user by public key
-	collection := utils.GetCollection("squidcoinDB", "users")
-	var user models.User
-	err := collection.FindOne(context.TODO(), bson.M{"public_key": cleanPublicKey}).Decode(&user)
+	// 현재 저장된 챌린지 가져오기
+	challenge, err := GetChallenge()
 	if err != nil {
-		log.Printf("User not found for publicKey: %s", cleanPublicKey)
-		return false, errors.New("user not found")
+		return false, err
 	}
 
-	log.Printf("User found for publicKey: %s", user.PublicKey)
-
-	// Get the stored challenge
-	challenge, exists := challengeStore[user.ID.Hex()]
-	if !exists {
-		log.Printf("Challenge not found for ID: %s", user.ID.Hex())
-		return false, errors.New("challenge not found or expired")
+	// 서명 디코딩
+	signatureBytes, err := base64.StdEncoding.DecodeString(signatureBase64)
+	if err != nil {
+		return false, errors.New("invalid signature format")
 	}
 
-	log.Printf("Challenge found for ID: %s", challenge)
+	// 퍼블릭 키 디코딩
+	block, _ := pem.Decode([]byte(publicKeyPem))
+	if block == nil {
+		return false, errors.New("invalid public key PEM")
+	}
 
-	// Verify the signature using public key and challenge
-	parsedPublicKey, err := utils.ParsePublicKey(user.PublicKey)
+	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		log.Printf("Invalid public key for ID: %s", user.ID.Hex())
 		return false, errors.New("invalid public key")
 	}
 
-	verified := utils.VerifySignature(parsedPublicKey, challenge.Challenge, signature)
+	pubKey, ok := pubInterface.(*rsa.PublicKey)
+	if !ok {
+		return false, errors.New("public key is not RSA")
+	}
 
-	if !verified {
-		log.Printf("Signature verification failed for ID: %s", user.ID.Hex())
+	// 챌린지 디코딩
+	challengeBytes, err := base64.StdEncoding.DecodeString(challenge)
+	if err != nil {
+		return false, errors.New("invalid challenge data")
+	}
+
+	// 챌린지 해싱
+	hashed := sha256.Sum256(challengeBytes)
+
+	// 서명 검증
+	err = rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hashed[:], signatureBytes)
+	if err != nil {
 		return false, errors.New("signature verification failed")
 	}
 
-	// Cleanup: remove challenge after successful verification
-	delete(challengeStore, user.ID.Hex())
-	log.Printf("Signature verification succeeded for ID: %s", user.ID.Hex())
+	// 챌린지 사용 후 삭제
+	challengeMutex.Lock()
+	currentChallenge = ""
+	challengeMutex.Unlock()
 
 	return true, nil
 }

@@ -34,6 +34,7 @@ import AccountViewPage from "./Components/AccountViewPage";
 import TransactionDetailsPage from "./Components/TransactionDetailsPage";
 import ProxyPage from "./Components/ProxyPage";
 
+const PORT = 8080;
 const jwtDecode = require("jwt-decode");
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
@@ -124,7 +125,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/auth/status", {
+        const response = await axios.get(`http://localhost:${PORT}/api/auth/status`, {
           withCredentials: true,
         });
         console.log("Auth status response:", response); // 응답 전체 출력

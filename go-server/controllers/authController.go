@@ -2,9 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
-	"go-server/models"
 	"go-server/services"
-	"io"
 	"log"
 	"net/http"
 )
@@ -35,108 +33,53 @@ func Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // RequestChallenge handles the request for a login challenge
+// RequestChallenge handles the request for a login challenge
 func RequestChallenge(w http.ResponseWriter, r *http.Request) {
-
-	var challengeReq models.ChallengeRequest
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
-		return
-	}
-
-	if err := json.Unmarshal(body, &challengeReq); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("Received PublicKey: %s", challengeReq.PublicKey)
-
-		// Check if the user exists for the given public key
-	user, err := services.FindUserByPublicKey(challengeReq.PublicKey)
-	if err != nil {
-		// User not found, return 401 Unauthorized
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
-	}
-
-	// 퍼블릭 키가 존재하든 존재하지 않든 난수를 생성하여 반환
-	challengeData, exists := services.GetChallenge(user.PublicKey)
-	if exists {
-		log.Printf("Returning existing challenge for publicKey: %s", challengeReq.PublicKey)
-		response := map[string]string{"challenge": challengeData.Challenge}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			return
-		}
-		return
-	}
-
-	// 새로운 난수 생성
+	log.Printf("RequestChallenge@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+	// 새로운 챌린지 생성
 	challenge, err := services.GenerateChallenge()
 	if err != nil {
-		http.Error(w, "Error generating challenge", http.StatusInternalServerError)
+		http.Error(w, "Failed to generate challenge", http.StatusInternalServerError)
 		return
 	}
 
-	// 생성된 난수 로그 출력
-	log.Printf("Generated new challenge: %s", challenge)
+	log.Printf("[challenge]: %s", challenge)
 
-	// 생성된 난수를 메모리에 저장 (퍼블릭 키와 함께)
-	if err := services.StoreChallenge(challengeReq.PublicKey, challenge); err != nil {
-		http.Error(w, "Error storing challenge", http.StatusInternalServerError)
-		return
-	}
+	// 챌린지를 세션이나 쿠키에 저장할 수 있습니다. 여기서는 간단히 메모리에 저장합니다.
+	services.StoreChallenge(challenge)
 
-	// 생성된 난수를 클라이언트로 반환
-	response := map[string]string{"challenge": challenge}
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
+	// 챌린지를 클라이언트로 전송
+	json.NewEncoder(w).Encode(map[string]string{"challenge": challenge})
 }
 
 // VerifyChallenge handles the login process by verifying the signature
 func VerifyChallenge(w http.ResponseWriter, r *http.Request) {
-	var challengeResponse models.ChallengeResponse
+	var req struct {
+		PublicKey string `json:"public_key"`
+		Signature string `json:"signature"`
+	}
 
-	// 요청 본문을 파싱
-	if err := json.NewDecoder(r.Body).Decode(&challengeResponse); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		log.Printf("Error decoding request payload: %v", err) // 로그 추가
 		return
 	}
 
-	// 로그 추가: 수신한 챌린지 응답 출력
-	log.Printf("Received Challenge Response: %+v", challengeResponse)
+	log.Printf("[Received PublicKey]: \n %s", req.PublicKey)
+	log.Printf("[Received Signature]: \n %s", req.Signature)
 
-	// 퍼블릭 키로 저장된 챌린지와 서명을 검증
-	verified, err := services.VerifySignature(challengeResponse.ID, challengeResponse.Signature)
-	if err != nil {
-		log.Printf("Error verifying signature: %v", err) // 서명 검증 에러 로그
-		http.Error(w, `{"error": "Invalid signature. Login failed."}`, http.StatusUnauthorized)
-		return
-	}
-	if !verified {
-		log.Printf("Invalid signature for user ID: %s", challengeResponse.ID) // 유효하지 않은 서명 로그
-		http.Error(w, `{"error": "Invalid signature. Login failed."}`, http.StatusUnauthorized)
+	// 서명 검증
+	verified, err := services.VerifySignature(req.PublicKey, req.Signature)
+	if err != nil || !verified {
+		log.Printf("Error verifying signature: %v", err)
+		http.Error(w, "Invalid signature. Login failed.", http.StatusUnauthorized)
 		return
 	}
 
-	// 로그 추가: 서명이 성공적으로 검증되었음을 알림
-	log.Printf("Signature verified successfully for user ID: %s", challengeResponse.ID)
+	// 사용자 인증 성공 처리 (예: 토큰 발행)
+	// ...
 
-	// 데이터베이스에서 퍼블릭 키로 사용자 존재 여부 확인
-	user, err := services.FindUserByPublicKey(challengeResponse.ID)
-	if err != nil {
-		log.Printf("User not found for public key: %s", challengeResponse.ID) // 사용자 미발견 로그
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
-	}
-
-	// 사용자 인증이 성공적으로 이루어졌음
-	log.Printf("User authenticated successfully: %s", user.ID.Hex()) // 인증 성공 로그
-	json.NewEncoder(w).Encode(map[string]string{"status": "login successful", "userId": user.ID.Hex()})
+	// 성공 응답
+	json.NewEncoder(w).Encode(map[string]string{"status": "login successful"})
 }
 
 // LoginWithWalletID handles the login using only the walletId (public key)
