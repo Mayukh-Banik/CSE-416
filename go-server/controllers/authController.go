@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"go-server/services"
 	"log"
 	"net/http"
@@ -11,16 +12,20 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
-
 // JWT generation function
 func generateJWT(publicKey string) (string, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return "", fmt.Errorf("JWT_SECRET 환경 변수가 설정되지 않았습니다.")
+	}
+
 	claims := jwt.MapClaims{
 		"publicKey": publicKey,
 		"exp":       time.Now().Add(time.Hour * 24).Unix(), // Expiration time set to 24 hours later
 	}
+	log.Printf("[generateJWT]: %s", jwtSecret) // 개발 중에만 사용. 실제 서비스에서는 제거하세요.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString([]byte(jwtSecret))
 }
 
 // Signup handles the signup request
@@ -144,27 +149,61 @@ type AuthStatusResponse struct {
 	Message string `json:"message"`
 }
 
-// // AuthStatus는 JWT 토큰 상태를 검증하는 핸들러입니다.
-// func AuthStatus(w http.ResponseWriter, r *http.Request) {
-// 	// Authorization 헤더에서 토큰 추출
-// 	token := r.Header.Get("Authorization")
-// 	if token == "" {
-// 		http.Error(w, "Missing token", http.StatusUnauthorized)
-// 		return
-// 	}
+func CheckAuthStatus(w http.ResponseWriter, r *http.Request) {
+	log.Printf("CheckAuthStatus 호출됨")
 
-// 	// 토큰 검증
-// 	valid, err := services.VerifyToken(token)
-// 	if err != nil || !valid {
-// 		http.Error(w, "Invalid token", http.StatusUnauthorized)
-// 		return
-// 	}
+	// 클라이언트 쿠키에서 토큰 추출
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		http.Error(w, "Missing token", http.StatusUnauthorized)
+		log.Println("토큰이 없습니다.")
+		return
+	}
 
-// 	// 토큰이 유효한 경우
-// 	response := AuthStatusResponse{
-// 		Status:  "valid",
-// 		Message: "Token is valid",
-// 	}
-// 	w.Header().Set("Content-Type", "application/json")
-// 	json.NewEncoder(w).Encode(response)
-// }
+	// 토큰 문자열 가져오기
+	tokenStr := cookie.Value
+	log.Printf("받은 토큰 값: %s", tokenStr) // 토큰 값 출력
+
+	// 환경 변수에서 JWT_SECRET 가져오기
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		http.Error(w, "Server configuration error", http.StatusInternalServerError)
+		log.Println("JWT_SECRET 환경 변수가 설정되지 않았습니다.")
+		return
+	}
+	log.Printf("JWT Secret Key Used for Verification쮸발: %s", jwtSecret) // 개발 중에만 사용. 실제 서비스에서는 제거하세요.
+
+	// 토큰 검증
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		// 서명 방법 확인
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(jwtSecret), nil
+	})
+
+	// 검증 실패 시 Unauthorized 응답
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	// 디코딩된 토큰의 클레임 정보 출력
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		log.Printf("Decoded Claims: %+v", claims)
+	} else {
+		log.Println("Failed to decode claims or token invalid")
+		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+		return
+	}
+
+	// 토큰이 유효한 경우 JSON 응답으로 유효성 반환
+	response := AuthStatusResponse{
+		Status:  "valid",
+		Message: "Token is valid",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+
+	log.Println("토큰이 유효합니다.")
+}
