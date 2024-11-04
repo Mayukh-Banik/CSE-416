@@ -74,12 +74,12 @@ const FilesPage: React.FC = () => {
                     size: file.size,
                     // file_data: base64FileData, // Encode file data as Base64 if required
                     description: descriptions[file.name] || "",
-                    hash: fileHashes[file.name], // Store the computed hash
+                    hash: fileHashes[file.name], // not needed - computed on backend
                     isPublished: false, // Initially not published
                 };
 
                 // Send the metadata to the server
-                const response = await fetch("http://localhost:8080/upload", {
+                const response = await fetch("http://localhost:8081/upload", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -196,7 +196,7 @@ const FilesPage: React.FC = () => {
     console.log("Publishing file metadata:", metadata);
 
     try {
-        const response = await fetch("http://localhost:8080/publish", {
+        const response = await fetch("http://localhost:8081/publish", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -359,7 +359,7 @@ const FilesPage: React.FC = () => {
                       <>
                         {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
                         {`Description: ${file.description}`} <br />
-                        {`SHA-256: ${file.hash.slice(0, 10)}...${file.hash.slice(-10)}`}
+                        {/* {`SHA-256: ${file.hash.slice(0, 10)}...${file.hash.slice(-10)}`} */}
                         </>
                     }                  
                     />

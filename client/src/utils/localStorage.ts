@@ -4,10 +4,11 @@ export interface FileMetadata {
   type: string;
   size: number;
   description: string;
-  hash: string;
+  hash?: string;
   createdAt?: string;
   reputation?: number;
   isPublished?: boolean;
+  fee?: number;
 }
 
 // userID is the same as public wallet ID
