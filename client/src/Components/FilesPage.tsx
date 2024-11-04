@@ -190,7 +190,7 @@ const FilesPage: React.FC = () => {
         type: fileToPublish.type,
         size: fileToPublish.size,
         description: fileToPublish.description,
-        // hash: fileToPublish.hash,
+        hash: fileToPublish.hash,
     };
 
     console.log("Publishing file metadata:", metadata);
@@ -203,7 +203,7 @@ const FilesPage: React.FC = () => {
             },
             body: JSON.stringify({
               key: fileToPublish.hash,           // The hash ID generated on upload
-              value: metadata,      // Any metadata to be stored in DHT
+              value: JSON.stringify(metadata),      // Any metadata to be stored in DHT
           }),
         });
 

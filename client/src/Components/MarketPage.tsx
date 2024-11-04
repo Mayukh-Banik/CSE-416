@@ -83,6 +83,35 @@ const MarketplacePage: React.FC = () => {
     setOpen(false); // Close the modal after selecting a provider
   };
 
+  const handleRefresh = () => {
+    console.log("HI");
+  };
+
+  const handleDownloadByHash = async () =>
+  {
+    console.log("HI");
+    const hash = prompt("Enter the file hash");
+    if(hash == null || hash.length==0) return;
+
+    const response = await fetch("http://localhost:8081/fetch",{
+      method :"POST",
+      headers:{
+        "Content-Type": "application/json",
+      },
+      body:JSON.stringify({
+        val: hash
+      }),
+    })
+
+    if (!response.ok)
+    {
+      throw new Error('HTTP Error: status : ${response.status}');
+    }
+
+    const data = await response.json();
+    console.log("File fetching successful:", data);
+  }
+
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
   };
@@ -113,6 +142,14 @@ const MarketplacePage: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         Marketplace
       </Typography>
+
+      <Button variant="contained" onClick={() => {handleRefresh}}>
+        Refresh
+      </Button>
+      <Button variant="contained" onClick={() => handleDownloadByHash()}>
+                    Download by Hash
+                  </Button>
+
       <TextField
         label="Search Files"
         variant="outlined"
@@ -121,6 +158,7 @@ const MarketplacePage: React.FC = () => {
         onChange={(e) => setSearchTerm(e.target.value)}
         sx={{ marginBottom: 2, background: "white" }}
       />
+      
       <TableContainer component={Paper}>
         <Table>
           <TableHead>

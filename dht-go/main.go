@@ -21,6 +21,9 @@ import (
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	record "github.com/libp2p/go-libp2p-record"
+
+	// new imports
+
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -272,6 +275,7 @@ func handlePeerExchange(node host.Host) {
 }
 
 func main() {
+
 	node, dht, err := createNode()
 	if err != nil {
 		log.Fatalf("Failed to create node: %s", err)
@@ -283,7 +287,7 @@ func main() {
 
 	fmt.Println("Node multiaddresses:", node.Addrs())
 	fmt.Println("Node Peer ID:", node.ID())
-
+	setupDHT(ctx, dht.Host())
 	connectToPeer(node, relay_node_addr) // connect to relay node
 	makeReservation(node)                // make reservation on relay node
 	go refreshReservation(node, 10*time.Minute)
@@ -298,6 +302,9 @@ func main() {
 	router.HandleFunc("/upload", uploadFileHandler).Methods("POST")
 	router.HandleFunc("/publish", func(w http.ResponseWriter, r *http.Request) {
 		publishFileHandler(w, r, dht) // Pass the `dht` instance here
+	}).Methods("POST")
+	router.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
+		handleDownloadFileByHash(w, r, dht)
 	}).Methods("POST")
 	router.HandleFunc("/file/", func(w http.ResponseWriter, r *http.Request) {
 		getFileHandler(w, r, dht) // Pass the `dht` instance here
@@ -356,6 +363,12 @@ func handleInput(ctx context.Context, dht *dht.IpfsDHT) {
 		command := args[0]
 		command = strings.ToUpper(command)
 		switch command {
+		// case "LIST_ALL":
+		// 	if len(args) >= 2 {
+		// 		fmt.Println("We don't want arguments")
+		// 		continue
+		// 	}
+		// 	listKeys(ctx, dht)
 		case "GET":
 			if len(args) < 2 {
 				fmt.Println("Expected key")
@@ -473,7 +486,7 @@ func refreshReservation(node host.Host, interval time.Duration) {
 }
 
 func publishFileHandler(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
-	log.Println("publishing file - dht")
+	log.Println("attemping to publish file - dht")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -495,9 +508,10 @@ func publishFileHandler(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT
 		http.Error(w, "Failed to publish file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	// Begin providing ourselves as a provider for that file
+	provideKey(ctx, dht, "/orcanet/"+requestBody.Key)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("File published successfully"))
+	w.Write([]byte("File published successfully:"))
 }
 
 // Handler for retrieving a file
@@ -562,4 +576,71 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json") // Set content type to JSON
 	w.WriteHeader(http.StatusOK)                       // Set response status
 	json.NewEncoder(w).Encode(response)                // Encode response as JSON
+}
+
+// func listKeys(ctx context.Context, dht *dht.IpfsDHT) {
+// 	q := query.Query{Prefix: "/orcanet/"} // Adjust prefix to match the namespace used
+// 	results, err := dht.Datastore().Query(ctx, q)
+// 	if err != nil {
+// 		fmt.Printf("Failed to query datastore: %v\n", err)
+// 		return
+// 	}
+// 	defer results.Close()
+
+//		fmt.Println("Available keys:")
+//		for result := range results.Next() {
+//			if result.Error != nil {
+//				fmt.Printf("Error retrieving key: %v\n", result.Error)
+//				continue
+//			}
+//			fmt.Println(result.Key)
+//		}
+//	}
+func handleDownloadFileByHash(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
+	fmt.Println("trying to download file by hash")
+	var requestBody struct {
+		Hash string `json:"val"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	log.Println("After checking invalid body")
+	ctx := globalCtx
+	key := requestBody.Hash
+	data := []byte(key)
+	hash := sha256.Sum256(data)
+	mh, err := multihash.EncodeName(hash[:], "sha2-256")
+
+	if err != nil {
+		fmt.Printf("Error encoding multihash %v\n", err)
+		return
+	}
+
+	c := cid.NewCidV1(cid.Raw, mh)
+	providers := dht.FindProvidersAsync(ctx, c, 20)
+
+	fmt.Println("Providers are ")
+	var address []string
+
+	for p := range providers {
+		fmt.Printf("Found provider :%s\n", p.ID.String())
+		for _, addr := range p.Addrs {
+			fmt.Printf(" - Address: %s\n", addr.String())
+			address = append(address, addr.String())
+		}
+	}
+
+	response := strings.Join(address, " ")
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+
+	_, err = w.Write([]byte(response))
+
+	if err != nil {
+		log.Printf("Error writing HTTP Message", err)
+	}
+
 }
