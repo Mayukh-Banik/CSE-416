@@ -54,6 +54,7 @@ func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {
 		return nil, fmt.Errorf("failed to generate private key: %w", err)
 	}
 	return privKey, nil
+
 }
 
 func setupDHT(ctx context.Context, h host.Host) *dht.IpfsDHT {
@@ -304,7 +305,7 @@ func main() {
 		publishFileHandler(ctx, w, r, dht) // Pass the `dht` instance here
 	}).Methods("POST")
 	router.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
-		handleDownloadFileByHash( w, r, dht)
+		handleDownloadFileByHash(w, r, dht)
 	}).Methods("POST")
 	router.HandleFunc("/file/", func(w http.ResponseWriter, r *http.Request) {
 		getFileHandler(w, r, dht) // Pass the `dht` instance here
@@ -504,14 +505,14 @@ func publishFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	//ctx := globalCtx
 	err := dht.PutValue(ctx, "/orcanet/"+requestBody.Key, []byte(requestBody.Value))
-	
-	fmt.Println("key is ",requestBody.Key)
+
+	fmt.Println("key is ", requestBody.Key)
 	if err != nil {
 		http.Error(w, "Failed to publish file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// Begin providing ourselves as a provider for that file
-	provideKey(ctx, dht,requestBody.Key)
+	provideKey(ctx, dht, requestBody.Key)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File published successfully:"))
 }
@@ -604,7 +605,6 @@ func handleDownloadFileByHash(w http.ResponseWriter, r *http.Request, dht *dht.I
 		Val string `json:"val"`
 	}
 
-	
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -629,15 +629,13 @@ func handleDownloadFileByHash(w http.ResponseWriter, r *http.Request, dht *dht.I
 	var address []string
 
 	for p := range providers {
-		
-		
+
 		fmt.Printf("Found provider :%s\n", p.ID.String())
 		for _, addr := range p.Addrs {
 			fmt.Printf(" - Address: %s\n", addr.String())
 			address = append(address, addr.String())
 		}
 	}
-
 
 	response := strings.Join(address, " ")
 	w.Header().Set("Content-Type", "text/plain")
