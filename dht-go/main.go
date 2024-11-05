@@ -301,7 +301,7 @@ func main() {
 	//file routes
 	router.HandleFunc("/upload", uploadFileHandler).Methods("POST")
 	router.HandleFunc("/publish", func(w http.ResponseWriter, r *http.Request) {
-		publishFileHandler(w, r, dht) // Pass the `dht` instance here
+		publishFileHandler(ctx, w, r, dht) // Pass the `dht` instance here
 	}).Methods("POST")
 	router.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
 		handleDownloadFileByHash(w, r, dht)
@@ -485,7 +485,7 @@ func refreshReservation(node host.Host, interval time.Duration) {
 	}
 }
 
-func publishFileHandler(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
+func publishFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
 	log.Println("attemping to publish file - dht")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -502,14 +502,16 @@ func publishFileHandler(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT
 		return
 	}
 
-	ctx := globalCtx
+	//ctx := globalCtx
 	err := dht.PutValue(ctx, "/orcanet/"+requestBody.Key, []byte(requestBody.Value))
+
+	fmt.Println("key is ", requestBody.Key)
 	if err != nil {
 		http.Error(w, "Failed to publish file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// Begin providing ourselves as a provider for that file
-	provideKey(ctx, dht, "/orcanet/"+requestBody.Key)
+	provideKey(ctx, dht, requestBody.Key)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File published successfully:"))
 }
@@ -599,7 +601,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 func handleDownloadFileByHash(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
 	fmt.Println("trying to download file by hash")
 	var requestBody struct {
-		Hash string `json:"val"`
+		Val string `json:"val"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
@@ -609,7 +611,7 @@ func handleDownloadFileByHash(w http.ResponseWriter, r *http.Request, dht *dht.I
 
 	log.Println("After checking invalid body")
 	ctx := globalCtx
-	key := requestBody.Hash
+	key := requestBody.Val
 	data := []byte(key)
 	hash := sha256.Sum256(data)
 	mh, err := multihash.EncodeName(hash[:], "sha2-256")
