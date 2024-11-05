@@ -9,6 +9,7 @@ func InitRoutes() *mux.Router {
 
     AuthRoutes(router)
     UserRoutes(router)
-
+    //FileRoutes(router)
+    
     return router
 }

@@ -20,7 +20,10 @@ import {
   ListItemText,
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
-import { saveFileMetadata, getFilesForUser, deleteFileMetadata, updateFileMetadata, FileMetadata } from '../utils/localStorage'
+import { FileMetadata } from '../../local_server/models/file';
+
+
+// import { saveFileMetadata, getFilesForUser, deleteFileMetadata, updateFileMetadata, FileMetadata } from '../utils/localStorage'
 
 // user id/wallet id is hardcoded for now
 
@@ -34,18 +37,34 @@ const FilesPage: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
-  const [currentFileId, setCurrentFileId] = useState<string | null>(null); // Track the file being published
+  const [currentFileHash, setCurrentFileHash] = useState<string | null>(null); // Track the file being published
   const [fee, setFee] = useState<number | undefined>(undefined); // Fee value for publishing
   
   const theme = useTheme();
   
-  useEffect(() => {
-    const fetchUploadedFiles = () => {
-      const files = getFilesForUser('123'); // Adjust user ID as necessary
-      setUploadedFiles(files);
-    };
+  // useEffect(() => {
+  //   const fetchUploadedFiles = () => {
+  //     const files = getFilesForUser('123'); // Adjust user ID as necessary
+  //     setUploadedFiles(files);
+  //   };
+  //   fetchUploadedFiles();
+  // }, []);
+
+   useEffect(()=>{
+    const fetchUploadedFiles = async () => {
+      try{
+        const res = await fetch('/fetchUploadedFiles');
+        if (!res.ok) {
+          throw new Error('errordfhsf');
+        }
+        const data = await res.json();
+        setUploadedFiles(data);
+      } catch (error) {
+        console.error('failed to get all')
+      }
+    }
     fetchUploadedFiles();
-  }, []);
+   }, [])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -67,8 +86,8 @@ const FilesPage: React.FC = () => {
                 const fileData = await file.arrayBuffer(); // Read file as ArrayBuffer
                 // const base64FileData = btoa(String.fromCharCode(...new Uint8Array(fileData))); // Convert to Base64
 
-                let metadata : FileMetadata = {
-                    id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
+                let metadata = {
+                    //id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
                     name: file.name,
                     type: file.type,
                     size: file.size,
@@ -79,14 +98,14 @@ const FilesPage: React.FC = () => {
                 };
 
                 // Send the metadata to the server
-                const response = await fetch("http://localhost:8081/upload", {
+                const response = await fetch("http://localhost:8082/upload", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify(metadata),
                 });
-
+                console.log("body is ",JSON.stringify(metadata));
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -95,7 +114,7 @@ const FilesPage: React.FC = () => {
                 console.log("File upload successful:", data, metadata);
                 
                 // update local server/database
-                saveFileMetadata('123', metadata);
+                //saveFileMetadata('123', metadata);
                 
                 return metadata;
             })
@@ -119,15 +138,37 @@ const FilesPage: React.FC = () => {
     }
 };
 
+
+  const updateFile = async (hash: string, updatedData: FileMetadata) => {
+    try {
+      const response = await fetch(`http://localhost:8082/update/${hash}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update file');
+      }
+
+      const result = await response.json();
+      console.log('File updated:', result);
+    } catch (error) {
+      console.error('Error updating file:', error);
+    }
+  };
+
   const handleDescriptionChange = (fileId: string, description: string) => {
     setDescriptions((prev) => ({ ...prev, [fileId]: description }));
   };
 
-  const handleTogglePublished = (id: string) => {
-    const file = uploadedFiles.find(file => file.id === id); // Get the current file
+  const handleTogglePublished = (hash: string) => {
+    const file = uploadedFiles.find(file => file.hash === hash); // Get the current file
 
     if (file) {
-      updateFileMetadata('123', {
+      updateFile(hash, {
         ...file,
         isPublished: !file.isPublished,
  })
@@ -136,22 +177,23 @@ const FilesPage: React.FC = () => {
         // If the file is already published, set the unpublished state
         setUploadedFiles((prev) =>
             prev.map((f) =>
-                f.id === id ? { ...f, isPublished: false } : f
+                f.hash === hash ? { ...f, isPublished: false } : f
             )
         );
     } else {
         // If the file is not published, open the publish dialog
-        setCurrentFileId(id); // Set the current file ID to the one being published
+        setCurrentFileHash(hash); // Set the current file ID to the one being published
         setPublishDialogOpen(true); 
     }
     
   };
 
 
-  const handleDeleteFile = (id: string) => {
-    deleteFileMetadata('123', id);
-    setUploadedFiles((prev) => prev.filter((file) => file.id !== id));
-    setSelectedFiles((prev) => prev.filter((file) => file.name !== id));
+  const handleDeleteFile = (hash: string) => {
+    // deleteFileMetadata('123', id);
+    setUploadedFiles((prev) => prev.filter((file) => file.hash !== hash));
+    
+    setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
     setNotification({ open: true, message: "File deleted.", severity: "success" });
   };
 
@@ -178,7 +220,7 @@ const FilesPage: React.FC = () => {
   };
 
   const handleConfirmPublish = async () => {
-    const fileToPublish = uploadedFiles.find(file => file.id === currentFileId);
+    const fileToPublish = uploadedFiles.find(file => file.hash === currentFileHash);
     
     if (!fileToPublish) {
         setNotification({ open: true, message: "File not found", severity: "error" });
@@ -203,20 +245,20 @@ const FilesPage: React.FC = () => {
             },
             body: JSON.stringify({
               key: fileToPublish.hash,           // The hash ID generated on upload
-              value: JSON.stringify(metadata),      // Any metadata to be stored in DHT
+              value: JSON.stringify(metadata),      // should not have metadata in value field
           }),
         });
 
         if (response.ok) {
             setUploadedFiles((prev) =>
                 prev.map((file) =>
-                    file.id === currentFileId ? { ...file, isPublished: true, fee } : file
+                    file.hash === currentFileHash ? { ...file, isPublished: true, fee } : file
                 )
             );
 
             setNotification({ open: true, message: "File published successfully!", severity: "success" });
             const data = await response.text();
-            updateFileMetadata('123', {
+            updateFile(fileToPublish.hash, {
                 ...fileToPublish,
                 isPublished: true, 
            })
@@ -352,7 +394,7 @@ const FilesPage: React.FC = () => {
             </Typography>
             <List>
               {uploadedFiles.map((file) => (
-                <ListItem key={file.id} divider>
+                <ListItem key={file.hash} divider>
                   <ListItemText 
                     primary={file.name} 
                     secondary={
@@ -369,12 +411,12 @@ const FilesPage: React.FC = () => {
                     </Typography>
                     <Switch 
                       edge="end" 
-                      onChange={() => handleTogglePublished(file.id)} 
+                      onChange={() => handleTogglePublished(file.hash)} 
                       checked={file.isPublished} 
                       color="primary"
                       inputProps={{ 'aria-label': `make ${file.name} public` }}
                     />
-                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteFile(file.id)}>
+                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteFile(file.hash)}>
                       <DeleteIcon />
                     </IconButton>
                   </Box>

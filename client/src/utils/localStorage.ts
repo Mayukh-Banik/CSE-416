@@ -1,18 +1,17 @@
 export interface FileMetadata {
-  id: string;
+  //id: string;
   name: string;
   type: string;
   size: number;
   description: string;
-  hash?: string;
-  createdAt?: string;
-  reputation?: number;
+  hash: string;
+  //createdAt?: string;
+  //reputation?: number;
   isPublished?: boolean;
-  fee?: number;
+  //fee?: number;
 }
 
 // userID is the same as public wallet ID
-
 // Function to save file metadata to local storage
 export const saveFileMetadata = (userId: string, file: FileMetadata) => {
   const existingFiles = localStorage.getItem(userId);
@@ -32,7 +31,7 @@ export const updateFileMetadata = (userId: string, updatedFile: FileMetadata) =>
   }
 
   const filesArray: FileMetadata[] = JSON.parse(existingFiles);
-  const fileIndex = filesArray.findIndex(file => file.id === updatedFile.id);
+  const fileIndex = filesArray.findIndex(file => file.hash === updatedFile.hash);
 
   if (fileIndex !== -1) {
     filesArray[fileIndex] = { ...filesArray[fileIndex], ...updatedFile }; // Update the existing file metadata
@@ -44,7 +43,7 @@ export const updateFileMetadata = (userId: string, updatedFile: FileMetadata) =>
 };
 
 // Function to delete file metadata
-export const deleteFileMetadata = (userId: string, fileId: string) => {
+export const deleteFileMetadata = (userId: string, fileHash: string) => {
   const existingFiles = localStorage.getItem(userId);
   if (!existingFiles) {
     console.log('No files found for the user');
@@ -52,7 +51,7 @@ export const deleteFileMetadata = (userId: string, fileId: string) => {
   }
 
   const filesArray: FileMetadata[] = JSON.parse(existingFiles);
-  const newFilesArray = filesArray.filter(file => file.id !== fileId);
+  const newFilesArray = filesArray.filter(file => file.hash !== fileHash);
 
   if (newFilesArray.length !== filesArray.length) {
     localStorage.setItem(userId, JSON.stringify(newFilesArray));

@@ -99,7 +99,7 @@ const MarketplacePage: React.FC = () => {
         "Content-Type": "application/json",
       },
       body:JSON.stringify({
-        val: hash
+        val: hash,
       }),
     })
 
@@ -108,7 +108,7 @@ const MarketplacePage: React.FC = () => {
       throw new Error('HTTP Error: status : ${response.status}');
     }
 
-    const data = await response.json();
+    const data = await response.text();
     console.log("File fetching successful:", data);
   }
 
