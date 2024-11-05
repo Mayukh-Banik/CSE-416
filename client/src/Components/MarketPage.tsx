@@ -91,6 +91,7 @@ const MarketplacePage: React.FC = () => {
   {
     console.log("HI");
     const hash = prompt("Enter the file hash");
+    console.log('you entered:', hash)
     if(hash == null || hash.length==0) return;
 
     const response = await fetch("http://localhost:8081/fetch",{
@@ -98,14 +99,12 @@ const MarketplacePage: React.FC = () => {
       headers:{
         "Content-Type": "application/json",
       },
-      body:JSON.stringify({
-        val: hash,
-      }),
+      body: JSON.stringify({val: hash}),
     })
 
     if (!response.ok)
     {
-      throw new Error('HTTP Error: status : ${response.status}');
+      throw new Error(`HTTP Error: status : ${response.status}`);
     }
 
     const data = await response.text();
