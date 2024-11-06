@@ -1,3 +1,33 @@
+export interface Provider {
+  fee: number;
+  walletID?: string;
+  ipAddress?: string;
+}
+
+export interface localFile {
+  name: string;
+  type: string;
+  size: number;
+  description: string;
+  hash: string;
+  //createdAt?: string;
+  //reputation?: number;
+  isPublished?: boolean;
+  fee?: number;
+}
+
+export interface dhtFile{
+  name: string;
+  type: string;
+  size: number;
+  description: string;
+  hash: string;
+  reputation?: number;
+  isPublished?: boolean;
+  providers: Provider[];
+}
+
+
 export interface FileMetadata {
   //id: string;
   name: string;
@@ -9,6 +39,7 @@ export interface FileMetadata {
   //reputation?: number;
   isPublished?: boolean;
   fee?: number;
+  providers: Provider[];
 }
 
 // userID is the same as public wallet ID

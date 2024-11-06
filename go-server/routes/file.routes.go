@@ -1,10 +1,6 @@
 package routes
 
-import (
-    "github.com/gorilla/mux"
-)
-
-
+// "github.com/gorilla/mux"
 
 /**func UploadFilehandler(w http.ResponseWriter, r *http.Request)
 {
@@ -12,7 +8,7 @@ import (
 
 	if r.Method != http.MethodPost{
 		http.Error(w, "Invalid request", http.StatusMethodNotAllowed)
-		return 
+		return
 	}
 
 	if err := json.NewDecoder(r.Body).decode(&file_metadata); err!=nil{

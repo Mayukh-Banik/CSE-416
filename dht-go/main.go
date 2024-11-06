@@ -46,6 +46,9 @@ var (
 	node                host.Host
 )
 
+var dirPath = filepath.Join("..", "utils")
+var filePath = filepath.Join(dirPath, "files.json")
+
 func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {
 	hash := sha256.Sum256(seed) // Generate deterministic key material
 	// Create an Ed25519 private key from the hash
@@ -304,21 +307,22 @@ func main() {
 	router.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
 		uploadFileHandler(ctx, w, r, dht) // Pass the `dht` instance here
 	}).Methods("POST")
-	// router.HandleFunc("/publish", func(w http.ResponseWriter, r *http.Request) {
-	// 	publishFileHandler(ctx, w, r, dht) // Pass the `dht` instance here
-	// }).Methods("POST")
 	router.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
 		handleGetProvidersByFileHash(w, r, dht)
 	}).Methods("POST")
 	router.HandleFunc("/file/", func(w http.ResponseWriter, r *http.Request) {
 		getFileHandler(w, r, dht) // Pass the `dht` instance here
 	}).Methods("GET")
+	router.HandleFunc("/getUploadedFiles", getUploadedFiles)
+	router.HandleFunc("/updateFile", func(w http.ResponseWriter, r *http.Request) {
+		handleUpdateFile(w, r, dht)
+	}).Methods("PUT")
 
 	// Configure CORS
 	corsOptions := cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"}, // Adjust this to your frontend origin
-		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Hash"},
 		AllowCredentials: true,
 	}
 
@@ -516,6 +520,8 @@ type FileMetadata struct {
 	Size        int64  `json:"size"`
 	Description string `json:"description"`
 	Hash        string `json:"hash"`
+	IsPublished bool   `json:"isPublished"`
+	Fee         int64  `json:"fee"`
 }
 
 //var files = make(map[string]FileMetadata) // Store uploaded files metadata by hash
@@ -548,9 +554,6 @@ func uploadFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Failed to convert request to JSON", http.StatusBadRequest)
 		return
 	}
-
-	dirPath := filepath.Join("..", "utils")
-	filePath := filepath.Join(dirPath, "files.json")
 
 	fmt.Println("after parsing paths, paths are ", dirPath, filePath)
 
@@ -692,6 +695,97 @@ func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request, dht *d
 	json.NewEncoder(w).Encode(providerList)
 }
 
-// func handleDownloadFile(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
-// 	connectToPeer(node, )
-// }
+func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("tring to fetch user's uploaded files")
+	file, err := os.ReadFile("../utils/files.json")
+
+	if err != nil {
+		http.Error(w, "Failed to read file", http.StatusInternalServerError)
+		return
+	}
+
+	var files []FileMetadata
+	if err := json.Unmarshal(file, &files); err != nil {
+		http.Error(w, "Failed to parse files data", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(files); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+func updateFileInfo(hash string, newFileData FileMetadata) error {
+	fmt.Println("trying to update file info in json", filePath)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("error reading file %v", err)
+	}
+
+	var files []FileMetadata
+	err = json.Unmarshal(data, &files)
+	if err != nil {
+		return fmt.Errorf("error parsing JSON %v", err)
+	}
+	fmt.Println("data from json", files)
+	fmt.Println("new file metadata", newFileData)
+
+	// Update file metadata based on hash
+	for i := range files {
+		if files[i].Hash == hash {
+			fmt.Printf("replacing %v with %v", files[i], newFileData)
+			files[i] = newFileData
+			break
+		}
+	}
+
+	// Marshal the updated data back to JSON
+	updatedData, err := json.MarshalIndent(files, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %v", err)
+	}
+
+	// Write the updated data back to the file
+	err = os.WriteFile(filePath, updatedData, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write updated file: %v", err)
+	}
+
+	return nil
+}
+
+func handleUpdateFile(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
+	// Check the Content-Type header to ensure it is application/json
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	// Get the file hash from the headers
+	hash := r.Header.Get("Hash") // Make sure it's sent as 'File-Hash'
+	if hash == "" {
+		http.Error(w, "file hash missing", http.StatusBadRequest)
+		return
+	}
+
+	// Parse the request body to get the updated file metadata
+	var fileData FileMetadata
+	if err := json.NewDecoder(r.Body).Decode(&fileData); err != nil {
+		http.Error(w, "error decoding metadata", http.StatusBadRequest)
+		return
+	}
+
+	// Update the file metadata in the JSON file
+	err := updateFileInfo(hash, fileData)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error updating file info: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Optionally update the metadata in the DHT (if necessary)
+	// dht.UpdateMetadata(hash, fileData) // Example of how you might update metadata in DHT
+
+	// Send a success response back
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("File metadata updated successfully"))
+}

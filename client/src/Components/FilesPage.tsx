@@ -56,21 +56,24 @@ const FilesPage: React.FC = () => {
   //   fetchUploadedFiles();
   // }, []);
 
-   useEffect(()=>{
-    const fetchUploadedFiles = async () => {
-      try{
-        const res = await fetch('/fetchUploadedFiles');
-        if (!res.ok) {
-          throw new Error('errordfhsf');
-        }
-        const data = await res.json();
-        setUploadedFiles(data);
+  // come up with more efficient approach later
+  useEffect(() => {
+    // Load JSON data on component mount
+    console.log("getting local user's uploaded files")
+    const fetchFiles = async () => {
+      try {
+        const response = await fetch("http://localhost:8081/getUploadedFiles");
+        if (!response.ok) throw new Error("Failed to load file data");
+        const data = await response.json();
+        console.log("fetched data", data)
+        setUploadedFiles(data); // Set the state with the loaded data
       } catch (error) {
-        console.error('failed to get all')
+        console.error("Error fetching files:", error);
       }
-    }
-    fetchUploadedFiles();
-   }, [])
+    };
+
+    fetchFiles();
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -92,48 +95,17 @@ const FilesPage: React.FC = () => {
                 // const base64FileData = btoa(String.fromCharCode(...new Uint8Array(fileData))); // Convert to Base64
                 // setPublishDialogOpen(true);
                 let metadata:FileMetadata = {
-                    //id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
-                    name: file.name,
-                    type: file.type,
-                    size: file.size,
-                    // file_data: base64FileData, // Encode file data as Base64 if required
-                    description: descriptions[file.name] || "",
-                    hash: fileHashes[file.name], // not needed - computed on backend
-                    isPublished: true, // Initially published
-                    fee: fees[file.name],
+                  //id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
+                  name: file.name,
+                  type: file.type,
+                  size: file.size,
+                  // file_data: base64FileData, // Encode file data as Base64 if required
+                  description: descriptions[file.name] || "",
+                  hash: fileHashes[file.name], // not needed - computed on backend
+                  isPublished: true, // Initially published
+                  fee: fees[file.name],
+                  providers: [] // add self - idk how tho
                 };
-
-                // add into the json file in a certain predetermined path
-                /** 
-                const dir_path = path.join(__dirname, '..','utils','files.json');
-                try{
-                  if (!fs.existsSync(dir_path)){
-                    await fsPromises.mkdir(dir_path);
-                    console.log("should've created utils json file");
-                  }
-                  const file_data = await fsPromises.readFile(dir_path,'utf-8');
-                  const files_data: FileMetadata[] = JSON.parse(file_data);
-
-                 let dup = false;
-                 for (const file of files_data){
-                  if(file.name===metadata.name){
-                    dup = true;
-                    break;
-                  }
-                 }
-
-                 if(!dup){
-                  files_data.push(metadata);
-                  await fsPromises.writeFile(dir_path,JSON.stringify(files_data,null,2),'utf8');
-                  console.log("added file metadata");
-                }
-                else{
-                  console.log("duplicate found");
-                }
-                } catch (error){
-                  console.error("error checking/updating files.json",error);
-                }
-                  */
                 
                 // Send the metadata to the server
                 const response = await fetch("http://localhost:8081/upload", {
@@ -178,26 +150,26 @@ const FilesPage: React.FC = () => {
 };
 
 // redo
-  const updateFile = async (hash: string, updatedData: FileMetadata) => {
-    try {
-      const response = await fetch(`http://localhost:8082/update/${hash}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedData),
-      });
+  // const updateFile = async (hash: string, updatedData: FileMetadata) => {
+  //   try {
+  //     const response = await fetch(`http://localhost:8082/update/${hash}`, {
+  //       method: 'PUT',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify(updatedData),
+  //     });
 
-      if (!response.ok) {
-        throw new Error('Failed to update file');
-      }
+  //     if (!response.ok) {
+  //       throw new Error('Failed to update file');
+  //     }
 
-      const result = await response.json();
-      console.log('File updated:', result);
-    } catch (error) {
-      console.error('Error updating file:', error);
-    }
-  };
+  //     const result = await response.json();
+  //     console.log('File updated:', result);
+  //   } catch (error) {
+  //     console.error('Error updating file:', error);
+  //   }
+  // };
 
   const handleDescriptionChange = (fileId: string, description: string) => {
     setDescriptions((prev) => ({ ...prev, [fileId]: description }));
@@ -207,30 +179,39 @@ const FilesPage: React.FC = () => {
     setFees((prev: any) => ({ ...prev, [fileId]: fee }));
   };
 
-  const handleTogglePublished = (hash: string) => {
-    const file = uploadedFiles.find(file => file.hash === hash); // Get the current file
+//   const handleTogglePublished = (hash: string) => {
+//     const file = uploadedFiles.find(file => file.hash === hash); // Get the current file
 
-    if (file) {
-      updateFile(hash, {
-        ...file,
-        isPublished: !file.isPublished,
- })
-    }
-    if (file?.isPublished) {
-        // If the file is already published, set the unpublished state
-        setUploadedFiles((prev) =>
-            prev.map((f) =>
-                f.hash === hash ? { ...f, isPublished: false } : f
-            )
-        );
-    } else {
-        // If the file is not published, open the publish dialog
-        setCurrentFileHash(hash); // Set the current file ID to the one being published
-        setPublishDialogOpen(true); 
-    }
+//     if (file) {
+//       updateFile(hash, {
+//         ...file,
+//         isPublished: !file.isPublished,
+//  })
+//     }
+//     if (file?.isPublished) {
+//         // If the file is already published, set the unpublished state
+//         setUploadedFiles((prev) =>
+//             prev.map((f) =>
+//                 f.hash === hash ? { ...f, isPublished: false } : f
+//             )
+//         );
+//     } else {
+//         // If the file is not published, open the publish dialog
+//         setCurrentFileHash(hash); // Set the current file ID to the one being published
+//         setPublishDialogOpen(true); 
+//     }
     
-  };
-
+//   };
+const handleTogglePublished = (hash: string) => {
+  handleConfirmPublish(hash);
+  setUploadedFiles(prevFiles => 
+    prevFiles.map(currentFile =>
+      currentFile.hash === hash
+        ? { ...currentFile, isPublished: !currentFile.isPublished }
+        : currentFile
+    )
+  );
+};
 
   const handleDeleteFile = (hash: string) => {
     // deleteFileMetadata('123', id);
@@ -262,50 +243,53 @@ const FilesPage: React.FC = () => {
     }));
   };
 
-  const handleConfirmPublish = async () => {
-    const fileToPublish = uploadedFiles.find(file => file.hash === currentFileHash);
+  const handleConfirmPublish = async (hash: string) => {
+    const fileToPublish = uploadedFiles.find(file => file.hash === hash);
     
     if (!fileToPublish) {
         setNotification({ open: true, message: "File not found", severity: "error" });
         return;
     }
 
-    const metadata = {
+    const updatedMetadata = {
         name: fileToPublish.name,
         type: fileToPublish.type,
         size: fileToPublish.size,
         description: fileToPublish.description,
         hash: fileToPublish.hash,
+        fee: fileToPublish.fee,
+        isPublished: !fileToPublish.isPublished,
     };
 
-    console.log("Publishing file metadata:", metadata);
-
     try {
-        const response = await fetch("http://localhost:8081/publish", {
-            method: 'POST',
+        const response = await fetch("http://localhost:8081/updateFile", {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
+                'Hash': fileToPublish.hash,
             },
-            body: JSON.stringify({
-              key: fileToPublish.hash,           // The hash ID generated on upload
-              value: JSON.stringify(metadata),      // should not have metadata in value field
-          }),
+            body: JSON.stringify(updatedMetadata),
         });
 
         if (response.ok) {
+            // Update the file's published status locally in the UI
             setUploadedFiles((prev) =>
                 prev.map((file) =>
-                    file.hash === currentFileHash ? { ...file, isPublished: true, fees } : file
+                    file.hash === fileToPublish.hash ? { ...file, isPublished: file.isPublished } : file
                 )
             );
 
             setNotification({ open: true, message: "File published successfully!", severity: "success" });
+
             const data = await response.text();
-            updateFile(fileToPublish.hash, {
-                ...fileToPublish,
-                isPublished: true, 
-           })
             console.log("Publish response: ", data);
+
+            // Call the updateFile function if you want to update the metadata on the local JSON file
+            // updateFile(fileToPublish.hash, {
+            //     ...fileToPublish,
+            //     isPublished: !fileToPublish.isPublished, // Update the isPublished status here
+            // });
+
         } else {
             const errorData = await response.text();
             console.error("Publish response error:", errorData);
@@ -315,9 +299,11 @@ const FilesPage: React.FC = () => {
         console.error("Error publishing file:", error);
         setNotification({ open: true, message: "An error occurred", severity: "error" });
     } finally {
+        console.log("Published file:", updatedMetadata);
         setPublishDialogOpen(false);
     }
 };
+
 
   return (
       <Box
