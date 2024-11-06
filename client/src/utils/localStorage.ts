@@ -8,7 +8,7 @@ export interface FileMetadata {
   //createdAt?: string;
   //reputation?: number;
   isPublished?: boolean;
-  //fee?: number;
+  fee?: number;
 }
 
 // userID is the same as public wallet ID
