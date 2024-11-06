@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -42,6 +43,7 @@ var (
 	relay_node_addr     = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
 	bootstrap_node_addr = "/ip4/130.245.173.222/tcp/61000/p2p/12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE"
 	globalCtx           context.Context
+	node                host.Host
 )
 
 func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {
@@ -302,11 +304,11 @@ func main() {
 	router.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
 		uploadFileHandler(ctx, w, r, dht) // Pass the `dht` instance here
 	}).Methods("POST")
-	router.HandleFunc("/publish", func(w http.ResponseWriter, r *http.Request) {
-		publishFileHandler(ctx, w, r, dht) // Pass the `dht` instance here
-	}).Methods("POST")
+	// router.HandleFunc("/publish", func(w http.ResponseWriter, r *http.Request) {
+	// 	publishFileHandler(ctx, w, r, dht) // Pass the `dht` instance here
+	// }).Methods("POST")
 	router.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
-		handleDownloadFileByHash(w, r, dht)
+		handleGetProvidersByFileHash(w, r, dht)
 	}).Methods("POST")
 	router.HandleFunc("/file/", func(w http.ResponseWriter, r *http.Request) {
 		getFileHandler(w, r, dht) // Pass the `dht` instance here
@@ -487,43 +489,17 @@ func refreshReservation(node host.Host, interval time.Duration) {
 	}
 }
 
-func publishFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
-	log.Println("attemping to publish file - dht")
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var requestBody struct {
-		Key   string `json:"key"`
-		Value string `json:"value"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	//ctx := globalCtx
-	err := dht.PutValue(ctx, "/orcanet/"+requestBody.Key, []byte(requestBody.Value))
-
-	fmt.Println("key is ", requestBody.Key)
-	if err != nil {
-		http.Error(w, "Failed to publish file: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	// Begin providing ourselves as a provider for that file
-	provideKey(ctx, dht, requestBody.Key)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("File published successfully:"))
-}
-
 // Handler for retrieving a file
 func getFileHandler(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
+	fmt.Println("in get file handler")
 	key := r.URL.Path[len("/file/"):] // Extract the key from the URL
+	fmt.Println("after extrating key", key)
+
 	ctx := globalCtx
 
 	res, err := dht.GetValue(ctx, "/orcanet/"+key)
+	fmt.Println("result of getValue", res)
+
 	if err != nil {
 		http.Error(w, "Failed to retrieve file: "+err.Error(), http.StatusNotFound)
 		return
@@ -572,6 +548,68 @@ func uploadFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Failed to convert request to JSON", http.StatusBadRequest)
 		return
 	}
+
+	dirPath := filepath.Join("..", "utils")
+	filePath := filepath.Join(dirPath, "files.json")
+
+	fmt.Println("after parsing paths, paths are ", dirPath, filePath)
+
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {
+			http.Error(w, "Failed to create utils diretory", http.StatusInternalServerError)
+		}
+	}
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		if err := os.WriteFile(filePath, []byte("[]"), 0644); err != nil {
+			http.Error(w, "Failed to create files.json", http.StatusInternalServerError)
+		}
+	}
+
+	var fileEntries []map[string]interface{}
+	fileData, err := os.ReadFile(filePath)
+
+	if err != nil {
+		http.Error(w, "failed to read jiles.json", http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.Unmarshal(fileData, &fileEntries); err != nil {
+		http.Error(w, "failed to parse files.json", http.StatusInternalServerError)
+		return
+	}
+
+	dup := false
+	for _, entry := range fileEntries {
+		if entry["hash"] == requestBody.Hash {
+			dup = true
+			break
+		}
+	}
+
+	if !dup {
+		var newEntry map[string]interface{}
+		if err := json.Unmarshal(jsonData, &newEntry); err != nil {
+			http.Error(w, "failed to add new entry to files.json", http.StatusInternalServerError)
+			return
+		}
+		fileEntries = append(fileEntries, newEntry)
+
+		updatedData, err := json.MarshalIndent(fileEntries, "", "  ")
+		if err != nil {
+			http.Error(w, "failed to marshal updated data to json", http.StatusInternalServerError)
+			return
+		}
+
+		if err := os.WriteFile(filePath, updatedData, 0644); err != nil {
+			http.Error(w, "failed to write updated data to files.json", http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("New entry added to files.json")
+	} else {
+		fmt.Println("duplicate found in files.json")
+	}
+
 	err = dht.PutValue(ctx, "/orcanet/"+requestBody.Hash, jsonData)
 	if err != nil {
 		http.Error(w, "Failed to put inside dht: "+err.Error(), http.StatusInternalServerError)
@@ -609,52 +647,51 @@ func uploadFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 //			fmt.Println(result.Key)
 //		}
 //	}
-func handleDownloadFileByHash(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
-	fmt.Println("trying to download file by hash")
+//
+// Helper function to try reverse lookup of peers
+func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
 	var requestBody struct {
-		Val string `json:"val"`
+		Val string `json:"val"` // file hash sent in request
 	}
 
+	// Decode request JSON
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	log.Println("After checking invalid body")
-	ctx := globalCtx
-	key := requestBody.Val
+	// ctx := context.Background()
+	key := requestBody.Val // file hash
 	data := []byte(key)
 	hash := sha256.Sum256(data)
 	mh, err := multihash.EncodeName(hash[:], "sha2-256")
 
 	if err != nil {
-		fmt.Printf("Error encoding multihash %v\n", err)
+		fmt.Printf("Error encoding multihash: %v\n", err)
+		http.Error(w, "Error encoding hash", http.StatusInternalServerError)
 		return
 	}
 
 	c := cid.NewCidV1(cid.Raw, mh)
-	providers := dht.FindProvidersAsync(ctx, c, 20)
+	providers := dht.FindProvidersAsync(globalCtx, c, 20) // asynchronous find
 
-	fmt.Println("Providers are ")
-	var address []string
-
+	var providerList []map[string]string
 	for p := range providers {
-
-		fmt.Printf("Found provider :%s\n", p.ID.String())
 		for _, addr := range p.Addrs {
-			fmt.Printf(" - Address: %s\n", addr.String())
-			address = append(address, addr.String())
+			providerInfo := map[string]string{
+				"peerID":  p.ID.String(),
+				"address": addr.String(),
+			}
+			providerList = append(providerList, providerInfo)
 		}
 	}
 
-	response := strings.Join(address, " ")
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
+	fmt.Printf("ahhhh provider list: %v\n", providerList)
 
-	_, err = w.Write([]byte(response))
-
-	if err != nil {
-		log.Printf("Error writing HTTP Message", err)
-	}
-
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(providerList)
 }
+
+// func handleDownloadFile(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
+// 	connectToPeer(node, )
+// }
