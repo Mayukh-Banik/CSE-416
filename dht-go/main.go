@@ -54,7 +54,6 @@ func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {
 		return nil, fmt.Errorf("failed to generate private key: %w", err)
 	}
 	return privKey, nil
-
 }
 
 func setupDHT(ctx context.Context, h host.Host) *dht.IpfsDHT {

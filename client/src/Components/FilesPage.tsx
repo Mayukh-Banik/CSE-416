@@ -70,7 +70,7 @@ const FilesPage: React.FC = () => {
       }
     }
     fetchUploadedFiles();
-   }, []);
+   }, [])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -232,31 +232,13 @@ const FilesPage: React.FC = () => {
   };
 
 
-  // deletes file from list of files to be uploaded - these have not been added to the database yet
-  const handleDeleteSelectedFile = (hash: string) => {
+  const handleDeleteFile = (hash: string) => {
     // deleteFileMetadata('123', id);
     setUploadedFiles((prev) => prev.filter((file) => file.hash !== hash));
     
     setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
     setNotification({ open: true, message: "File deleted.", severity: "success" });
   };
-
-  const handleDeleteUploadedFile = async (hash: string) => {
-    try {
-      const response = await fetch(('http://localhost:8082/delete/${hash}'), {
-        method: "DELETE" 
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update file');
-      }
-  
-      const result = await response.json();
-      console.log('File deleted:', result);
-    } catch (error) {
-    console.error('Error deleting file:', error);
-  }
-}
 
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
@@ -452,7 +434,7 @@ const FilesPage: React.FC = () => {
                   <IconButton 
                       edge="end" 
                       aria-label="delete" 
-                      onClick={() => handleDeleteSelectedFile(file.name)}
+                      onClick={() => handleDeleteFile(file.name)}
                       sx={{marginTop:15}}
                     >
                       <DeleteIcon />
@@ -493,7 +475,7 @@ const FilesPage: React.FC = () => {
                       color="primary"
                       inputProps={{ 'aria-label': `make ${file.name} public` }}
                     />
-                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteUploadedFile(file.hash)}>
+                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteFile(file.hash)}>
                       <DeleteIcon />
                     </IconButton>
                   </Box>
@@ -544,6 +526,5 @@ const FilesPage: React.FC = () => {
     </Box>
   );
 };
-
 
 export default FilesPage;
