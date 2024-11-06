@@ -20,7 +20,8 @@ import {
   ListItemText,
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
-import { FileMetadata } from '../../local_server/models/file';
+import { FileMetadata, saveFileMetadata } from "../utils/localStorage";
+//import { FileMetadata } from '../../local_server/models/file';
 
 
 // import { saveFileMetadata, getFilesForUser, deleteFileMetadata, updateFileMetadata, FileMetadata } from '../utils/localStorage'
@@ -30,6 +31,10 @@ import { FileMetadata } from '../../local_server/models/file';
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
+import fs from 'fs';
+import fsPromises from 'fs/promises';
+import path from 'path';
+
 const FilesPage: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({}); // Track descriptions
@@ -38,7 +43,8 @@ const FilesPage: React.FC = () => {
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
   const [currentFileHash, setCurrentFileHash] = useState<string | null>(null); // Track the file being published
-  const [fee, setFee] = useState<number | undefined>(undefined); // Fee value for publishing
+  // const [fee, setFee] = useState<number | undefined>(undefined); // Fee value for publishing
+  const [fees, setFees] = useState<{ [key: string]: number }>({}); // Track fees of to be uploaded files
   
   const theme = useTheme();
   
@@ -78,15 +84,14 @@ const FilesPage: React.FC = () => {
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
-
     try {
         // Create uploaded file objects with descriptions, hashes, and metadata
         const newUploadedFiles = await Promise.all(
             selectedFiles.map(async (file) => {
                 const fileData = await file.arrayBuffer(); // Read file as ArrayBuffer
                 // const base64FileData = btoa(String.fromCharCode(...new Uint8Array(fileData))); // Convert to Base64
-
-                let metadata = {
+                // setPublishDialogOpen(true);
+                let metadata:FileMetadata = {
                     //id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
                     name: file.name,
                     type: file.type,
@@ -94,11 +99,44 @@ const FilesPage: React.FC = () => {
                     // file_data: base64FileData, // Encode file data as Base64 if required
                     description: descriptions[file.name] || "",
                     hash: fileHashes[file.name], // not needed - computed on backend
-                    isPublished: false, // Initially not published
+                    isPublished: true, // Initially published
+                    fee: fees[file.name],
                 };
 
+                // add into the json file in a certain predetermined path
+                /** 
+                const dir_path = path.join(__dirname, '..','utils','files.json');
+                try{
+                  if (!fs.existsSync(dir_path)){
+                    await fsPromises.mkdir(dir_path);
+                    console.log("should've created utils json file");
+                  }
+                  const file_data = await fsPromises.readFile(dir_path,'utf-8');
+                  const files_data: FileMetadata[] = JSON.parse(file_data);
+
+                 let dup = false;
+                 for (const file of files_data){
+                  if(file.name===metadata.name){
+                    dup = true;
+                    break;
+                  }
+                 }
+
+                 if(!dup){
+                  files_data.push(metadata);
+                  await fsPromises.writeFile(dir_path,JSON.stringify(files_data,null,2),'utf8');
+                  console.log("added file metadata");
+                }
+                else{
+                  console.log("duplicate found");
+                }
+                } catch (error){
+                  console.error("error checking/updating files.json",error);
+                }
+                  */
+                
                 // Send the metadata to the server
-                const response = await fetch("http://localhost:8082/upload", {
+                const response = await fetch("http://localhost:8081/upload", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -110,7 +148,7 @@ const FilesPage: React.FC = () => {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                const data = await response.json();
+                const data = await response.text();
                 console.log("File upload successful:", data, metadata);
                 
                 // update local server/database
@@ -126,6 +164,7 @@ const FilesPage: React.FC = () => {
         // Clear selected files, descriptions, and hashes after successful upload
         setSelectedFiles([]);
         setDescriptions({});
+        setFees({});
         setFileHashes({});
 
         // Show success notification
@@ -138,7 +177,7 @@ const FilesPage: React.FC = () => {
     }
 };
 
-
+// redo
   const updateFile = async (hash: string, updatedData: FileMetadata) => {
     try {
       const response = await fetch(`http://localhost:8082/update/${hash}`, {
@@ -162,6 +201,10 @@ const FilesPage: React.FC = () => {
 
   const handleDescriptionChange = (fileId: string, description: string) => {
     setDescriptions((prev) => ({ ...prev, [fileId]: description }));
+  };
+
+  const handleFeeChange = (fileId: string, fee: number) => {
+    setFees((prev: any) => ({ ...prev, [fileId]: fee }));
   };
 
   const handleTogglePublished = (hash: string) => {
@@ -252,7 +295,7 @@ const FilesPage: React.FC = () => {
         if (response.ok) {
             setUploadedFiles((prev) =>
                 prev.map((file) =>
-                    file.hash === currentFileHash ? { ...file, isPublished: true, fee } : file
+                    file.hash === currentFileHash ? { ...file, isPublished: true, fees } : file
                 )
             );
 
@@ -357,6 +400,8 @@ const FilesPage: React.FC = () => {
                       secondary={
                         <>
                           {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
+                          {/* {`Description: ${(file.description)}`} <br /> */}
+
                           {`SHA-256 Hash: ${fileHashes[file.name] || "Computing..."}`}                       
                         </>
                       }  
@@ -372,6 +417,19 @@ const FilesPage: React.FC = () => {
                         onChange={(e) => handleDescriptionChange(file.name, e.target.value)}
                       />
                     </Box>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: 1 }}>
+                      <TextField
+                        label="Fee"
+                        type="number"
+                        variant="outlined"
+                        fullWidth
+                        margin="normal"
+                        value={fees[file.name] || 0}
+                        onChange={(e) => handleFeeChange(file.name, parseFloat(e.target.value))}
+                      />
+                    </Box>
+
                   </Box>
                   <IconButton 
                       edge="end" 
@@ -401,7 +459,8 @@ const FilesPage: React.FC = () => {
                       <>
                         {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
                         {`Description: ${file.description}`} <br />
-                        {/* {`SHA-256: ${file.hash.slice(0, 10)}...${file.hash.slice(-10)}`} */}
+                        {`SHA-256: ${file.hash.slice(0, 10)}...${file.hash.slice(-10)}`} <br />
+                        {`Fee: ${file.fee}`} <br />
                         </>
                     }                  
                     />
@@ -428,7 +487,7 @@ const FilesPage: React.FC = () => {
       </Box>
 
       {/* Publish Modal */}
-      <Dialog open={publishDialogOpen} onClose={() => setPublishDialogOpen(false)}>
+      {/* <Dialog open={publishDialogOpen} onClose={() => setPublishDialogOpen(false)}>
         <DialogTitle>Set Download Fee</DialogTitle>
         <DialogContent>
           <TextField
@@ -451,7 +510,7 @@ const FilesPage: React.FC = () => {
             Publish
           </Button>
         </DialogActions>
-      </Dialog>
+      </Dialog> */}
 
       {/* Notification Snackbar */}
       <Snackbar 

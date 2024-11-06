@@ -299,12 +299,14 @@ func main() {
 	router := mux.NewRouter()
 
 	//file routes
-	router.HandleFunc("/upload", uploadFileHandler).Methods("POST")
+	router.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+		uploadFileHandler(ctx, w, r, dht) // Pass the `dht` instance here
+	}).Methods("POST")
 	router.HandleFunc("/publish", func(w http.ResponseWriter, r *http.Request) {
 		publishFileHandler(ctx, w, r, dht) // Pass the `dht` instance here
 	}).Methods("POST")
 	router.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
-		handleDownloadFileByHash( w, r, dht)
+		handleDownloadFileByHash(w, r, dht)
 	}).Methods("POST")
 	router.HandleFunc("/file/", func(w http.ResponseWriter, r *http.Request) {
 		getFileHandler(w, r, dht) // Pass the `dht` instance here
@@ -504,14 +506,14 @@ func publishFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	//ctx := globalCtx
 	err := dht.PutValue(ctx, "/orcanet/"+requestBody.Key, []byte(requestBody.Value))
-	
-	fmt.Println("key is ",requestBody.Key)
+
+	fmt.Println("key is ", requestBody.Key)
 	if err != nil {
 		http.Error(w, "Failed to publish file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// Begin providing ourselves as a provider for that file
-	provideKey(ctx, dht,requestBody.Key)
+	provideKey(ctx, dht, requestBody.Key)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File published successfully:"))
 }
@@ -540,9 +542,9 @@ type FileMetadata struct {
 	Hash        string `json:"hash"`
 }
 
-var files = make(map[string]FileMetadata) // Store uploaded files metadata by hash
+//var files = make(map[string]FileMetadata) // Store uploaded files metadata by hash
 
-func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
+func uploadFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -554,31 +556,40 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		Size        int64  `json:"size"`
 		Description string `json:"description"`
 		Hash        string `json:"hash"`
+		IsPublished bool   `json:"isPublished"`
+		Fee         int64  `json:"fee"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	//ctx := globalCtx
 
-	// Create file metadata from the request
-	fileMetadata := FileMetadata{
-		Name:        requestBody.Name,
-		Type:        requestBody.Type,
-		Size:        requestBody.Size,
-		Description: requestBody.Description,
-		Hash:        requestBody.Hash,
+	jsonData, err := json.Marshal(requestBody)
+	fmt.Println("Json data is ", string(jsonData))
+	if err != nil {
+		http.Error(w, "Failed to convert request to JSON", http.StatusBadRequest)
+		return
 	}
-
-	// Store the file metadata using the hash as the key
-	files[requestBody.Hash] = fileMetadata
-
-	// Respond with a success message
-	response := map[string]string{"message": "File metadata uploaded successfully", "hash": requestBody.Hash}
-	w.Header().Set("Content-Type", "application/json") // Set content type to JSON
-	w.WriteHeader(http.StatusOK)                       // Set response status
-	json.NewEncoder(w).Encode(response)                // Encode response as JSON
+	err = dht.PutValue(ctx, "/orcanet/"+requestBody.Hash, jsonData)
+	if err != nil {
+		http.Error(w, "Failed to put inside dht: "+err.Error(), http.StatusInternalServerError)
+	}
+	fmt.Println("key is ", requestBody.Hash)
+	if err != nil {
+		http.Error(w, "Failed to publish file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Begin providing ourselves as a provider for that file
+	provideKey(ctx, dht, requestBody.Hash)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("File published successfully:"))
 }
+
+// Create file metadata from the request
+
+// Respond with a success message
 
 // func listKeys(ctx context.Context, dht *dht.IpfsDHT) {
 // 	q := query.Query{Prefix: "/orcanet/"} // Adjust prefix to match the namespace used
@@ -604,7 +615,6 @@ func handleDownloadFileByHash(w http.ResponseWriter, r *http.Request, dht *dht.I
 		Val string `json:"val"`
 	}
 
-	
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -629,15 +639,13 @@ func handleDownloadFileByHash(w http.ResponseWriter, r *http.Request, dht *dht.I
 	var address []string
 
 	for p := range providers {
-		
-		
+
 		fmt.Printf("Found provider :%s\n", p.ID.String())
 		for _, addr := range p.Addrs {
 			fmt.Printf(" - Address: %s\n", addr.String())
 			address = append(address, addr.String())
 		}
 	}
-
 
 	response := strings.Join(address, " ")
 	w.Header().Set("Content-Type", "text/plain")
