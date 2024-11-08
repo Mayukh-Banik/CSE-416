@@ -546,7 +546,7 @@ func uploadFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	//ctx := globalCtx
+	ctx = globalCtx
 
 	jsonData, err := json.Marshal(requestBody)
 	fmt.Println("Json data is ", string(jsonData))
@@ -677,6 +677,7 @@ func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request, dht *d
 
 	c := cid.NewCidV1(cid.Raw, mh)
 	providers := dht.FindProvidersAsync(globalCtx, c, 20) // asynchronous find
+	fmt.Printf("providers: %v\n", providers)
 
 	var providerList []map[string]string
 	for p := range providers {
@@ -685,6 +686,7 @@ func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request, dht *d
 				"peerID":  p.ID.String(),
 				"address": addr.String(),
 			}
+			fmt.Printf("providerinfo: %v\n", providerInfo)
 			providerList = append(providerList, providerInfo)
 		}
 	}
@@ -727,13 +729,13 @@ func updateFileInfo(hash string, newFileData FileMetadata) error {
 	if err != nil {
 		return fmt.Errorf("error parsing JSON %v", err)
 	}
-	fmt.Println("data from json", files)
-	fmt.Println("new file metadata", newFileData)
+	// fmt.Println("data from json", files)
+	// fmt.Println("new file metadata", newFileData)
 
 	// Update file metadata based on hash
 	for i := range files {
 		if files[i].Hash == hash {
-			fmt.Printf("replacing %v with %v", files[i], newFileData)
+			// fmt.Printf("replacing %v with %v", files[i], newFileData)
 			files[i] = newFileData
 			break
 		}

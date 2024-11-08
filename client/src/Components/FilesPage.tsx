@@ -35,45 +35,46 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 
-const FilesPage: React.FC = () => {
+interface FilesProp {
+  uploadedFiles: FileMetadata[];
+  setUploadedFiles: React.Dispatch<React.SetStateAction<FileMetadata[]>>;
+  initialFetch: boolean;
+  setInitialFetch: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initialFetch, setInitialFetch}) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({}); // Track descriptions
   const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({}); // Track hashes
-  const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([]);
+  // const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
   const [currentFileHash, setCurrentFileHash] = useState<string | null>(null); // Track the file being published
-  // const [fee, setFee] = useState<number | undefined>(undefined); // Fee value for publishing
   const [fees, setFees] = useState<{ [key: string]: number }>({}); // Track fees of to be uploaded files
-  
   const theme = useTheme();
-  
-  // useEffect(() => {
-  //   const fetchUploadedFiles = () => {
-  //     const files = getFilesForUser('123'); // Adjust user ID as necessary
-  //     setUploadedFiles(files);
-  //   };
-  //   fetchUploadedFiles();
-  // }, []);
 
-  // come up with more efficient approach later
   useEffect(() => {
-    // Load JSON data on component mount
-    console.log("getting local user's uploaded files")
-    const fetchFiles = async () => {
-      try {
-        const response = await fetch("http://localhost:8081/getUploadedFiles");
-        if (!response.ok) throw new Error("Failed to load file data");
-        const data = await response.json();
-        console.log("fetched data", data)
-        setUploadedFiles(data); // Set the state with the loaded data
-      } catch (error) {
-        console.error("Error fetching files:", error);
-      }
-    };
-
-    fetchFiles();
-  }, []);
+    if (!initialFetch) {
+      const fetchFiles = async () => {
+        try {
+          console.log("Getting local user's uploaded files");
+          const response = await fetch("http://localhost:8081/getUploadedFiles");
+          if (!response.ok) throw new Error("Failed to load file data");
+  
+          const data = await response.json();
+          console.log("Fetched data", data);
+  
+          setUploadedFiles(data); // Set the state with the loaded data
+          setInitialFetch(true); // Set initialFetch to true to prevent further calls
+        } catch (error) {
+          console.error("Error fetching files:", error);
+        }
+      };
+  
+      fetchFiles();
+    }
+  }, [initialFetch, setUploadedFiles, setInitialFetch]);
+  
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;

@@ -73,9 +73,6 @@ const MarketplacePage: React.FC = () => {
   // ]);
   const [providers, setProviders] = useState<IProvider[]>([]);
 
-  // const filteredFiles = files.filter(file => 
-  //   file.name.toLowerCase().includes(searchTerm.toLowerCase())
-  // );
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
   };
@@ -141,21 +138,6 @@ const getFile = async (fileHash:string) => {
           throw new Error(`HTTP error! status: ${response.status}`);
       }
       console.log("got the file:", response)
-
-      // // Convert the response to a blob (binary data), assuming you're downloading a file
-      // const fileBlob = await response.blob();
-      
-      // // Optionally, create a URL for the file to download or preview
-      // const fileURL = URL.createObjectURL(fileBlob);
-      
-      // // For example, if you want to download the file
-      // const a = document.createElement('a');
-      // a.href = fileURL;
-      // a.download = fileHash; // or any other name you want to assign to the downloaded file
-      // a.click();
-      
-      // // Clean up the URL object once the download is done
-      // URL.revokeObjectURL(fileURL);
 
   } catch (error) {
       console.error("Error fetching file:", error);
