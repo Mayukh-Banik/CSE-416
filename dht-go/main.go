@@ -21,6 +21,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	record "github.com/libp2p/go-libp2p-record"
 
 	// new imports
@@ -44,6 +45,8 @@ var (
 	bootstrap_node_addr = "/ip4/130.245.173.222/tcp/61000/p2p/12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE"
 	globalCtx           context.Context
 	node                host.Host
+	ProviderStore       providers.ProviderStore
+	DHT                 *dht.IpfsDHT
 )
 
 var dirPath = filepath.Join("..", "utils")
@@ -292,13 +295,15 @@ func main() {
 
 	fmt.Println("Node multiaddresses:", node.Addrs())
 	fmt.Println("Node Peer ID:", node.ID())
-	setupDHT(ctx, dht.Host())
+	DHT = setupDHT(ctx, dht.Host())
 	connectToPeer(node, relay_node_addr) // connect to relay node
 	makeReservation(node)                // make reservation on relay node
 	go refreshReservation(node, 10*time.Minute)
 	connectToPeer(node, bootstrap_node_addr) // connect to bootstrap node
 	go handlePeerExchange(node)
 	go handleInput(ctx, dht)
+
+	ProviderStore = DHT.ProviderStore()
 
 	// Set up HTTP handlers
 	router := mux.NewRouter()
@@ -308,7 +313,7 @@ func main() {
 		uploadFileHandler(ctx, w, r, dht) // Pass the `dht` instance here
 	}).Methods("POST")
 	router.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
-		handleGetProvidersByFileHash(w, r, dht)
+		handleGetProvidersByFileHash(w, r, dht, ctx)
 	}).Methods("POST")
 	router.HandleFunc("/file/", func(w http.ResponseWriter, r *http.Request) {
 		getFileHandler(w, r, dht) // Pass the `dht` instance here
@@ -432,7 +437,7 @@ func handleInput(ctx context.Context, dht *dht.IpfsDHT) {
 				fmt.Printf("Failed to put record: %v\n", err)
 				continue
 			}
-			// provideKey(ctx, dht, key)
+			// ProvideKey(ctx, dht, key)
 			fmt.Println("Record stored successfully")
 
 		case "PUT_PROVIDER":
@@ -441,14 +446,14 @@ func handleInput(ctx context.Context, dht *dht.IpfsDHT) {
 				continue
 			}
 			key := args[1]
-			provideKey(ctx, dht, key)
+			ProvideKey(ctx, dht, key)
 		default:
 			fmt.Println("Expected GET, GET_PROVIDERS, PUT or PUT_PROVIDER")
 		}
 	}
 }
 
-func provideKey(ctx context.Context, dht *dht.IpfsDHT, key string) error {
+func ProvideKey(ctx context.Context, dht *dht.IpfsDHT, key string) error {
 	data := []byte(key)
 	hash := sha256.Sum256(data)
 	mh, err := multihash.EncodeName(hash[:], "sha2-256")
@@ -613,7 +618,7 @@ func uploadFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		fmt.Println("duplicate found in files.json")
 	}
 
-	err = dht.PutValue(ctx, "/orcanet/"+requestBody.Hash, jsonData)
+	err = dht.PutValue(globalCtx, "/orcanet/"+requestBody.Hash, jsonData)
 	if err != nil {
 		http.Error(w, "Failed to put inside dht: "+err.Error(), http.StatusInternalServerError)
 	}
@@ -623,36 +628,13 @@ func uploadFileHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// Begin providing ourselves as a provider for that file
-	provideKey(ctx, dht, requestBody.Hash)
+	ProvideKey(globalCtx, DHT, requestBody.Hash)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File published successfully:"))
 }
 
-// Create file metadata from the request
-
-// Respond with a success message
-
-// func listKeys(ctx context.Context, dht *dht.IpfsDHT) {
-// 	q := query.Query{Prefix: "/orcanet/"} // Adjust prefix to match the namespace used
-// 	results, err := dht.Datastore().Query(ctx, q)
-// 	if err != nil {
-// 		fmt.Printf("Failed to query datastore: %v\n", err)
-// 		return
-// 	}
-// 	defer results.Close()
-
-//		fmt.Println("Available keys:")
-//		for result := range results.Next() {
-//			if result.Error != nil {
-//				fmt.Printf("Error retrieving key: %v\n", result.Error)
-//				continue
-//			}
-//			fmt.Println(result.Key)
-//		}
-//	}
-//
 // Helper function to try reverse lookup of peers
-func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT) {
+func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request, dht *dht.IpfsDHT, ctx context.Context) {
 	var requestBody struct {
 		Val string `json:"val"` // file hash sent in request
 	}
@@ -674,22 +656,45 @@ func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request, dht *d
 		http.Error(w, "Error encoding hash", http.StatusInternalServerError)
 		return
 	}
-
-	c := cid.NewCidV1(cid.Raw, mh)
-	providers := dht.FindProvidersAsync(globalCtx, c, 20) // asynchronous find
-	fmt.Printf("providers: %v\n", providers)
-
-	var providerList []map[string]string
-	for p := range providers {
-		for _, addr := range p.Addrs {
-			providerInfo := map[string]string{
-				"peerID":  p.ID.String(),
-				"address": addr.String(),
-			}
-			fmt.Printf("providerinfo: %v\n", providerInfo)
-			providerList = append(providerList, providerInfo)
-		}
+	data, err = dht.GetValue(globalCtx, "/orcanet/"+key)
+	if err != nil {
+		return
 	}
+
+	// Create an instance of FileMetadata to hold the decoded data
+	var metadata FileMetadata
+
+	// Unmarshal the JSON data into the struct
+	err = json.Unmarshal(data, &metadata)
+	if err != nil {
+		return
+	}
+	fmt.Println(metadata)
+
+	providers, err := ProviderStore.GetProviders(ctx, mh)
+	fmt.Println(err)
+
+	var providerList []string
+	for _, provider := range providers {
+		fmt.Println("Provider PeerID:", provider.ID)
+		providerList = append(providerList, provider.ID.String())
+		fmt.Println("Provider PeerID:", provider.ID.String())
+	}
+	// c := cid.NewCidV1(cid.Raw, mh)
+	// providers := dht.FindProvidersAsync(globalCtx, c, 20) // asynchronous find
+	// fmt.Printf("providers: %v\n", providers)
+
+	// var providerList []map[string]string
+	// for p := range providers {
+	// 	for _, addr := range p.Addrs {
+	// 		providerInfo := map[string]string{
+	// 			"peerID":  p.ID.String(),
+	// 			"address": addr.String(),
+	// 		}
+	// 		fmt.Printf("providerinfo: %v\n", providerInfo)
+	// 		providerList = append(providerList, providerInfo)
+	// 	}
+	// }
 
 	fmt.Printf("ahhhh provider list: %v\n", providerList)
 
@@ -717,6 +722,7 @@ func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
 func updateFileInfo(hash string, newFileData FileMetadata) error {
 	fmt.Println("trying to update file info in json", filePath)
 	data, err := os.ReadFile(filePath)

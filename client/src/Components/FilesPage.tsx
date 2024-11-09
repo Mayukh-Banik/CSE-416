@@ -20,7 +20,7 @@ import {
   ListItemText,
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
-import { FileMetadata, saveFileMetadata } from "../utils/localStorage";
+import { FileMetadata } from "../models/fileMetadata";
 //import { FileMetadata } from '../../local_server/models/file';
 
 
@@ -58,7 +58,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       const fetchFiles = async () => {
         try {
           console.log("Getting local user's uploaded files");
-          const response = await fetch("http://localhost:8081/getUploadedFiles");
+          const response = await fetch("http://localhost:8081/files/fetchAll");
           if (!response.ok) throw new Error("Failed to load file data");
   
           const data = await response.json();
@@ -97,19 +97,18 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 // setPublishDialogOpen(true);
                 let metadata:FileMetadata = {
                   //id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
-                  name: file.name,
-                  type: file.type,
-                  size: file.size,
+                  Name: file.name,
+                  Type: file.type,
+                  Size: file.size,
                   // file_data: base64FileData, // Encode file data as Base64 if required
-                  description: descriptions[file.name] || "",
-                  hash: fileHashes[file.name], // not needed - computed on backend
-                  isPublished: true, // Initially published
-                  fee: fees[file.name],
-                  providers: [] // add self - idk how tho
+                  Description: descriptions[file.name] || "",
+                  Hash: fileHashes[file.name], // not needed - computed on backend
+                  IsPublished: true, // Initially published
+                  Fee: fees[file.name],
                 };
                 
                 // Send the metadata to the server
-                const response = await fetch("http://localhost:8081/upload", {
+                const response = await fetch("http://localhost:8081/files/upload", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -150,28 +149,6 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     }
 };
 
-// redo
-  // const updateFile = async (hash: string, updatedData: FileMetadata) => {
-  //   try {
-  //     const response = await fetch(`http://localhost:8082/update/${hash}`, {
-  //       method: 'PUT',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify(updatedData),
-  //     });
-
-  //     if (!response.ok) {
-  //       throw new Error('Failed to update file');
-  //     }
-
-  //     const result = await response.json();
-  //     console.log('File updated:', result);
-  //   } catch (error) {
-  //     console.error('Error updating file:', error);
-  //   }
-  // };
-
   const handleDescriptionChange = (fileId: string, description: string) => {
     setDescriptions((prev) => ({ ...prev, [fileId]: description }));
   };
@@ -180,43 +157,21 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     setFees((prev: any) => ({ ...prev, [fileId]: fee }));
   };
 
-//   const handleTogglePublished = (hash: string) => {
-//     const file = uploadedFiles.find(file => file.hash === hash); // Get the current file
-
-//     if (file) {
-//       updateFile(hash, {
-//         ...file,
-//         isPublished: !file.isPublished,
-//  })
-//     }
-//     if (file?.isPublished) {
-//         // If the file is already published, set the unpublished state
-//         setUploadedFiles((prev) =>
-//             prev.map((f) =>
-//                 f.hash === hash ? { ...f, isPublished: false } : f
-//             )
-//         );
-//     } else {
-//         // If the file is not published, open the publish dialog
-//         setCurrentFileHash(hash); // Set the current file ID to the one being published
-//         setPublishDialogOpen(true); 
-//     }
-    
-//   };
 const handleTogglePublished = (hash: string) => {
   handleConfirmPublish(hash);
   setUploadedFiles(prevFiles => 
     prevFiles.map(currentFile =>
-      currentFile.hash === hash
-        ? { ...currentFile, isPublished: !currentFile.isPublished }
+      currentFile.Hash === hash
+        ? { ...currentFile, isPublished: !currentFile.IsPublished }
         : currentFile
     )
   );
 };
 
+// have to fix deleting file
   const handleDeleteFile = (hash: string) => {
     // deleteFileMetadata('123', id);
-    setUploadedFiles((prev) => prev.filter((file) => file.hash !== hash));
+    setUploadedFiles((prev) => prev.filter((file) => file.Hash !== hash));
     
     setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
     setNotification({ open: true, message: "File deleted.", severity: "success" });
@@ -245,7 +200,7 @@ const handleTogglePublished = (hash: string) => {
   };
 
   const handleConfirmPublish = async (hash: string) => {
-    const fileToPublish = uploadedFiles.find(file => file.hash === hash);
+    const fileToPublish = uploadedFiles.find(file => file.Hash === hash);
     
     if (!fileToPublish) {
         setNotification({ open: true, message: "File not found", severity: "error" });
@@ -253,21 +208,21 @@ const handleTogglePublished = (hash: string) => {
     }
 
     const updatedMetadata = {
-        name: fileToPublish.name,
-        type: fileToPublish.type,
-        size: fileToPublish.size,
-        description: fileToPublish.description,
-        hash: fileToPublish.hash,
-        fee: fileToPublish.fee,
-        isPublished: !fileToPublish.isPublished,
+        name: fileToPublish.Name,
+        type: fileToPublish.Type,
+        size: fileToPublish.Size,
+        description: fileToPublish.Description,
+        hash: fileToPublish.Hash,
+        fee: fileToPublish.Fee,
+        isPublished: !fileToPublish.IsPublished,
     };
 
     try {
-        const response = await fetch("http://localhost:8081/updateFile", {
+        const response = await fetch("http://localhost:8081/files/upload", {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Hash': fileToPublish.hash,
+                'Hash': fileToPublish.Hash,
             },
             body: JSON.stringify(updatedMetadata),
         });
@@ -276,7 +231,7 @@ const handleTogglePublished = (hash: string) => {
             // Update the file's published status locally in the UI
             setUploadedFiles((prev) =>
                 prev.map((file) =>
-                    file.hash === fileToPublish.hash ? { ...file, isPublished: file.isPublished } : file
+                    file.Hash === fileToPublish.Hash ? { ...file, isPublished: file.IsPublished } : file
                 )
             );
 
@@ -439,15 +394,15 @@ const handleTogglePublished = (hash: string) => {
             </Typography>
             <List>
               {uploadedFiles.map((file) => (
-                <ListItem key={file.hash} divider>
+                <ListItem key={file.Hash} divider>
                   <ListItemText 
-                    primary={file.name} 
+                    primary={file.Name} 
                     secondary={
                       <>
-                        {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
-                        {`Description: ${file.description}`} <br />
-                        {`SHA-256: ${file.hash.slice(0, 10)}...${file.hash.slice(-10)}`} <br />
-                        {`Fee: ${file.fee}`} <br />
+                        {`Size: ${(file.Size / 1024).toFixed(2)} KB`} <br />
+                        {`Description: ${file.Description}`} <br />
+                        {`SHA-256: ${file.Hash}`} <br />
+                        {`Fee: ${file.Fee}`} <br />
                         </>
                     }                  
                     />
@@ -457,12 +412,12 @@ const handleTogglePublished = (hash: string) => {
                     </Typography>
                     <Switch 
                       edge="end" 
-                      onChange={() => handleTogglePublished(file.hash)} 
-                      checked={file.isPublished} 
+                      onChange={() => handleTogglePublished(file.Hash)} 
+                      checked={file.IsPublished} 
                       color="primary"
-                      inputProps={{ 'aria-label': `make ${file.name} public` }}
+                      inputProps={{ 'aria-label': `make ${file.Name} public` }}
                     />
-                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteFile(file.hash)}>
+                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteFile(file.Hash)}>
                       <DeleteIcon />
                     </IconButton>
                   </Box>

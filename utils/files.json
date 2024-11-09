@@ -1,0 +1,29 @@
+[
+  {
+    "Name": "IMG_6679.MOV",
+    "Type": "video/quicktime",
+    "Size": 13786530,
+    "Description": "",
+    "Hash": "8b281197bf66e163ddc116c58a4a46df2e77f4ed84b9372f926dbb56f369c631",
+    "IsPublished": true,
+    "Fee": 0
+  },
+  {
+    "Name": "hw5 3.pdf",
+    "Type": "application/pdf",
+    "Size": 761452,
+    "Description": "",
+    "Hash": "b4db2a5376914d7cda5d52a4d55deefc7fa4eeee5b3190b9550fbab2a7f264c7",
+    "IsPublished": true,
+    "Fee": 0
+  },
+  {
+    "Name": "file.png",
+    "Type": "image/png",
+    "Size": 40146,
+    "Description": "logo",
+    "Hash": "a3bd155a1d4ecd61e263ac42951addb0ce192b42cfcb0f61f1d528a4d63e1bea",
+    "IsPublished": true,
+    "Fee": 0
+  }
+]

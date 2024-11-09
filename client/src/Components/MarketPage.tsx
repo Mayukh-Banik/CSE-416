@@ -2,25 +2,7 @@ import React, { useState } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material';
 import Sidebar from './Sidebar';
 import { useTheme } from '@mui/material/styles';
-import { FileMetadata, saveFileMetadata } from "../utils/localStorage";
-import { render } from '@testing-library/react';
-
-
-// export interface IFile {
-//   fileName: string;
-//   hash: string;
-//   reputation: number;
-//   fileSize: number; // in bytes
-//   createdAt: Date;
-//   providers: IProvider[];
-// }
-
-// adjust model schema to figure out how to connect different hosts and fees to the same file 
-export interface IProvider {
-  peerID: string;
-  address: string;
-  fee: number;
-}
+import { FileMetadata, Provider } from "../models/fileMetadata"
 
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
@@ -71,7 +53,14 @@ const MarketplacePage: React.FC = () => {
   //   {providerId: '123', peerID: 'John', fee: 0.2},
   //   {providerId: '127', peerID: 'Bob', fee: 1.2},
   // ]);
-  const [providers, setProviders] = useState<IProvider[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
+
+  const resetStates = () => {
+    setFileHash("");
+    setProviders([]);
+    setSelectedFile(null);
+    setSearchTerm("");
+  }
 
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
@@ -83,11 +72,13 @@ const MarketplacePage: React.FC = () => {
   };
 
   const handleProviderSelect = (provider: string) => {
-    console.log(`Selected provider: ${provider} for file: ${selectedFile?.name}`);
+    console.log(`Selected provider: ${provider} for file: ${selectedFile?.Name}`);
 
     // Implement actual download logic here
     setNotification({ open: true, message: `Request sent to provider ${provider}`, severity: "success" });
     setOpen(false); // Close the modal after selecting a provider
+
+    resetStates();
   };
 
   const handleRefresh = () => {
@@ -98,21 +89,31 @@ const MarketplacePage: React.FC = () => {
     console.log("HI");
     const hash = prompt("Enter the file hash");
     console.log('you entered:', hash)
-    if(hash == null || hash.length==0) return;
+    if (hash == null || hash.length==0) return;
     setFileHash(hash);
-    handleFindProvidersByFileHash(hash);
-    // .. other download stuff
+    handleFindProvidersByFileHash(fileHash);
     setOpen(true);
   }
 
-  const handleFindProvidersByFileHash = async (hash:string) => {
+  const handleSearchRequest = async (searchTerm: string) => {
+    if (searchTerm == null || searchTerm.length==0) return;
+    setFileHash(searchTerm);
+    handleFindProvidersByFileHash(searchTerm);
+    setOpen(true);
+  }
+
+  const handleFindProvidersByFileHash = async (hash: string) => {
     try {
-        const response = await fetch("http://localhost:8081/fetch", {
-            method: "POST",
+        const encodedHash = encodeURIComponent(hash);  // Ensure hash is URL-safe
+        const url = `http://localhost:8081/files/getProviders?val=${encodedHash}`;
+        
+        console.log("Request URL:", url); // Log the request URL for debugging
+
+        const response = await fetch(url, {
+            method: "GET",
             headers: {
                 "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ val: hash }),
+            }
         });
 
         if (!response.ok) {
@@ -120,12 +121,13 @@ const MarketplacePage: React.FC = () => {
         }
 
         const data = await response.json();
-        console.log("Providers:", data); // Log providers to check
-        setProviders(data); // Assuming `setProviders` is a state setter in React
+        console.log("file metadata:", data); // Log providers to check
+        // console.log("id:", data[0]); // Log providers to check
+        setSelectedFile(data);
+        setProviders(data.Providers); // Assuming `setProviders` is a state setter in React
     } catch (error) {
         console.error("Error:", error);
         setNotification({ open: true, message: "Failed to find providers.", severity: "error" });
-
     }
 };
 
@@ -157,8 +159,8 @@ const handleDownload = (fileHash:string) => {
   };
 
   // pagination
-  const indexOfLastFile = (page + 1) * rowsPerPage;
-  const indexOfFirstFile = indexOfLastFile - rowsPerPage;
+  // const indexOfLastFile = (page + 1) * rowsPerPage;
+  // const indexOfFirstFile = indexOfLastFile - rowsPerPage;
   // const currentFiles = filteredFiles.slice(indexOfFirstFile, indexOfLastFile);
 
   return (
@@ -182,19 +184,24 @@ const handleDownload = (fileHash:string) => {
         Refresh
       </Button>
       <Button variant="contained" onClick={() => handleDownloadByHash()}>
-                    Download by Hash
-                  </Button>
-                  <button onClick={() => handleDownload(fileHash)}>Download File</button>
+        Download by Hash
+      </Button>
+
       <TextField
         label="Search Files"
         variant="outlined"
         fullWidth
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter"){
+            handleSearchRequest(searchTerm);
+          }
+        }}
         sx={{ marginBottom: 2, background: "white" }}
       />
       
-      {/* <TableContainer component={Paper}>
+      <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
@@ -206,7 +213,7 @@ const handleDownload = (fileHash:string) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentFiles.map((file) => (
+            {/* {currentFiles.map((file) => (
               <TableRow key={file.hash}>
                 <TableCell>{file.name}</TableCell>
                 <TableCell>{(file.size / 1024).toFixed(2)}</TableCell>
@@ -218,11 +225,11 @@ const handleDownload = (fileHash:string) => {
                   </Button>
                 </TableCell>
               </TableRow>
-            ))}
+            ))} */}
           </TableBody>
         </Table>
       </TableContainer>
-      <TablePagination
+      {/* <TablePagination
         component="div"
         count={filteredFiles.length}
         page={page}
@@ -234,21 +241,30 @@ const handleDownload = (fileHash:string) => {
       /> */}
 
       <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Select a Provider for {selectedFile?.name}</DialogTitle>
+        <DialogTitle>{selectedFile?.Name}</DialogTitle>
         <DialogContent>
+        {selectedFile && (
+          <Box sx={{ marginBottom: 2 }}>
+            <Typography>Size: {selectedFile.Size} MB</Typography>
+            {selectedFile.Description && (
+              <Typography>Description: {selectedFile.Description}</Typography>
+            )}
+          </Box>
+        )}
+  
           {providers.length ? (
             // Filter out duplicate providers based on the peerID or address
             providers
               .filter((value, index, self) =>
                 index === self.findIndex((t) => (
-                  t.peerID === value.peerID // or use t.address if filtering by address
+                  t.PeerID === value.PeerID // or use t.address if filtering by address
                 ))
               )
               .map((provider) => (
                 <Button
-                  key={provider.peerID} // Ensure this is unique for the key
+                  key={provider.PeerID} // Ensure this is unique for the key
                   variant="outlined"
-                  onClick={() => handleProviderSelect(provider.peerID)}
+                  onClick={() => handleProviderSelect(provider.PeerID)}
                   sx={{
                     margin: 1,
                     display: 'flex',
@@ -256,8 +272,8 @@ const handleDownload = (fileHash:string) => {
                     width: '100%',
                   }}
                 >
-                  <span>{provider.peerID.substring(0, 8)}...{provider.peerID.substring(provider.peerID.length - 6)}</span> 
-                  <span>{provider.fee} ORC/MB</span>
+                  <span>{provider.PeerID.substring(0,7)}...{provider.PeerID.substring(provider.PeerID.length - 7)}</span> 
+                  <span>{provider.Fee} SQD/MB</span>
                 </Button>
               ))
           ) : (

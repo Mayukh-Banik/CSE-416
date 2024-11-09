@@ -7,3 +7,5 @@ ipfs-server-data
 electron/
 node_modules/
 private_key.pem
+
+CSE-416/utils/files.json

@@ -23,7 +23,7 @@ import AccountViewPage from "./Components/AccountViewPage";
 import ProxyPage from "./Components/ProxyPage";
 import GlobalTransactions from "./Components/GlobalTransactions";
 import SearchPage from "./Components/SearchPage";
-import { FileMetadata } from "./utils/localStorage";
+import { FileMetadata } from "./models/fileMetadata";
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
