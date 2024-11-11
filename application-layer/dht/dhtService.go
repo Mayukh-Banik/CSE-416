@@ -289,7 +289,7 @@ func getNodeId() {
 }
 
 func StartDHTService() {
-	getNodeId()
+	getNodeId() //testing routing table
 	node, dht, err := createNode()
 	PeerID = node.ID().String()
 	if err != nil {

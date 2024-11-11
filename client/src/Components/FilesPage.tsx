@@ -92,7 +92,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         // Create uploaded file objects with descriptions, hashes, and metadata
         const newUploadedFiles = await Promise.all(
             selectedFiles.map(async (file) => {
-                const fileData = await file.arrayBuffer(); // Read file as ArrayBuffer
+                // const fileData = await file.arrayBuffer(); // Read file as ArrayBuffer
                 // const base64FileData = btoa(String.fromCharCode(...new Uint8Array(fileData))); // Convert to Base64
                 // setPublishDialogOpen(true);
                 let metadata:FileMetadata = {
@@ -155,18 +155,19 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   };
 
 const handleTogglePublished = (hash: string) => {
-  handleConfirmPublish(hash);
+  // handleUpload()
+  // handleConfirmPublish(hash);
   setUploadedFiles(prevFiles => 
     prevFiles.map(currentFile =>
       currentFile.Hash === hash
-        ? { ...currentFile, isPublished: !currentFile.IsPublished }
+        ? { ...currentFile, isPublished: currentFile.IsPublished }
         : currentFile
     )
   );
 };
 
 // have to fix deleting file
-  const handleDeleteFile = async (hash: string) => {
+  const handleDeleteUploadedFile = async (hash: string) => {
     try {
       const response = await fetch(`http://localhost:8081/files/delete?hash=${hash}`, {
         method: "DELETE",
@@ -219,21 +220,16 @@ const handleTogglePublished = (hash: string) => {
     }
 
     const updatedMetadata = {
-        name: fileToPublish.Name,
-        type: fileToPublish.Type,
-        size: fileToPublish.Size,
-        description: fileToPublish.Description,
-        hash: fileToPublish.Hash,
-        fee: fileToPublish.Fee,
+        ...fileToPublish,
         isPublished: !fileToPublish.IsPublished,
     };
 
     try {
         const response = await fetch("http://localhost:8081/files/upload", {
-            method: 'PUT',
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Hash': fileToPublish.Hash,
+                // 'Hash': fileToPublish.Hash,
             },
             body: JSON.stringify(updatedMetadata),
         });
@@ -242,7 +238,7 @@ const handleTogglePublished = (hash: string) => {
             // Update the file's published status locally in the UI
             setUploadedFiles((prev) =>
                 prev.map((file) =>
-                    file.Hash === fileToPublish.Hash ? { ...file, isPublished: file.IsPublished } : file
+                    file.Hash === updatedMetadata.Hash ? { ...file, isPublished: updatedMetadata.isPublished } : file
                 )
             );
 
@@ -250,13 +246,6 @@ const handleTogglePublished = (hash: string) => {
 
             const data = await response.text();
             console.log("Publish response: ", data);
-
-            // Call the updateFile function if you want to update the metadata on the local JSON file
-            // updateFile(fileToPublish.hash, {
-            //     ...fileToPublish,
-            //     isPublished: !fileToPublish.isPublished, // Update the isPublished status here
-            // });
-
         } else {
             const errorData = await response.text();
             console.error("Publish response error:", errorData);
@@ -270,6 +259,10 @@ const handleTogglePublished = (hash: string) => {
         setPublishDialogOpen(false);
     }
 };
+
+const handleDeleteSelectedFile = (hash: string) => {
+  setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
+}
 
 
   return (
@@ -387,7 +380,7 @@ const handleTogglePublished = (hash: string) => {
                   <IconButton 
                       edge="end" 
                       aria-label="delete" 
-                      onClick={() => handleDeleteFile(file.name)}
+                      onClick={() => handleDeleteSelectedFile(file.name)}
                       sx={{marginTop:15}}
                     >
                       <DeleteIcon />
@@ -428,7 +421,7 @@ const handleTogglePublished = (hash: string) => {
                       color="primary"
                       inputProps={{ 'aria-label': `make ${file.Name} public` }}
                     />
-                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteFile(file.Hash)}>
+                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteUploadedFile(file.Hash)}>
                       <DeleteIcon />
                     </IconButton>
                   </Box>
