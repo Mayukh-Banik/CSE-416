@@ -52,6 +52,8 @@ func saveOrUpdateFile(newFileData FileMetadata) (string, error) {
 		}
 	}
 
+	fmt.Println("file to be added/updated: ", newFileData)
+
 	// read in JSON file
 	data, err := os.ReadFile(filePath)
 	if err != nil {

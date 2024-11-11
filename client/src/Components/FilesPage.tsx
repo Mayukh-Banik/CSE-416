@@ -154,18 +154,6 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     setFees((prev: any) => ({ ...prev, [fileId]: fee }));
   };
 
-const handleTogglePublished = (hash: string) => {
-  // handleUpload()
-  // handleConfirmPublish(hash);
-  setUploadedFiles(prevFiles => 
-    prevFiles.map(currentFile =>
-      currentFile.Hash === hash
-        ? { ...currentFile, isPublished: currentFile.IsPublished }
-        : currentFile
-    )
-  );
-};
-
 // have to fix deleting file
   const handleDeleteUploadedFile = async (hash: string) => {
     try {
@@ -218,30 +206,33 @@ const handleTogglePublished = (hash: string) => {
         setNotification({ open: true, message: "File not found", severity: "error" });
         return;
     }
+    console.log("old metadata: ", fileToPublish)
 
     const updatedMetadata = {
-        ...fileToPublish,
-        isPublished: !fileToPublish.IsPublished,
+      ...fileToPublish,
+      IsPublished: !fileToPublish.IsPublished,
     };
+
+    console.log("updated metadata: ", updatedMetadata)
 
     try {
         const response = await fetch("http://localhost:8081/files/upload", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // 'Hash': fileToPublish.Hash,
             },
             body: JSON.stringify(updatedMetadata),
         });
 
         if (response.ok) {
             // Update the file's published status locally in the UI
-            setUploadedFiles((prev) =>
-                prev.map((file) =>
-                    file.Hash === updatedMetadata.Hash ? { ...file, isPublished: updatedMetadata.isPublished } : file
-                )
+            setUploadedFiles(prevFiles => 
+              prevFiles.map(currentFile =>
+                currentFile.Hash === hash
+                  ? { ...currentFile, IsPublished: !currentFile.IsPublished }
+                  : currentFile
+              )
             );
-
             setNotification({ open: true, message: "File published successfully!", severity: "success" });
 
             const data = await response.text();
@@ -256,13 +247,13 @@ const handleTogglePublished = (hash: string) => {
         setNotification({ open: true, message: "An error occurred", severity: "error" });
     } finally {
         console.log("Published file:", updatedMetadata);
-        setPublishDialogOpen(false);
+        // setPublishDialogOpen(false);
     }
 };
 
-const handleDeleteSelectedFile = (hash: string) => {
-  setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
-}
+  const handleDeleteSelectedFile = (hash: string) => {
+    setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
+  }
 
 
   return (
@@ -416,7 +407,7 @@ const handleDeleteSelectedFile = (hash: string) => {
                     </Typography>
                     <Switch 
                       edge="end" 
-                      onChange={() => handleTogglePublished(file.Hash)} 
+                      onChange={() => handleConfirmPublish(file.Hash)} 
                       checked={file.IsPublished} 
                       color="primary"
                       inputProps={{ 'aria-label': `make ${file.Name} public` }}

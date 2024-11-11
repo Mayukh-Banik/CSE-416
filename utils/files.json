@@ -1,20 +1,11 @@
 [
   {
-    "Name": "Employee-Handbook(Retail)-Compressed.pdf",
+    "Name": "birthCertificate.pdf",
     "Type": "application/pdf",
-    "Size": 2022139,
+    "Size": 3427223,
     "Description": "",
-    "Hash": "93c94ffd4136e12b30c820d68e1a582315906c84c9d7a4bc1110b21181867fb0",
+    "Hash": "2913531a120bbb8a2ebf5aa4e69373ef7a599566d6d01428afb538b19d899e41",
     "IsPublished": false,
-    "Fee": 0
-  },
-  {
-    "Name": "IMG_6619.MOV",
-    "Type": "video/quicktime",
-    "Size": 1262850739,
-    "Description": "",
-    "Hash": "",
-    "IsPublished": true,
     "Fee": 0
   }
 ]
