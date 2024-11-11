@@ -13,8 +13,8 @@ import (
 func main() {
 	fmt.Println("Main server started")
 
-	go dht_kad.StartDHTService()
 	fileRouter := files.InitFileRoutes()
+	go dht_kad.StartDHTService()
 
 	// CORS handler
 	c := cors.New(cors.Options{
@@ -32,6 +32,6 @@ func main() {
 func startFileAndDHTServer(fileRouter http.Handler) {
 	port := ":8081"
 	http.Handle("/", fileRouter)
-	fmt.Printf("Starting server for file routes and DHT on port %s...\n", port)
+	// fmt.Printf("Starting server for file routes and DHT on port %s...\n", port)
 	log.Fatal(http.ListenAndServe(port, nil))
 }

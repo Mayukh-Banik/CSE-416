@@ -31,7 +31,7 @@ import (
 )
 
 var (
-	Node_id             = "114271046" // give your SBU ID
+	Node_id             string
 	Relay_node_addr     = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
 	Bootstrap_node_addr = "/ip4/130.245.173.222/tcp/61000/p2p/12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE"
 	GlobalCtx           context.Context
@@ -276,7 +276,20 @@ func refreshReservation(node host.Host, interval time.Duration) {
 	}
 }
 
+func getNodeId() {
+	fmt.Print("Enter SBU ID: ")
+	var id string
+	reader := bufio.NewReader(os.Stdin)
+	id, _ = reader.ReadString('\n')
+	id = strings.TrimSpace(id)
+
+	Node_id = id
+
+	fmt.Println("Your Node ID is:", Node_id)
+}
+
 func StartDHTService() {
+	getNodeId()
 	node, dht, err := createNode()
 	PeerID = node.ID().String()
 	if err != nil {

@@ -123,9 +123,6 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 const data = await response.text();
                 console.log("File upload successful:", data, metadata);
                 
-                // update local server/database
-                //saveFileMetadata('123', metadata);
-                
                 return metadata;
             })
         );
@@ -169,13 +166,27 @@ const handleTogglePublished = (hash: string) => {
 };
 
 // have to fix deleting file
-  const handleDeleteFile = (hash: string) => {
-    // deleteFileMetadata('123', id);
-    setUploadedFiles((prev) => prev.filter((file) => file.Hash !== hash));
-    
-    setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
-    setNotification({ open: true, message: "File deleted.", severity: "success" });
-  };
+  const handleDeleteFile = async (hash: string) => {
+    try {
+      const response = await fetch(`http://localhost:8081/files/delete?hash=${hash}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete file")
+      }
+      const data = await response.json();
+      console.log('file deleted successfully', data);
+
+      setUploadedFiles((prev) => prev.filter((file) => file.Hash !== hash));
+      setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
+      setNotification({ open: true, message: "File deleted.", severity: "success" });
+    } catch (error) {
+      console.error("error: ", error);
+      setNotification({ open: true, message: "failed to delete file.", severity: "error" });
+
+    }
+  }
 
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });

@@ -155,62 +155,8 @@ func publishFile(requestBody FileMetadata) {
 	dht_kad.ProvideKey(dht_kad.GlobalCtx, dht_kad.DHT, requestBody.Hash)
 }
 
-// get list of providers for a file hash
-// func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request) {
-// 	// Get file hash from the query parameters (instead of the body)
-// 	fileHash := r.URL.Query().Get("val")
-// 	fmt.Println("filehash:", fileHash)
-
-// 	if fileHash == "" {
-// 		http.Error(w, "File hash not provided", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	// data := []byte(fileHash)
-// 	// hash := sha256.Sum256(data)
-// 	// mh, err := multihash.EncodeName(hash[:], "sha2-256")
-
-// 	// if err != nil {
-// 	// 	fmt.Printf("Error encoding multihash: %v\n", err)
-// 	// 	http.Error(w, "Error encoding hash", http.StatusInternalServerError)
-// 	// 	return
-// 	// }
-// 	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	// Create an instance of FileMetadata to hold the decoded data
-// 	var metadata DHTMetadata
-
-// 	// Unmarshal the JSON data into the struct
-// 	err = json.Unmarshal(data, &metadata)
-// 	if err != nil {
-// 		return
-// 	}
-// 	fmt.Println(metadata)
-
-// 	providers := metadata.Providers
-// 	fmt.Println(providers)
-
-// 	// providers, err := dht_kad.ProviderStore.GetProviders(dht_kad.GlobalCtx, mh)
-// 	// fmt.Println(err)
-
-// 	// var providerList []string
-// 	// for _, provider := range providers {
-// 	// 	fmt.Println("Provider PeerID:", provider.ID)
-// 	// 	providerList = append(providerList, provider.ID.String())
-// 	// 	fmt.Println("Provider PeerID:", provider.ID.String())
-// 	// }
-
-// 	// Send the list of providers as JSON response
-// 	w.Header().Set("Content-Type", "application/json")
-// 	if err := json.NewEncoder(w).Encode(providers); err != nil {
-// 		http.Error(w, "Failed to encode providers", http.StatusInternalServerError)
-// 	}
-// }
-
 func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request) {
+	testingRoutingTable()
 	// Get file hash from the query parameters (instead of the body)
 	fileHash := r.URL.Query().Get("val")
 	fmt.Println("filehash:", fileHash)
@@ -244,4 +190,77 @@ func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(metadata); err != nil {
 		http.Error(w, "Failed to encode file metadata", http.StatusInternalServerError)
 	}
+}
+
+// deleting a file requires removing it from the json and "removing" the node as a provider of the file
+func deleteFile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Invalid request methods", http.StatusMethodNotAllowed)
+		return
+	}
+
+	hash := r.URL.Query().Get("hash")
+	if hash == "" {
+		http.Error(w, "file hash not provided", http.StatusBadRequest)
+		return
+	}
+
+	action, err := deleteFileFromJSON(hash)
+	if err != nil {
+		http.Error(w, fmt.Sprint("failed to delete file from file", err), http.StatusInternalServerError)
+		return
+	}
+	// Respond with JSON indicating the result
+	response := map[string]string{
+		"status":  action,
+		"message": "File deletion successful",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// removeFileFromJSON removes the file entry with the given hash from the JSON file
+func deleteFileFromJSON(fileHash string) (string, error) {
+	// Read the JSON file
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read files.json: %v", err)
+	}
+
+	var files []FileMetadata
+	if err := json.Unmarshal(data, &files); err != nil {
+		return "", fmt.Errorf("failed to parse JSON: %v", err)
+	}
+
+	// Find and remove the file by hash
+	updatedFiles := []FileMetadata{}
+	fileFound := false
+	for _, file := range files {
+		if file.Hash != fileHash {
+			updatedFiles = append(updatedFiles, file)
+		} else {
+			fileFound = true
+		}
+	}
+
+	if !fileFound {
+		return "not found", fmt.Errorf("file not found in files.json")
+	}
+
+	// Write the updated files list back to files.json
+	updatedData, err := json.MarshalIndent(updatedFiles, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal JSON: %v", err)
+	}
+
+	if err := os.WriteFile(filePath, updatedData, 0644); err != nil {
+		return "", fmt.Errorf("failed to write updated data to files.json: %v", err)
+	}
+
+	return "deleted", nil
+}
+
+func testingRoutingTable() {
+	fmt.Println("printing routing table >>>", dht_kad.DHT.RoutingTable().ListPeers())
 }
