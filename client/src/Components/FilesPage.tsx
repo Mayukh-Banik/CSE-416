@@ -31,10 +31,6 @@ import { FileMetadata } from "../models/fileMetadata";
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
-import fs from 'fs';
-import fsPromises from 'fs/promises';
-import path from 'path';
-
 interface FilesProp {
   uploadedFiles: FileMetadata[];
   setUploadedFiles: React.Dispatch<React.SetStateAction<FileMetadata[]>>;

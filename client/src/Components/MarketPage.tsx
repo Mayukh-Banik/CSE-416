@@ -43,16 +43,13 @@ const MarketplacePage: React.FC = () => {
   // ]);
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<FileMetadata[]>([])
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [selectedFile, setSelectedFile] = useState<FileMetadata | null>(null);
   const [open, setOpen] = useState(false);
   const [fileHash, setFileHash] = useState('');
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
-  // const [providers, setProviders] = useState<IProvider[]>([
-  //   {providerId: '123', peerID: 'John', fee: 0.2},
-  //   {providerId: '127', peerID: 'Bob', fee: 1.2},
-  // ]);
   const [providers, setProviders] = useState<Provider[]>([]);
 
   const resetStates = () => {
@@ -91,21 +88,26 @@ const MarketplacePage: React.FC = () => {
     console.log('you entered:', hash)
     if (hash == null || hash.length==0) return;
     setFileHash(hash);
-    handleFindProvidersByFileHash(fileHash);
+    getFileByHash(hash);
     setOpen(true);
   }
 
+  
+  // only works for complete file hashes
   const handleSearchRequest = async (searchTerm: string) => {
     if (searchTerm == null || searchTerm.length==0) return;
     setFileHash(searchTerm);
-    handleFindProvidersByFileHash(searchTerm);
-    setOpen(true);
+    getFileByHash(searchTerm);
+    if (selectedFile) {
+      setSearchResults([selectedFile])
+    }
+    // setOpen(true);
   }
 
-  const handleFindProvidersByFileHash = async (hash: string) => {
+  const getFileByHash = async (hash: string) => {
     try {
         const encodedHash = encodeURIComponent(hash);  // Ensure hash is URL-safe
-        const url = `http://localhost:8081/files/getProviders?val=${encodedHash}`;
+        const url = `http://localhost:8081/files/getFile?val=${encodedHash}`;
         
         console.log("Request URL:", url); // Log the request URL for debugging
 
@@ -121,33 +123,20 @@ const MarketplacePage: React.FC = () => {
         }
 
         const data = await response.json();
-        console.log("file metadata:", data); // Log providers to check
-        // console.log("id:", data[0]); // Log providers to check
+        console.log("file metadata:", data); 
+
         setSelectedFile(data);
-        setProviders(data.Providers); // Assuming `setProviders` is a state setter in React
+        setProviders(data.Providers);
     } catch (error) {
         console.error("Error:", error);
         setNotification({ open: true, message: "Failed to find providers.", severity: "error" });
     }
-};
+  };
 
-// const fileHash = "ef5f60e42a6359d8e2d7e03d42b3de27644508d83a3813f67ef4e9b087948fe5"
-const getFile = async (fileHash:string) => {
-  console.log('in get file button')
-  try {
-      const response = await fetch(`http://localhost:8081/file/${fileHash}`);
-      if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      console.log("got the file:", response)
 
-  } catch (error) {
-      console.error("Error fetching file:", error);
-  }
-};
-const handleDownload = (fileHash:string) => {
-  getFile(fileHash);
-};
+  // const handleDownload = (fileHash:string) => {
+  //   getFile(fileHash);
+  // };
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -183,9 +172,9 @@ const handleDownload = (fileHash:string) => {
       <Button variant="contained" onClick={() => {handleRefresh}}>
         Refresh
       </Button>
-      <Button variant="contained" onClick={() => handleDownloadByHash()}>
+      {/* <Button variant="contained" onClick={() => handleDownloadByHash()}>
         Download by Hash
-      </Button>
+      </Button> */}
 
       <TextField
         label="Search Files"
@@ -213,19 +202,22 @@ const handleDownload = (fileHash:string) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* {currentFiles.map((file) => (
-              <TableRow key={file.hash}>
-                <TableCell>{file.name}</TableCell>
-                <TableCell>{(file.size / 1024).toFixed(2)}</TableCell>
-                <TableCell>{file.reputation}</TableCell>
-                <TableCell>{file.createdAt.toLocaleDateString()}</TableCell>
+            {searchResults?.map((file) => (
+              <TableRow key={file.Hash}>
+                <TableCell>{file.Name}</TableCell>
+                <TableCell>{(file.Size / 1024).toFixed(2)}</TableCell>
+                {/* <TableCell>{file.Reputation}</TableCell> */}
+                <TableCell>3/5</TableCell>
+                {/* <TableCell>{file.createdAt.toLocaleDateString()}</TableCell> */}
+                <TableCell>2023-09-15</TableCell>
+
                 <TableCell>
                   <Button variant="contained" onClick={() => handleDownloadRequest(file)}>
                     Download
                   </Button>
                 </TableCell>
               </TableRow>
-            ))} */}
+            ))}
           </TableBody>
         </Table>
       </TableContainer>

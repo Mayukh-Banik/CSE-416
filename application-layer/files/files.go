@@ -157,7 +157,7 @@ func publishFile(requestBody FileMetadata) {
 	dht_kad.ProvideKey(dht_kad.GlobalCtx, dht_kad.DHT, requestBody.Hash)
 }
 
-func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request) {
+func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
 	testingRoutingTable()
 	// Get file hash from the query parameters (instead of the body)
 	fileHash := r.URL.Query().Get("val")
@@ -185,7 +185,7 @@ func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(metadata)
+	fmt.Println("file requested: ", metadata)
 
 	// Send the entire metadata (including providers) as JSON response
 	w.Header().Set("Content-Type", "application/json")

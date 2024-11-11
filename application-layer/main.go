@@ -20,7 +20,7 @@ func main() {
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"},        // Frontend's origin
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"}, // Allowed HTTP methods
-		AllowedHeaders:   []string{"Content-Type"},                 // Allowed headers
+		AllowedHeaders:   []string{"Content-Type", "Hash"},         // Allowed headers
 		AllowCredentials: true,                                     // Allow credentials (cookies, auth headers)
 	})
 

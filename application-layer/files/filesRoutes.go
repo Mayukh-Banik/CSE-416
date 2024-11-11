@@ -9,7 +9,7 @@ func InitFileRoutes() *mux.Router {
 
 	r.HandleFunc("/files/upload", uploadFileHandler).Methods("POST")
 	r.HandleFunc("/files/fetchAll", getUploadedFiles).Methods("GET")
-	r.HandleFunc("/files/getProviders", handleGetProvidersByFileHash).Methods("GET")
+	r.HandleFunc("/files/getFile", handleGetFileByHash).Methods("GET")
 	r.HandleFunc("/files/delete", deleteFile).Methods("DELETE")
 	return r
 }
