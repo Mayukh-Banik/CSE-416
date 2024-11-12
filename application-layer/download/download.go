@@ -44,7 +44,7 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// is this needed??
+	// next 3 lines not needed - just wanted to see if the providers were added correctly
 	dht_kad.FindProviders(request.FileHash)
 	provider, _ := dht_kad.FindSpecificProvider(request.FileHash, targetID)
 	fmt.Printf("Found provider addresses: %s\n", provider.Addrs)
