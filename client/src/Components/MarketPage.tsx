@@ -74,7 +74,7 @@ const MarketplacePage: React.FC = () => {
   const handleProviderSelect = async (provider: string) => {
     try {
       let request: Transaction = {
-        ProviderID: provider,
+        TargetID: provider,
         FileHash: fileHash, 
         RequesterID: "",
         Status: "pending",

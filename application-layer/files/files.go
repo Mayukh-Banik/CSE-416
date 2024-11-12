@@ -131,7 +131,7 @@ func publishFile(requestBody FileMetadata) {
 
 	// only one provider (uploader) for now bc it was just uploaded
 	provider := []Provider{
-		{PeerID: dht_kad.PeerID, IsActive: true, Fee: requestBody.Fee},
+		{PeerID: dht_kad.PeerID, PeerAddr: dht_kad.DHT.Host().Addrs()[0].String(), IsActive: true, Fee: requestBody.Fee},
 	}
 
 	dhtMetadata := DHTMetadata{

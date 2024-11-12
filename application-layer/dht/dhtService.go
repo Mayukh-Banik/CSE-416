@@ -286,11 +286,11 @@ func getNodeId() {
 
 	Node_id = id
 
-	fmt.Println("Your Node ID is:", Node_id)
+	fmt.Println("Your SBUID is:", Node_id)
 }
 
 func StartDHTService() {
-	// getNodeId() //testing routing table
+	getNodeId()
 	node, dht, err := createNode()
 	PeerID = node.ID().String()
 	if err != nil {
@@ -301,8 +301,6 @@ func StartDHTService() {
 	defer cancel()
 	GlobalCtx = ctx
 
-	fmt.Println("Node multiaddresses:", node.Addrs())
-	fmt.Println("Node Peer ID:", PeerID)
 	DHT = setupDHT(ctx, dht.Host())
 	ProviderStore = DHT.ProviderStore()
 	ConnectToPeer(node, Relay_node_addr) // connect to relay node
@@ -310,6 +308,10 @@ func StartDHTService() {
 	go refreshReservation(node, 10*time.Minute)
 	ConnectToPeer(node, Bootstrap_node_addr) // connect to bootstrap node
 	go handlePeerExchange(node)
+
+	fmt.Println("Node multiaddresses:", node.Addrs())
+	fmt.Println("Node Peer ID:", PeerID)
+
 	go handleInput(ctx, dht)
 	Host = node
 	// block until a signal is received

@@ -10,12 +10,14 @@ import (
 	"io"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 )
@@ -34,7 +36,7 @@ func ConnectToPeer(node host.Host, peerAddr string) {
 	}
 
 	node.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
-	err = node.Connect(context.Background(), *info)
+	err = node.Connect(GlobalCtx, *info)
 	if err != nil {
 		log.Printf("Failed to connect to peer: %s", err)
 		return
@@ -50,6 +52,7 @@ func ConnectToPeerUsingRelay(node host.Host, targetPeerID string) {
 	if err != nil {
 		log.Printf("Failed to create relay multiaddr: %v", err)
 	}
+	fmt.Println("--------target peer id:", targetPeerID)
 	peerMultiaddr := relayAddr.Encapsulate(multiaddr.StringCast("/p2p-circuit/p2p/" + targetPeerID))
 
 	relayedAddrInfo, err := peer.AddrInfoFromP2pAddr(peerMultiaddr)
@@ -165,6 +168,7 @@ func handlePeerExchange(node host.Host) {
 
 // find all providers for a file
 func FindProviders(fileHash string) {
+	fmt.Printf("looking for providers for file: %v", fileHash)
 	data := []byte(fileHash)
 	hash := sha256.Sum256(data)
 	mh, err := multihash.EncodeName(hash[:], "sha2-256")
@@ -188,6 +192,7 @@ func FindProviders(fileHash string) {
 
 // get addr for a specific provider of file
 func FindSpecificProvider(fileHash string, targetProviderID peer.ID) (*peer.AddrInfo, error) {
+	fmt.Printf("looking for providers for file: %v", fileHash)
 	data := []byte(fileHash)
 	hash := sha256.Sum256(data)
 
@@ -235,3 +240,37 @@ func FindSpecificProvider(fileHash string, targetProviderID peer.ID) (*peer.Addr
 // 	}
 // 	fmt.Println("Unable to connect to provider on any address.")
 // }
+
+func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protocol.ID) (network.Stream, error) {
+	// Use a timeout context for the stream connection attempt
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Parse the target peer ID and set up the relay multiaddr
+	targetPeerID = strings.TrimSpace(targetPeerID)
+	relayNodeAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create relay node multiaddr: %v", err)
+	}
+
+	// Create a multiaddress that encapsulates the relay address with the target peer ID
+	peerMultiaddr := relayNodeAddr.Encapsulate(multiaddr.StringCast("/p2p-circuit/p2p/" + targetPeerID))
+	peerinfo, err := peer.AddrInfoFromP2pAddr(peerMultiaddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get target peer address: %s", err)
+	}
+
+	// Connect to the target peer through the relay node
+	if err := node.Connect(ctx, *peerinfo); err != nil {
+		return nil, fmt.Errorf("failed to connect to peer %s via relay: %v", peerinfo.ID, err)
+	}
+
+	// Open a new stream to the target peer
+	stream, err := node.NewStream(ctx, peerinfo.ID, streamProtocol)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open stream to target peer %s: %s", peerinfo.ID, err)
+	}
+
+	fmt.Printf("Successfully created stream to peer %s\n", peerinfo.ID)
+	return stream, nil
+}
