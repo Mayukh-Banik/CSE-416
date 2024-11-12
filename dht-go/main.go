@@ -676,25 +676,9 @@ func handleGetProvidersByFileHash(w http.ResponseWriter, r *http.Request, dht *d
 
 	var providerList []string
 	for _, provider := range providers {
-		fmt.Println("Provider PeerID:", provider.ID)
 		providerList = append(providerList, provider.ID.String())
 		fmt.Println("Provider PeerID:", provider.ID.String())
 	}
-	// c := cid.NewCidV1(cid.Raw, mh)
-	// providers := dht.FindProvidersAsync(globalCtx, c, 20) // asynchronous find
-	// fmt.Printf("providers: %v\n", providers)
-
-	// var providerList []map[string]string
-	// for p := range providers {
-	// 	for _, addr := range p.Addrs {
-	// 		providerInfo := map[string]string{
-	// 			"peerID":  p.ID.String(),
-	// 			"address": addr.String(),
-	// 		}
-	// 		fmt.Printf("providerinfo: %v\n", providerInfo)
-	// 		providerList = append(providerList, providerInfo)
-	// 	}
-	// }
 
 	fmt.Printf("ahhhh provider list: %v\n", providerList)
 

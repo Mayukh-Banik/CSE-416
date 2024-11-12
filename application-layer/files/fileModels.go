@@ -24,7 +24,8 @@ type DHTMetadata struct {
 }
 
 type Provider struct {
-	PeerID   string
+	PeerID string
+	// PeerAddr string
 	IsActive bool
 	Fee      int64
 }

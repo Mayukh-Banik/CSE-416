@@ -160,7 +160,6 @@ func publishFile(requestBody FileMetadata) {
 }
 
 func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
-	testingRoutingTable()
 	// Get file hash from the query parameters (instead of the body)
 	fileHash := r.URL.Query().Get("val")
 	fmt.Println("filehash:", fileHash)
@@ -187,7 +186,7 @@ func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("file requested: ", metadata)
+	fmt.Println("file requested metadata: ", metadata)
 
 	// Send the entire metadata (including providers) as JSON response
 	w.Header().Set("Content-Type", "application/json")
@@ -263,8 +262,4 @@ func deleteFileFromJSON(fileHash string) (string, error) {
 	}
 
 	return "deleted", nil
-}
-
-func testingRoutingTable() {
-	fmt.Println("printing routing table >>>", dht_kad.DHT.RoutingTable().ListPeers())
 }

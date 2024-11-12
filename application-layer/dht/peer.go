@@ -1,22 +1,26 @@
 package dht_kad
 
 import (
+	// dht_kad "application-layer/dht"
 	"bufio"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"strings"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multihash"
 )
 
-func connectToPeer(node host.Host, peerAddr string) {
+func ConnectToPeer(node host.Host, peerAddr string) {
 	addr, err := multiaddr.NewMultiaddr(peerAddr)
 	if err != nil {
 		log.Printf("Failed to parse peer address: %s", err)
@@ -39,7 +43,7 @@ func connectToPeer(node host.Host, peerAddr string) {
 	fmt.Println("Connected to:", info.ID)
 }
 
-func connectToPeerUsingRelay(node host.Host, targetPeerID string) {
+func ConnectToPeerUsingRelay(node host.Host, targetPeerID string) {
 	ctx := GlobalCtx
 	targetPeerID = strings.TrimSpace(targetPeerID)
 	relayAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)
@@ -63,7 +67,7 @@ func connectToPeerUsingRelay(node host.Host, targetPeerID string) {
 	fmt.Printf("Connected to peer via relay: %s\n", targetPeerID)
 }
 
-func receiveDataFromPeer(node host.Host) {
+func ReceiveDataFromPeer(node host.Host) {
 	// Set a stream handler to listen for incoming streams on the "/senddata/p2p" protocol
 	node.SetStreamHandler("/senddata/p2p", func(s network.Stream) {
 		defer s.Close()
@@ -84,7 +88,7 @@ func receiveDataFromPeer(node host.Host) {
 	})
 }
 
-func sendDataToPeer(node host.Host, targetpeerid string) {
+func SendDataToPeer(node host.Host, targetpeerid string) {
 	var ctx = context.Background()
 	targetPeerID := strings.TrimSpace(targetpeerid)
 	relayAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)
@@ -114,6 +118,18 @@ func sendDataToPeer(node host.Host, targetpeerid string) {
 
 }
 
+// func GetPeerAddr(node host.Host, peerID peer.ID) {
+// 	addrs := node.Peerstore().Addrs(peerID)
+// 	if len(addrs) == 0 {
+// 		log.Printf("No addresses found for peer %s", peerID)
+// 		return
+// 	}
+
+// 	// Convert the first address to a string (or handle multiple addresses if needed)
+// 	peerAddr := addrs[0].String()
+// 	log.Printf("Peer address for %s: %s", peerID, peerAddr)
+// }
+
 func handlePeerExchange(node host.Host) {
 	relayInfo, _ := peer.AddrInfoFromString(Relay_node_addr)
 	node.SetStreamHandler("/orcanet/p2p", func(s network.Stream) {
@@ -138,7 +154,7 @@ func handlePeerExchange(node host.Host) {
 				if peerMap, ok := peer.(map[string]interface{}); ok {
 					if peerID, ok := peerMap["peer_id"].(string); ok {
 						if string(peerID) != string(relayInfo.ID) {
-							connectToPeerUsingRelay(node, peerID)
+							ConnectToPeerUsingRelay(node, peerID)
 						}
 					}
 				}
@@ -146,3 +162,76 @@ func handlePeerExchange(node host.Host) {
 		}
 	})
 }
+
+// find all providers for a file
+func FindProviders(fileHash string) {
+	data := []byte(fileHash)
+	hash := sha256.Sum256(data)
+	mh, err := multihash.EncodeName(hash[:], "sha2-256")
+	if err != nil {
+		fmt.Printf("Error encoding multihash: %v\n", err)
+	}
+	c := cid.NewCidV1(cid.Raw, mh)
+	providers := DHT.FindProvidersAsync(GlobalCtx, c, 20)
+
+	fmt.Println("Searching for providers...")
+	for p := range providers {
+		if p.ID == peer.ID("") {
+			break
+		}
+		fmt.Printf("Found provider: %s\n", p.ID.String())
+		for _, addr := range p.Addrs {
+			fmt.Printf(" - Address: %s\n", addr.String())
+		}
+	}
+}
+
+// get addr for a specific provider of file
+func FindSpecificProvider(fileHash string, targetProviderID peer.ID) (*peer.AddrInfo, error) {
+	data := []byte(fileHash)
+	hash := sha256.Sum256(data)
+
+	// Encode to multihash
+	mh, err := multihash.EncodeName(hash[:], "sha2-256")
+	if err != nil {
+		return nil, fmt.Errorf("error encoding multihash: %v", err)
+	}
+
+	// Create CID from multihash
+	c := cid.NewCidV1(cid.Raw, mh)
+
+	// Start asynchronous provider search
+	providers := DHT.FindProvidersAsync(GlobalCtx, c, 20)
+	targetPeerID := peer.ID(targetProviderID)
+
+	fmt.Println("Searching for specific provider...")
+	for p := range providers {
+		if p.ID == targetPeerID {
+			fmt.Printf("Found target provider: %s\n", p.ID.String())
+			for _, addr := range p.Addrs {
+				fmt.Printf(" - Address: %s\n", addr.String())
+			}
+			// Return the matching provider's AddrInfo
+			return &p, nil
+		}
+	}
+
+	return nil, fmt.Errorf("provider with ID %s not found for file hash %s", targetProviderID, fileHash)
+}
+
+// func ConnectToProvider(provider peer.AddrInfo) {
+// 	for _, addr := range provider.Addrs {
+// 		fmt.Printf("Attempting to connect to provider at: %s\n", addr.String()) // Use addr.String() here
+// 		err := ConnectToPeer(GlobalCtx, peer.AddrInfo{
+// 			ID:    provider.ID,
+// 			Addrs: []multiaddr.Multiaddr{addr},
+// 		})
+// 		if err == nil {
+// 			fmt.Printf("Successfully connected to provider at: %s\n", addr.String())
+// 			return
+// 		} else {
+// 			fmt.Printf("Failed to connect to address %s: %v\n", addr.String(), err)
+// 		}
+// 	}
+// 	fmt.Println("Unable to connect to provider on any address.")
+// }

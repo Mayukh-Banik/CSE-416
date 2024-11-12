@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, LinearProgress } from '@mui/material';
 import Sidebar from './Sidebar';
 import { useTheme } from '@mui/material/styles';
 import { FileMetadata, Provider } from "../models/fileMetadata"
+import { Transaction } from '../models/transactions';
 
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
@@ -51,49 +52,57 @@ const MarketplacePage: React.FC = () => {
   const [fileHash, setFileHash] = useState('');
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [loading, setLoading] = useState(false)
 
-  const resetStates = () => {
+  const resetStates = async () => {
     setFileHash("");
     setProviders([]);
     setSelectedFile(null);
     setSearchTerm("");
+    setLoading(false);
   }
 
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
   };
   
-  const handleDownloadRequest = async (hash: string) => {
-    setFileHash(hash);
-    getFileByHash(hash);
-    setOpen(true);
+  const handleDownloadRequest = async (file: FileMetadata) => {
+    setSelectedFile(file);
+    setOpen(true); // Open the modal for provider selection
   };
 
-  // wip - send request to provider of file
   const handleProviderSelect = async (provider: string) => {
     try {
+      let request: Transaction = {
+        ProviderID: provider,
+        FileHash: fileHash, 
+        RequesterID: "",
+        Status: "pending",
+        // CreatedAt: Date.now().toLocaleString(),
+      }
+      console.log("Request data being sent:", request);
+
       const response = await fetch(`http://localhost:8081/download/request`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          provider,
-          fileHash,
-        }),
+        body: JSON.stringify(request),
       });
 
-      if (response.ok) {
-        console.log(`Selected provider: ${provider} for file: ${selectedFile?.Name}`);
+      if (!response.ok) {
+        const responseText = await response.text(); // Get the error message
+        console.log("Server response:", responseText);
+        throw new Error(`HTTP Error: status : ${response.status}`);
       }
-      // Implement actual download logic here
+      
       setNotification({ open: true, message: `Request sent to provider ${provider}`, severity: "success" });
       setOpen(false); // Close the modal after selecting a provider
-      resetStates();
-    } catch {
-      console.error(`failed to send download request to ${provider}`);
-    }
+  } catch (error) {
+    console.error("Error in handleProviderSelect:", error);
+    setNotification({ open: true, message: "Failed to find providers.", severity: "error" });
+  } 
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     console.log("HI");
   };
 
@@ -108,11 +117,13 @@ const MarketplacePage: React.FC = () => {
   }
 
   
-  // only works for complete file hashes rn
+  // only works for complete file hashes
   const handleSearchRequest = async (searchTerm: string) => {
-    if (searchTerm == null || searchTerm.length==0) return;
+    // resetStates();
+    if (!searchTerm || searchTerm.length === 0) return;
     setFileHash(searchTerm);
-    getFileByHash(searchTerm);
+    await getFileByHash(searchTerm);
+
     if (selectedFile) {
       setSearchResults([selectedFile])
     }
@@ -120,6 +131,7 @@ const MarketplacePage: React.FC = () => {
   }
 
   const getFileByHash = async (hash: string) => {
+    setLoading(true)
     try {
         const encodedHash = encodeURIComponent(hash);  // Ensure hash is URL-safe
         const url = `http://localhost:8081/files/getFile?val=${encodedHash}`;
@@ -142,9 +154,12 @@ const MarketplacePage: React.FC = () => {
 
         setSelectedFile(data);
         setProviders(data.Providers);
+        setSearchResults([data])
     } catch (error) {
         console.error("Error:", error);
         setNotification({ open: true, message: "Failed to find providers.", severity: "error" });
+    } finally {
+      setLoading(false)
     }
   };
 
@@ -184,7 +199,7 @@ const MarketplacePage: React.FC = () => {
         Marketplace
       </Typography>
 
-      <Button variant="contained" onClick={() => {handleRefresh}}>
+      <Button variant="contained" onClick={() => {handleRefresh()}}>
         Refresh
       </Button>
       <Button variant="contained" onClick={() => handleDownloadByHash()}>
@@ -204,6 +219,8 @@ const MarketplacePage: React.FC = () => {
         }}
         sx={{ marginBottom: 2, background: "white" }}
       />
+
+      {loading && <LinearProgress sx={{ width: '100%', marginTop: 2 }} />} {/* Progress bar when loading is true */}
       
       <TableContainer component={Paper}>
         <Table>
@@ -227,7 +244,7 @@ const MarketplacePage: React.FC = () => {
                 <TableCell>2023-09-15</TableCell>
 
                 <TableCell>
-                  <Button variant="contained" onClick={() => handleDownloadRequest(file.Hash)}>
+                  <Button variant="contained" onClick={() => handleDownloadRequest(file)}>
                     Download
                   </Button>
                 </TableCell>
@@ -260,7 +277,6 @@ const MarketplacePage: React.FC = () => {
         )}
   
           {providers.length ? (
-            // Filter out duplicate providers based on the peerID or address
             providers
               .filter((value, index, self) =>
                 index === self.findIndex((t) => (

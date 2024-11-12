@@ -38,6 +38,7 @@ var (
 	PeerID              string
 	DHT                 *dht.IpfsDHT
 	ProviderStore       providers.ProviderStore
+	Host                host.Host
 )
 
 func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {
@@ -289,7 +290,7 @@ func getNodeId() {
 }
 
 func StartDHTService() {
-	getNodeId() //testing routing table
+	// getNodeId() //testing routing table
 	node, dht, err := createNode()
 	PeerID = node.ID().String()
 	if err != nil {
@@ -303,14 +304,14 @@ func StartDHTService() {
 	fmt.Println("Node multiaddresses:", node.Addrs())
 	fmt.Println("Node Peer ID:", PeerID)
 	DHT = setupDHT(ctx, dht.Host())
-	connectToPeer(node, Relay_node_addr) // connect to relay node
+	ProviderStore = DHT.ProviderStore()
+	ConnectToPeer(node, Relay_node_addr) // connect to relay node
 	makeReservation(node)                // make reservation on relay node
 	go refreshReservation(node, 10*time.Minute)
-	connectToPeer(node, Bootstrap_node_addr) // connect to bootstrap node
+	ConnectToPeer(node, Bootstrap_node_addr) // connect to bootstrap node
 	go handlePeerExchange(node)
 	go handleInput(ctx, dht)
-
-	ProviderStore = DHT.ProviderStore()
+	Host = node
 	// block until a signal is received
 	select {}
 }

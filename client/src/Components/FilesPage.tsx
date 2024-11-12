@@ -18,7 +18,7 @@ import {
   DialogActions,
   TextField,
   ListItemText,
-  LinearProgress
+  LinearProgress,
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
 import { FileMetadata } from "../models/fileMetadata";
@@ -49,7 +49,8 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const [currentFileHash, setCurrentFileHash] = useState<string | null>(null); // Track the file being published
   const [fees, setFees] = useState<{ [key: string]: number }>({}); // Track fees of to be uploaded files
   const theme = useTheme();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Loading state for file upload
+
   useEffect(() => {
     if (!initialFetch) {
       const fetchFiles = async () => {
@@ -93,7 +94,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 // const fileData = await file.arrayBuffer(); // Read file as ArrayBuffer
                 // const base64FileData = btoa(String.fromCharCode(...new Uint8Array(fileData))); // Convert to Base64
                 // setPublishDialogOpen(true);
-                let metadata: FileMetadata = {
+                let metadata:FileMetadata = {
                   //id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
                   Name: file.name,
                   Type: file.type,
@@ -102,9 +103,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                   Description: descriptions[file.name] || "",
                   Hash: fileHashes[file.name], // not needed - computed on backend
                   IsPublished: true, // Initially published
-                  CreatedAt: Date().toLocaleString(),
-                  Fee: fees[file.name],
-                  Reputation: 3, //set default reputation
+                  Fee: fees[file.name] || 0,
                 };
                 
                 // Send the metadata to the server
@@ -149,11 +148,13 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
 };
 
   const handleDescriptionChange = (fileId: string, description: string) => {
-    setDescriptions((prev) => ({ ...prev, [fileId]: description }));
+    if (!loading) {
+      setDescriptions((prev) => ({ ...prev, [fileId]: description }));
+    }
   };
 
   const handleFeeChange = (fileId: string, fee: number) => {
-    setFees((prev: any) => ({ ...prev, [fileId]: fee }));
+    setFees((prev) => ({ ...prev, [fileId]: fee }));
   };
 
 // have to fix deleting file
@@ -201,7 +202,6 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     }));
   };
 
-  // a file is already uploaded but not published
   const handleConfirmPublish = async (hash: string) => {
     const fileToPublish = uploadedFiles.find(file => file.Hash === hash);
     
@@ -314,8 +314,8 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         >
           Upload Selected
         </Button>
-
-        {loading && <LinearProgress sx={{ width: '100%', marginTop: 2 }} />} {/* file upload progress bar */}
+        
+        {loading && <LinearProgress sx={{ width: '100%', marginTop: 2 }} />} {/* Progress bar when loading is true */}
 
         {selectedFiles.length > 0 && (
           <Box sx={{ marginTop: 2 }}>
