@@ -8,4 +8,5 @@ electron/
 node_modules/
 private_key.pem
 
-CSE-416/utils/files.json
+/utils
+utils/files.json
