@@ -9,6 +9,8 @@ type FileMetadata struct {
 	Hash        string `json:"Hash"`
 	IsPublished bool   `json:"IsPublished"`
 	Fee         int64  `json:"Fee"`
+	CreatedAt   string `json:"CreatedAt"`
+	Reputation  int64  `json:"Reputation"`
 }
 
 type DHTMetadata struct {
@@ -16,6 +18,8 @@ type DHTMetadata struct {
 	Type        string
 	Size        int64
 	Description string
+	CreatedAt   string
+	Reputation  int64
 	Providers   []Provider
 }
 

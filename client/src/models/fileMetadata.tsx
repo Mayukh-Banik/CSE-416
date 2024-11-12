@@ -10,6 +10,7 @@ export interface dhtFile{
   size: number;
   description: string;
   hash: string;
+  createdAt: string;
   reputation?: number;
   isPublished?: boolean;
   providers: Provider[];
@@ -22,8 +23,8 @@ export interface FileMetadata {
   Size: number;
   Description: string;
   Hash: string;
-  //createdAt?: string;
-  //reputation?: number;
+  CreatedAt?: string;
+  Reputation?: number;
   IsPublished?: boolean;
   Fee?: number;
 }

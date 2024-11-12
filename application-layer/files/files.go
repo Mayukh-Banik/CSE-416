@@ -139,6 +139,8 @@ func publishFile(requestBody FileMetadata) {
 		Type:        requestBody.Type,
 		Size:        requestBody.Size,
 		Description: requestBody.Description,
+		CreatedAt:   requestBody.CreatedAt,
+		Reputation:  requestBody.Reputation,
 		Providers:   provider,
 	}
 

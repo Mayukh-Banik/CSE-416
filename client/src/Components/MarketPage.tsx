@@ -63,19 +63,34 @@ const MarketplacePage: React.FC = () => {
     setNotification({ ...notification, open: false });
   };
   
-  const handleDownloadRequest = (file: FileMetadata) => {
-    setSelectedFile(file);
-    setOpen(true); // Open the modal for provider selection
+  const handleDownloadRequest = async (hash: string) => {
+    setFileHash(hash);
+    getFileByHash(hash);
+    setOpen(true);
   };
 
-  const handleProviderSelect = (provider: string) => {
-    console.log(`Selected provider: ${provider} for file: ${selectedFile?.Name}`);
+  // wip - send request to provider of file
+  const handleProviderSelect = async (provider: string) => {
+    try {
+      const response = await fetch(`http://localhost:8081/download/request`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          provider,
+          fileHash,
+        }),
+      });
 
-    // Implement actual download logic here
-    setNotification({ open: true, message: `Request sent to provider ${provider}`, severity: "success" });
-    setOpen(false); // Close the modal after selecting a provider
-
-    resetStates();
+      if (response.ok) {
+        console.log(`Selected provider: ${provider} for file: ${selectedFile?.Name}`);
+      }
+      // Implement actual download logic here
+      setNotification({ open: true, message: `Request sent to provider ${provider}`, severity: "success" });
+      setOpen(false); // Close the modal after selecting a provider
+      resetStates();
+    } catch {
+      console.error(`failed to send download request to ${provider}`);
+    }
   };
 
   const handleRefresh = () => {
@@ -93,7 +108,7 @@ const MarketplacePage: React.FC = () => {
   }
 
   
-  // only works for complete file hashes
+  // only works for complete file hashes rn
   const handleSearchRequest = async (searchTerm: string) => {
     if (searchTerm == null || searchTerm.length==0) return;
     setFileHash(searchTerm);
@@ -172,9 +187,9 @@ const MarketplacePage: React.FC = () => {
       <Button variant="contained" onClick={() => {handleRefresh}}>
         Refresh
       </Button>
-      {/* <Button variant="contained" onClick={() => handleDownloadByHash()}>
+      <Button variant="contained" onClick={() => handleDownloadByHash()}>
         Download by Hash
-      </Button> */}
+      </Button>
 
       <TextField
         label="Search Files"
@@ -212,7 +227,7 @@ const MarketplacePage: React.FC = () => {
                 <TableCell>2023-09-15</TableCell>
 
                 <TableCell>
-                  <Button variant="contained" onClick={() => handleDownloadRequest(file)}>
+                  <Button variant="contained" onClick={() => handleDownloadRequest(file.Hash)}>
                     Download
                   </Button>
                 </TableCell>
