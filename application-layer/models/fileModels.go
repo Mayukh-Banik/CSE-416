@@ -1,4 +1,4 @@
-package files
+package models
 
 // local file - on user's machine not the dht
 type FileMetadata struct {
@@ -28,4 +28,14 @@ type Provider struct {
 	PeerAddr string
 	IsActive bool
 	Fee      int64
+}
+
+type Transaction struct {
+	Type        string `json:"type"`        // "request" or "response"
+	FileHash    string `json:"fileHash"`    // Unique identifier for the file
+	RequesterID string `json:"requesterID"` // ID of the requesting node
+	TargetID    string `json:"targetID"`    // ID of the target node
+	Status      string `json:"status"`      // "pending", "accepted", "declined"
+	Message     string `json:"message"`     // Additional info
+	CreatedAt   string `json:"CreatedAt"`
 }

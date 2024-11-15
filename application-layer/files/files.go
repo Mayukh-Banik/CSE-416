@@ -2,6 +2,7 @@ package files
 
 import (
 	dht_kad "application-layer/dht"
+	"application-layer/models"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -25,7 +26,7 @@ func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var files []FileMetadata
+	var files []models.FileMetadata
 	if err := json.Unmarshal(file, &files); err != nil {
 		http.Error(w, "Failed to parse files data", http.StatusInternalServerError)
 		return
@@ -38,7 +39,7 @@ func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func saveOrUpdateFile(newFileData FileMetadata) (string, error) {
+func saveOrUpdateFile(newFileData models.FileMetadata) (string, error) {
 	// check if directory and file exist
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {
@@ -60,7 +61,7 @@ func saveOrUpdateFile(newFileData FileMetadata) (string, error) {
 		return "", fmt.Errorf("failed to read files.json: %v", err)
 	}
 
-	var files []FileMetadata
+	var files []models.FileMetadata
 	if err := json.Unmarshal(data, &files); err != nil {
 		return "", fmt.Errorf("failed to parse JSON: %v", err)
 	}
@@ -77,7 +78,7 @@ func saveOrUpdateFile(newFileData FileMetadata) (string, error) {
 
 	// add file if not already in JSON file
 	if !isUpdated {
-		files = append([]FileMetadata{newFileData}, files...)
+		files = append([]models.FileMetadata{newFileData}, files...)
 	}
 
 	// convert updated list of files back to JSON
@@ -104,7 +105,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var requestBody FileMetadata
+	var requestBody models.FileMetadata
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -126,15 +127,15 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(responseMsg)
 }
 
-func publishFile(requestBody FileMetadata) {
+func publishFile(requestBody models.FileMetadata) {
 	fmt.Println("publishing new file")
 
 	// only one provider (uploader) for now bc it was just uploaded
-	provider := []Provider{
+	provider := []models.Provider{
 		{PeerID: dht_kad.PeerID, PeerAddr: dht_kad.DHT.Host().Addrs()[0].String(), IsActive: true, Fee: requestBody.Fee},
 	}
 
-	dhtMetadata := DHTMetadata{
+	dhtMetadata := models.DHTMetadata{
 		Name:        requestBody.Name,
 		Type:        requestBody.Type,
 		Size:        requestBody.Size,
@@ -177,7 +178,7 @@ func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create an instance of FileMetadata to hold the decoded data
-	var metadata DHTMetadata
+	var metadata models.DHTMetadata
 
 	// Unmarshal the JSON data into the struct
 	err = json.Unmarshal(data, &metadata)
@@ -231,13 +232,13 @@ func deleteFileFromJSON(fileHash string) (string, error) {
 		return "", fmt.Errorf("failed to read files.json: %v", err)
 	}
 
-	var files []FileMetadata
+	var files []models.FileMetadata
 	if err := json.Unmarshal(data, &files); err != nil {
 		return "", fmt.Errorf("failed to parse JSON: %v", err)
 	}
 
 	// Find and remove the file by hash
-	updatedFiles := []FileMetadata{}
+	updatedFiles := []models.FileMetadata{}
 	fileFound := false
 	for _, file := range files {
 		if file.Hash != fileHash {

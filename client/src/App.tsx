@@ -21,7 +21,9 @@ import MarketPage from "./Components/MarketPage";
 import FileViewPage from "./Components/FileViewPage";
 import AccountViewPage from "./Components/AccountViewPage";
 import ProxyPage from "./Components/ProxyPage";
-import GlobalTransactions from "./Components/GlobalTransactions";
+// import GlobalTransactions from "./Components/GlobalTransactions";
+import GlobalTransactions from "./Components/Transactions";
+
 import SearchPage from "./Components/SearchPage";
 import { FileMetadata } from "./models/fileMetadata";
 

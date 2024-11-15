@@ -317,3 +317,20 @@ func StartDHTService() {
 	// block until a signal is received
 	select {}
 }
+
+// func setupStreamHandler(h host.Host, streamType protocol.ID) {
+// 	h.SetStreamHandler(streamType, func(stream network.Stream) {
+// 		defer stream.Close()
+// 		fmt.Println("Received a new stream!")
+
+// 		// Example: Reading data from the stream
+// 		buf := make([]byte, 256)
+// 		n, err := stream.Read(buf)
+// 		if err != nil {
+// 			log.Println("Error reading from stream:", err)
+// 			return
+// 		}
+
+// 		fmt.Printf("Received: %s\n", string(buf[:n]))
+// 	})
+// }

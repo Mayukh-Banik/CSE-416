@@ -1,8 +1,8 @@
 export interface Transaction {
     CreatedAt?: string;
-    FileName?: string;
+    FileName: string;
     FileHash: string;
-    RequesterID?: string;
+    RequesterID: string | "";
     TargetID: string;
     Status?: 'pending' | 'accepted' | 'declined' | 'completed';
     Fee?:  number;

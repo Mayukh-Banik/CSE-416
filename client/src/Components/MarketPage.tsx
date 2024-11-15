@@ -10,39 +10,6 @@ const collapsedDrawerWidth = 100;
 
 const MarketplacePage: React.FC = () => {
   const theme = useTheme();
-  
-  // const [files, setFiles] = useState<FileMetadata[]>([
-  //   {
-  //     fileName: 'Vacation_Snapshot.png',
-  //     hash: 'img001',
-  //     reputation: 4,
-  //     fileSize: 2048000,
-  //     createdAt: new Date('2023-09-15'),
-  //     providers: [
-  //       { providerId: '123', peerID: 'John', fee: 0.2 },
-  //       { providerId: '124', peerID: 'Alice', fee: 0.5 },
-  //     ],
-  //   },
-  //   {
-  //     fileName: 'Project_Proposal.pdf',
-  //     hash: 'doc002',
-  //     reputation: 5,
-  //     fileSize: 512000,
-  //     createdAt: new Date('2023-08-10'),
-  //     providers: [
-  //       { providerId: '125', peerID: 'Bob', fee: 1.0 },
-  //     ],
-  //   },
-  //   {
-  //     fileName: 'Family_Photo.jpg',
-  //     hash: 'img003',
-  //     reputation: 3,
-  //     fileSize: 1500000,
-  //     createdAt: new Date('2023-07-22'),
-  //     providers: [{ providerId: '127', peerID: 'Jim', fee: 0.4 }],
-  //   },
-  // ]);
-  
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<FileMetadata[]>([])
   const [page, setPage] = useState(0);
@@ -78,6 +45,7 @@ const MarketplacePage: React.FC = () => {
         FileHash: fileHash, 
         RequesterID: "",
         Status: "pending",
+        FileName: "",
         // CreatedAt: Date.now().toLocaleString(),
       }
       console.log("Request data being sent:", request);
@@ -90,16 +58,15 @@ const MarketplacePage: React.FC = () => {
 
       if (!response.ok) {
         const responseText = await response.text(); // Get the error message
-        console.log("Server response:", responseText);
-        throw new Error(`HTTP Error: status : ${response.status}`);
+        setNotification({ open: true, message: responseText, severity: "error" });
+        return
       }
-      
       setNotification({ open: true, message: `Request sent to provider ${provider}`, severity: "success" });
       setOpen(false); // Close the modal after selecting a provider
-  } catch (error) {
-    console.error("Error in handleProviderSelect:", error);
-    setNotification({ open: true, message: "Failed to find providers.", severity: "error" });
-  } 
+    } catch (error) {
+      console.error("Error in handleProviderSelect:", error);
+      setNotification({ open: true, message: "Failed to find providers.", severity: "error" });
+    } 
   };
 
   const handleRefresh = async () => {
@@ -157,7 +124,7 @@ const MarketplacePage: React.FC = () => {
         setSearchResults([data])
     } catch (error) {
         console.error("Error:", error);
-        setNotification({ open: true, message: "Failed to find providers.", severity: "error" });
+        setNotification({ open: true, message: "File not found", severity: "error" });
     } finally {
       setLoading(false)
     }

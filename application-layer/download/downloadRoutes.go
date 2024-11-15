@@ -9,5 +9,6 @@ func InitDownloadRoutes() *mux.Router {
 
 	r.HandleFunc("/download/request", handleDownloadRequest).Methods("POST")
 	r.HandleFunc("/download/respond", handleDownloadRequestOrResponse).Methods("POST")
+	r.HandleFunc("/download/getRequests", handleGetPendingRequests).Methods("GET")
 	return r
 }
