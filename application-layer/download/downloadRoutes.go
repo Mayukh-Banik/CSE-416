@@ -8,6 +8,6 @@ func InitDownloadRoutes() *mux.Router {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/download/request", handleDownloadRequest).Methods("POST")
-	r.HandleFunc("/download/respond", respondToDownloadRequest).Methods("POST")
+	r.HandleFunc("/download/respond", handleDownloadRequestOrResponse).Methods("POST")
 	return r
 }

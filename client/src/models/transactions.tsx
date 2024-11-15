@@ -4,7 +4,7 @@ export interface Transaction {
     FileHash: string;
     RequesterID?: string;
     TargetID: string;
-    Status?: string;
+    Status?: 'pending' | 'accepted' | 'declined' | 'completed';
     Fee?:  number;
 }
 

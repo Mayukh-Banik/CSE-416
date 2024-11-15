@@ -45,7 +45,7 @@ func ConnectToPeer(node host.Host, peerAddr string) {
 	fmt.Println("Connected to:", info.ID)
 }
 
-func ConnectToPeerUsingRelay(node host.Host, targetPeerID string) {
+func ConnectToPeerUsingRelay(node host.Host, targetPeerID string) error {
 	ctx := GlobalCtx
 	targetPeerID = strings.TrimSpace(targetPeerID)
 	relayAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)
@@ -57,17 +57,16 @@ func ConnectToPeerUsingRelay(node host.Host, targetPeerID string) {
 
 	relayedAddrInfo, err := peer.AddrInfoFromP2pAddr(peerMultiaddr)
 	if err != nil {
-		log.Println("Failed to get relayed AddrInfo: %w", err)
-		return
+		return fmt.Errorf("failed to get relayed AddrInfo: %w", err)
 	}
 	// Connect to the peer through the relay
 	err = node.Connect(ctx, *relayedAddrInfo)
 	if err != nil {
-		log.Println("Failed to connect to peer through relay: %w", err)
-		return
+		return fmt.Errorf("failed to connect to peer through relay: %w", err)
 	}
 
-	fmt.Printf("Connected to peer via relay: %s\n", targetPeerID)
+	fmt.Printf("connected to peer via relay: %s\n", targetPeerID)
+	return nil
 }
 
 func ReceiveDataFromPeer(node host.Host) {
