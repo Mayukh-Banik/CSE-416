@@ -242,7 +242,7 @@ func FindSpecificProvider(fileHash string, targetProviderID peer.ID) (*peer.Addr
 
 func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protocol.ID) (network.Stream, error) {
 	// Use a timeout context for the stream connection attempt
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
 	// Parse the target peer ID and set up the relay multiaddr

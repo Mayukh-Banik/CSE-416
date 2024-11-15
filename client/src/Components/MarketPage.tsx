@@ -19,14 +19,16 @@ const MarketplacePage: React.FC = () => {
   const [fileHash, setFileHash] = useState('');
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [loading, setLoading] = useState(false)
+  const [loadingRequest, setLoadingRequest] = useState(false)
+  const [loadingSearch, setLoadingSearch] = useState(false)
 
   const resetStates = async () => {
     setFileHash("");
     setProviders([]);
     setSelectedFile(null);
     setSearchTerm("");
-    setLoading(false);
+    setLoadingRequest(false);
+    setLoadingSearch(false);
   }
 
   const handleCloseNotification = () => {
@@ -39,6 +41,7 @@ const MarketplacePage: React.FC = () => {
   };
 
   const handleProviderSelect = async (provider: string) => {
+    setLoadingRequest(true)
     try {
       let request: Transaction = {
         TargetID: provider,
@@ -59,14 +62,16 @@ const MarketplacePage: React.FC = () => {
       if (!response.ok) {
         const responseText = await response.text(); // Get the error message
         setNotification({ open: true, message: responseText, severity: "error" });
-        return
+      } else {
+        setNotification({ open: true, message: `Request sent to provider ${provider}`, severity: "success" });
+        setOpen(false); // Close the modal after selecting a provider
       }
-      setNotification({ open: true, message: `Request sent to provider ${provider}`, severity: "success" });
-      setOpen(false); // Close the modal after selecting a provider
     } catch (error) {
       console.error("Error in handleProviderSelect:", error);
       setNotification({ open: true, message: "Failed to find providers.", severity: "error" });
-    } 
+    } finally {
+      setLoadingRequest(false);
+    }
   };
 
   const handleRefresh = async () => {
@@ -86,7 +91,7 @@ const MarketplacePage: React.FC = () => {
   
   // only works for complete file hashes
   const handleSearchRequest = async (searchTerm: string) => {
-    // resetStates();
+    resetStates();
     if (!searchTerm || searchTerm.length === 0) return;
     setFileHash(searchTerm);
     await getFileByHash(searchTerm);
@@ -98,7 +103,7 @@ const MarketplacePage: React.FC = () => {
   }
 
   const getFileByHash = async (hash: string) => {
-    setLoading(true)
+    setLoadingSearch(true)
     try {
         const encodedHash = encodeURIComponent(hash);  // Ensure hash is URL-safe
         const url = `http://localhost:8081/files/getFile?val=${encodedHash}`;
@@ -126,7 +131,7 @@ const MarketplacePage: React.FC = () => {
         console.error("Error:", error);
         setNotification({ open: true, message: "File not found", severity: "error" });
     } finally {
-      setLoading(false)
+      setLoadingSearch(false)
     }
   };
 
@@ -187,7 +192,7 @@ const MarketplacePage: React.FC = () => {
         sx={{ marginBottom: 2, background: "white" }}
       />
 
-      {loading && <LinearProgress sx={{ width: '100%', marginTop: 2 }} />} {/* Progress bar when loading is true */}
+      {loadingSearch && <LinearProgress sx={{ width: '100%', marginTop: 2 }} />} {/* Progress bar when loading is true */}
       
       <TableContainer component={Paper}>
         <Table>
@@ -232,6 +237,7 @@ const MarketplacePage: React.FC = () => {
       /> */}
 
       <Dialog open={open} onClose={() => setOpen(false)}>
+        {loadingRequest && <LinearProgress sx={{ width: '100%', marginTop: 2 }} />} {/* Progress bar when loading is true */}
         <DialogTitle>{selectedFile?.Name}</DialogTitle>
         <DialogContent>
         {selectedFile && (

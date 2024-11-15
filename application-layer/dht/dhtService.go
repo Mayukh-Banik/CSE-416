@@ -1,10 +1,12 @@
 package dht_kad
 
 import (
+	"application-layer/models"
 	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -309,6 +311,9 @@ func StartDHTService() {
 	ConnectToPeer(node, Bootstrap_node_addr) // connect to bootstrap node
 	go handlePeerExchange(node)
 
+	DHT.Host().SetStreamHandler("/sendRequest/p2p", handleStream)
+	DHT.Host().SetStreamHandler("/requestResponse/p2p", handleStream)
+
 	fmt.Println("Node multiaddresses:", node.Addrs())
 	fmt.Println("Node Peer ID:", PeerID)
 
@@ -318,19 +323,36 @@ func StartDHTService() {
 	select {}
 }
 
-// func setupStreamHandler(h host.Host, streamType protocol.ID) {
-// 	h.SetStreamHandler(streamType, func(stream network.Stream) {
-// 		defer stream.Close()
-// 		fmt.Println("Received a new stream!")
+func handleStream(stream network.Stream) {
+	fmt.Println("Received a stream request!")
 
-// 		// Example: Reading data from the stream
-// 		buf := make([]byte, 256)
-// 		n, err := stream.Read(buf)
-// 		if err != nil {
-// 			log.Println("Error reading from stream:", err)
-// 			return
-// 		}
+	// Close the stream once done processing
+	defer stream.Close()
 
-// 		fmt.Printf("Received: %s\n", string(buf[:n]))
-// 	})
-// }
+	// Create a buffer to read the incoming data
+	buffer := make([]byte, 1024) // Adjust the buffer size as needed
+
+	// Read the incoming data
+	n, err := stream.Read(buffer)
+	if err != nil {
+		fmt.Printf("Error reading stream data: %v\n", err)
+		return
+	}
+
+	// Process the received data
+	requestData := buffer[:n] // Slice the buffer to the actual received data
+
+	// Deserialize the data (e.g., assuming it's a JSON object for a transaction request)
+	var requestMetadata models.Transaction
+	err = json.Unmarshal(requestData, &requestMetadata)
+	if err != nil {
+		fmt.Printf("Error unmarshaling request data: %v\n", err)
+		return
+	}
+
+	// Now you can handle the request, for example, by processing the transaction
+	fmt.Printf("Received download request for file %s from peer %s\n", requestMetadata.FileHash, requestMetadata.RequesterID)
+
+	// Respond with a success message (optional)
+	// You could send a response back to the requester if needed
+}
