@@ -3,57 +3,64 @@ package download
 import (
 	dht_kad "application-layer/dht"
 	"application-layer/models"
-	wsConn "application-layer/websocket"
+	"application-layer/websocket"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
-
-	"github.com/libp2p/go-libp2p/core/network"
 )
 
 var PendingRequests = make(map[string]models.Transaction)
 var mutex = &sync.Mutex{}
 
 func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
-	// handle when user tries to download file they already have (same hash)
 	var request models.Transaction
 
+	// Decode the incoming request data into the transaction struct
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid request data", http.StatusBadRequest)
 		return
 	}
-	fmt.Println("Handling download request: ", request.FileHash)
 
 	// Set the requester's ID (assumed to be from the node's local ID)
 	request.RequesterID = dht_kad.DHT.Host().ID().String()
 
+	// Prevent a user from requesting their own file
 	if request.RequesterID == request.TargetID {
 		http.Error(w, "Cannot request self as a provider", http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("requester:%v | provider:%v \n ", request.RequesterID, request.TargetID)
 
+	// Log the requester and provider IDs
+	fmt.Printf("Requesting file download: Requester: %v | Provider: %v\n", request.RequesterID, request.TargetID)
+
+	// Update the request status to "pending"
 	request.Status = "pending"
 	request.CreatedAt = time.Now().Format(time.RFC3339)
 
-	// Connect to the target peer and send the request over P2P stream
+	// Connect to the target peer and send the download request via P2P
 	if err := dht_kad.ConnectToPeerUsingRelay(dht_kad.DHT.Host(), request.TargetID); err != nil {
 		http.Error(w, "Failed to connect to target peer", http.StatusInternalServerError)
 		log.Println(err)
 		return
 	}
+	fmt.Println("Connected peers:", dht_kad.Host.Peerstore().Peers())
 
+	dht_kad.SendDataToPeer(dht_kad.DHT.Host(), request.TargetID)
+
+	// Send the download request
 	if err := sendDownloadRequest(request); err != nil {
 		http.Error(w, "Failed to send download request", http.StatusInternalServerError)
 		log.Println(err)
 		return
 	}
 
-	// Store request in pending requests
+	// Store request in pending requests map (thread-safe)
+	mutex.Lock()
 	PendingRequests[request.FileHash] = request
+	mutex.Unlock()
 
 	// Send acknowledgment back to the requester
 	w.Header().Set("Content-Type", "application/json")
@@ -62,6 +69,7 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 
 func sendDownloadRequest(requestMetadata models.Transaction) error {
 	// Create a new P2P stream to send the download request
+	fmt.Println("Sending download request via stream /sendRequest/p2p")
 	requestStream, err := dht_kad.CreateNewStream(dht_kad.DHT.Host(), requestMetadata.TargetID, "/sendRequest/p2p")
 	if err != nil {
 		return fmt.Errorf("error sending download request: %v", err)
@@ -85,7 +93,7 @@ func sendDownloadRequest(requestMetadata models.Transaction) error {
 }
 
 func NotifyFrontendOfPendingRequest(request models.Transaction) {
-	// Prepare the acknowledgment message
+	// Prepare acknowledgment message
 	acknowledgment := map[string]string{
 		"status":    request.Status,
 		"fileHash":  request.FileHash,
@@ -94,7 +102,7 @@ func NotifyFrontendOfPendingRequest(request models.Transaction) {
 	acknowledgmentData, _ := json.Marshal(acknowledgment)
 
 	// Retrieve the WebSocket connection for the specific user
-	if wsConn, exists := wsConn.WsConnections[request.TargetID]; exists {
+	if wsConn, exists := websocket.WsConnections[request.TargetID]; exists {
 		// Send the notification over the WebSocket connection
 		if err := wsConn.WriteJSON(acknowledgmentData); err != nil {
 			fmt.Println("Error sending notification to frontend:", err)
@@ -112,7 +120,10 @@ func handleDownloadRequestOrResponse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the request exists in pendingRequests
+	mutex.Lock()
 	existingTransaction, exists := PendingRequests[transaction.FileHash]
+	mutex.Unlock()
+
 	if !exists {
 		http.Error(w, "Transaction not found", http.StatusNotFound)
 		return
@@ -131,7 +142,9 @@ func handleDownloadRequestOrResponse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update the transaction status in pendingRequests
+	mutex.Lock()
 	PendingRequests[transaction.FileHash] = existingTransaction
+	mutex.Unlock()
 }
 
 func notifyDecline(targetID string, fileHash string) {
@@ -151,8 +164,8 @@ func notifyDecline(targetID string, fileHash string) {
 
 func sendFile(targetID string, fileHash string) {
 	// In P2P systems, file transfer will be done through streams as well.
-	// You need to implement logic for transferring the file to the requester.
-	// This is just a placeholder to show where file transfer would occur.
+	// Implement logic for transferring the file to the requester.
+	// Placeholder to show where file transfer occurs
 	fmt.Printf("Sending file %s to requester %s...\n", fileHash, targetID)
 
 	// Create a new stream to send the file
@@ -163,30 +176,12 @@ func sendFile(targetID string, fileHash string) {
 	}
 	defer fileStream.Close()
 
-	// Logic to retrieve and send the file in chunks goes here
-	// For now, we'll just simulate sending a file
+	// Simulate file sending (this should be replaced with actual file retrieval and transfer logic)
 	fileData := []byte("This is the file data for " + fileHash)
 	_, err = fileStream.Write(fileData)
 	if err != nil {
 		fmt.Println("Error sending file:", err)
 	}
-}
-
-func HandleDownloadRequestStream(stream network.Stream) {
-	defer stream.Close()
-
-	// Decode the request metadata
-	var requestMetadata models.Transaction
-	if err := json.NewDecoder(stream).Decode(&requestMetadata); err != nil {
-		fmt.Println("Error decoding download request:", err)
-		return
-	}
-
-	// Store the request in pending requests for the target node to approve
-	PendingRequests[requestMetadata.FileHash] = requestMetadata
-
-	// Notify the target frontend of a pending download request
-	NotifyFrontendOfPendingRequest(requestMetadata)
 }
 
 func handleGetPendingRequests(w http.ResponseWriter, r *http.Request) {

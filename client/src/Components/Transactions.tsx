@@ -12,18 +12,6 @@ import { Transaction } from '../models/transactions';
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
-// interface Transaction {
-//   date: string;
-//   time: string;
-//   fileName: string;
-//   sender: string;
-//   senderAddress: string;
-//   receiver: string;
-//   receiverAddress: string;
-//   amount: string;
-//   status: string;
-// }
-
 const GlobalTransactions : React.FC = () => {
   const theme = useTheme();
   const [pendingRequests, setPendingRequests] = useState<Transaction[]>([]);

@@ -26,7 +26,7 @@ const MarketplacePage: React.FC = () => {
     setFileHash("");
     setProviders([]);
     setSelectedFile(null);
-    setSearchTerm("");
+    // setSearchTerm("");
     setLoadingRequest(false);
     setLoadingSearch(false);
   }
@@ -91,7 +91,7 @@ const MarketplacePage: React.FC = () => {
   
   // only works for complete file hashes
   const handleSearchRequest = async (searchTerm: string) => {
-    resetStates();
+    await resetStates();
     if (!searchTerm || searchTerm.length === 0) return;
     setFileHash(searchTerm);
     await getFileByHash(searchTerm);

@@ -70,6 +70,7 @@ func ConnectToPeerUsingRelay(node host.Host, targetPeerID string) error {
 }
 
 func ReceiveDataFromPeer(node host.Host) {
+	fmt.Println("listening for data from peer")
 	// Set a stream handler to listen for incoming streams on the "/senddata/p2p" protocol
 	node.SetStreamHandler("/senddata/p2p", func(s network.Stream) {
 		defer s.Close()
@@ -91,6 +92,7 @@ func ReceiveDataFromPeer(node host.Host) {
 }
 
 func SendDataToPeer(node host.Host, targetpeerid string) {
+	fmt.Println("sending data to peer: ", targetpeerid)
 	var ctx = context.Background()
 	targetPeerID := strings.TrimSpace(targetpeerid)
 	relayAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)
@@ -119,18 +121,6 @@ func SendDataToPeer(node host.Host, targetpeerid string) {
 	}
 
 }
-
-// func GetPeerAddr(node host.Host, peerID peer.ID) {
-// 	addrs := node.Peerstore().Addrs(peerID)
-// 	if len(addrs) == 0 {
-// 		log.Printf("No addresses found for peer %s", peerID)
-// 		return
-// 	}
-
-// 	// Convert the first address to a string (or handle multiple addresses if needed)
-// 	peerAddr := addrs[0].String()
-// 	log.Printf("Peer address for %s: %s", peerID, peerAddr)
-// }
 
 func handlePeerExchange(node host.Host) {
 	relayInfo, _ := peer.AddrInfoFromString(Relay_node_addr)
@@ -222,23 +212,6 @@ func FindSpecificProvider(fileHash string, targetProviderID peer.ID) (*peer.Addr
 
 	return nil, fmt.Errorf("provider with ID %s not found for file hash %s", targetProviderID, fileHash)
 }
-
-// func ConnectToProvider(provider peer.AddrInfo) {
-// 	for _, addr := range provider.Addrs {
-// 		fmt.Printf("Attempting to connect to provider at: %s\n", addr.String()) // Use addr.String() here
-// 		err := ConnectToPeer(GlobalCtx, peer.AddrInfo{
-// 			ID:    provider.ID,
-// 			Addrs: []multiaddr.Multiaddr{addr},
-// 		})
-// 		if err == nil {
-// 			fmt.Printf("Successfully connected to provider at: %s\n", addr.String())
-// 			return
-// 		} else {
-// 			fmt.Printf("Failed to connect to address %s: %v\n", addr.String(), err)
-// 		}
-// 	}
-// 	fmt.Println("Unable to connect to provider on any address.")
-// }
 
 func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protocol.ID) (network.Stream, error) {
 	// Use a timeout context for the stream connection attempt
