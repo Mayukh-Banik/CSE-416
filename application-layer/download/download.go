@@ -3,17 +3,12 @@ package download
 import (
 	dht_kad "application-layer/dht"
 	"application-layer/models"
-	"application-layer/websocket"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 )
-
-var PendingRequests = make(map[string]models.Transaction)
-var mutex = &sync.Mutex{}
 
 func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 	var request models.Transaction
@@ -24,7 +19,6 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set the requester's ID (assumed to be from the node's local ID)
 	request.RequesterID = dht_kad.DHT.Host().ID().String()
 
 	// Prevent a user from requesting their own file
@@ -46,153 +40,37 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	fmt.Println("Connected peers:", dht_kad.Host.Peerstore().Peers())
+	// fmt.Println("Connected peers:", dht_kad.Host.Peerstore().Peers())
 
+	// just testing if nodes are connected
 	dht_kad.SendDataToPeer(dht_kad.DHT.Host(), request.TargetID)
 
-	// Send the download request
-	if err := sendDownloadRequest(request); err != nil {
+	// actually send the download request
+	if err := dht_kad.SendDownloadRequest(request); err != nil {
 		http.Error(w, "Failed to send download request", http.StatusInternalServerError)
 		log.Println(err)
 		return
 	}
 
 	// Store request in pending requests map (thread-safe)
-	mutex.Lock()
-	PendingRequests[request.FileHash] = request
-	mutex.Unlock()
+	dht_kad.Mutex.Lock()
+	dht_kad.PendingRequests[request.FileHash] = request
+	dht_kad.Mutex.Unlock()
 
 	// Send acknowledgment back to the requester
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "request sent"})
 }
 
-func sendDownloadRequest(requestMetadata models.Transaction) error {
-	// Create a new P2P stream to send the download request
-	fmt.Println("Sending download request via stream /sendRequest/p2p")
-	requestStream, err := dht_kad.CreateNewStream(dht_kad.DHT.Host(), requestMetadata.TargetID, "/sendRequest/p2p")
-	if err != nil {
-		return fmt.Errorf("error sending download request: %v", err)
-	}
-	defer requestStream.Close()
-
-	// Marshal the request metadata to JSON
-	requestData, err := json.Marshal(requestMetadata)
-	if err != nil {
-		return fmt.Errorf("error marshaling download request data: %v", err)
-	}
-
-	// Send the JSON data over the stream
-	_, err = requestStream.Write(requestData)
-	if err != nil {
-		return fmt.Errorf("error sending download request data: %v", err)
-	}
-
-	fmt.Printf("Sent download request for file hash %s to target peer %s\n", requestMetadata.FileHash, requestMetadata.TargetID)
-	return nil
-}
-
-func NotifyFrontendOfPendingRequest(request models.Transaction) {
-	// Prepare acknowledgment message
-	acknowledgment := map[string]string{
-		"status":    request.Status,
-		"fileHash":  request.FileHash,
-		"requester": request.RequesterID,
-	}
-	acknowledgmentData, _ := json.Marshal(acknowledgment)
-
-	// Retrieve the WebSocket connection for the specific user
-	if wsConn, exists := websocket.WsConnections[request.TargetID]; exists {
-		// Send the notification over the WebSocket connection
-		if err := wsConn.WriteJSON(acknowledgmentData); err != nil {
-			fmt.Println("Error sending notification to frontend:", err)
-		}
-	} else {
-		fmt.Println("WebSocket connection not found for node:", request.TargetID)
-	}
-}
-
-func handleDownloadRequestOrResponse(w http.ResponseWriter, r *http.Request) {
-	var transaction models.Transaction
-	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		http.Error(w, "Invalid request data", http.StatusBadRequest)
-		return
-	}
-
-	// Check if the request exists in pendingRequests
-	mutex.Lock()
-	existingTransaction, exists := PendingRequests[transaction.FileHash]
-	mutex.Unlock()
-
-	if !exists {
-		http.Error(w, "Transaction not found", http.StatusNotFound)
-		return
-	}
-
-	// Handle based on the transaction status
-	switch transaction.Status {
-	case "accepted":
-		existingTransaction.Status = "accepted"
-		// Send file to requester
-		sendFile(existingTransaction.TargetID, existingTransaction.FileHash)
-	case "declined":
-		existingTransaction.Status = "declined"
-		// Notify decline
-		notifyDecline(existingTransaction.TargetID, existingTransaction.FileHash)
-	}
-
-	// Update the transaction status in pendingRequests
-	mutex.Lock()
-	PendingRequests[transaction.FileHash] = existingTransaction
-	mutex.Unlock()
-}
-
-func notifyDecline(targetID string, fileHash string) {
-	declineMessage := map[string]string{
-		"status":   "declined",
-		"fileHash": fileHash,
-	}
-	declineData, _ := json.Marshal(declineMessage)
-
-	// Send the decline response back to the target peer
-	requestStream, err := dht_kad.CreateNewStream(dht_kad.DHT.Host(), targetID, "/requestResponse/p2p")
-	if err == nil {
-		requestStream.Write(declineData)
-		requestStream.Close()
-	}
-}
-
-func sendFile(targetID string, fileHash string) {
-	// In P2P systems, file transfer will be done through streams as well.
-	// Implement logic for transferring the file to the requester.
-	// Placeholder to show where file transfer occurs
-	fmt.Printf("Sending file %s to requester %s...\n", fileHash, targetID)
-
-	// Create a new stream to send the file
-	fileStream, err := dht_kad.CreateNewStream(dht_kad.DHT.Host(), targetID, "/sendFile/p2p")
-	if err != nil {
-		fmt.Println("Error creating file stream:", err)
-		return
-	}
-	defer fileStream.Close()
-
-	// Simulate file sending (this should be replaced with actual file retrieval and transfer logic)
-	fileData := []byte("This is the file data for " + fileHash)
-	_, err = fileStream.Write(fileData)
-	if err != nil {
-		fmt.Println("Error sending file:", err)
-	}
-}
-
 func handleGetPendingRequests(w http.ResponseWriter, r *http.Request) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	dht_kad.Mutex.Lock()
+	defer dht_kad.Mutex.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
 
 	// Convert the map to a slice of transactions
 	var transactions []models.Transaction
-	for _, transaction := range PendingRequests {
+	for _, transaction := range dht_kad.PendingRequests {
 		transactions = append(transactions, transaction)
 	}
 

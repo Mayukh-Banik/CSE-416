@@ -26,4 +26,5 @@ export interface FileMetadata {
   Reputation?: number;
   IsPublished?: boolean;
   Fee: number;
+  Path: string;
 }

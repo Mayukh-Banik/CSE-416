@@ -119,6 +119,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	if action == "added" {
 		publishFile(requestBody)
+		dht_kad.FilePath[requestBody.Hash] = requestBody.Path
 	}
 
 	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Name)
@@ -214,11 +215,14 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprint("failed to delete file from file", err), http.StatusInternalServerError)
 		return
 	}
-	// Respond with JSON indicating the result
+
+	delete(dht_kad.FilePath, hash) // delete from map of file hash to file path
+
 	response := map[string]string{
 		"status":  action,
 		"message": "File deletion successful",
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)

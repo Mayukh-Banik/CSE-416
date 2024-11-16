@@ -1,7 +1,6 @@
 package dht_kad
 
 import (
-	// dht_kad "application-layer/dht"
 	"bufio"
 	"context"
 	"crypto/sha256"
@@ -115,11 +114,11 @@ func SendDataToPeer(node host.Host, targetpeerid string) {
 		return
 	}
 	defer s.Close()
+
 	_, err = s.Write([]byte("sending hello to peer\n"))
 	if err != nil {
 		log.Fatalf("Failed to write to stream: %s", err)
 	}
-
 }
 
 func handlePeerExchange(node host.Host) {
@@ -213,9 +212,10 @@ func FindSpecificProvider(fileHash string, targetProviderID peer.ID) (*peer.Addr
 	return nil, fmt.Errorf("provider with ID %s not found for file hash %s", targetProviderID, fileHash)
 }
 
+// adapted from sendDataToPeer
 func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protocol.ID) (network.Stream, error) {
 	// Use a timeout context for the stream connection attempt
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// Parse the target peer ID and set up the relay multiaddr
