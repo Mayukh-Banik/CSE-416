@@ -43,7 +43,7 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println("Connected peers:", dht_kad.Host.Peerstore().Peers())
 
 	// just testing if nodes are connected
-	dht_kad.SendDataToPeer(dht_kad.DHT.Host(), request.TargetID)
+	// dht_kad.SendDataToPeer(dht_kad.DHT.Host(), request.TargetID)
 
 	// actually send the download request
 	if err := dht_kad.SendDownloadRequest(request); err != nil {
