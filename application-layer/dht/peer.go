@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -214,34 +213,27 @@ func FindSpecificProvider(fileHash string, targetProviderID peer.ID) (*peer.Addr
 
 // adapted from sendDataToPeer
 func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protocol.ID) (network.Stream, error) {
-	// Use a timeout context for the stream connection attempt
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Parse the target peer ID and set up the relay multiaddr
+	fmt.Println("sending data to peer: ", targetPeerID)
+	var ctx = context.Background()
 	targetPeerID = strings.TrimSpace(targetPeerID)
-	relayNodeAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)
+	relayAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create relay node multiaddr: %v", err)
+		log.Printf("Failed to create relay multiaddr: %v", err)
 	}
+	peerMultiaddr := relayAddr.Encapsulate(multiaddr.StringCast("/p2p-circuit/p2p/" + targetPeerID))
 
-	// Create a multiaddress that encapsulates the relay address with the target peer ID
-	peerMultiaddr := relayNodeAddr.Encapsulate(multiaddr.StringCast("/p2p-circuit/p2p/" + targetPeerID))
 	peerinfo, err := peer.AddrInfoFromP2pAddr(peerMultiaddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get target peer address: %s", err)
+		log.Fatalf("Failed to parse peer address: %s", err)
 	}
-
-	// Connect to the target peer through the relay node
 	if err := node.Connect(ctx, *peerinfo); err != nil {
-		return nil, fmt.Errorf("failed to connect to peer %s via relay: %v", peerinfo.ID, err)
+		log.Fatalf("Failed to connect to peer %s via relay: %v", peerinfo.ID, err)
 	}
-
-	// Open a new stream to the target peer
-	stream, err := node.NewStream(ctx, peerinfo.ID, streamProtocol)
+	stream, err := node.NewStream(network.WithAllowLimitedConn(ctx, string(streamProtocol)), peerinfo.ID, streamProtocol)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open stream to target peer %s: %s", peerinfo.ID, err)
+		log.Fatalf("Failed to open stream to %s: %s", peerinfo.ID, err)
 	}
+	defer stream.Close()
 
 	fmt.Printf("Successfully created stream to peer %s\n", peerinfo.ID)
 	return stream, nil

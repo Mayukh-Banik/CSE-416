@@ -135,7 +135,7 @@ func receieveDownloadRequest(node host.Host) {
 }
 
 func receieveFile(node host.Host) {
-	fmt.Println("listening for download requests")
+	fmt.Println("listening for file data")
 	// listen for streams on "/sendFile/p2p"
 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream) {
 		defer s.Close()

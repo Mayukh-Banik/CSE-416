@@ -311,7 +311,7 @@ func StartDHTService() {
 	ConnectToPeer(node, Bootstrap_node_addr) // connect to bootstrap node
 	go handlePeerExchange(node)
 
-	// ReceiveDataFromPeer(node) //listen on stream /senddata/p2p
+	ReceiveDataFromPeer(node) //listen on stream /senddata/p2p
 	// DHT.Host().SetStreamHandler("/sendRequest/p2p", handleStream)
 	// DHT.Host().SetStreamHandler("/requestResponse/p2p", handleStream)
 
