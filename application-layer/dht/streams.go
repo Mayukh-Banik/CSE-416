@@ -157,7 +157,39 @@ func receieveFile(node host.Host) {
 }
 
 func receiveDecline(node host.Host) {
-	panic("unimplemented")
+	node.SetStreamHandler("/requestResponse/p2p", func(s network.Stream) {
+		defer s.Close()
+		buf := bufio.NewReader(s)
+		data, err := buf.ReadBytes('\n') // Reads until a newline character
+
+		if err != nil {
+			if err == io.EOF {
+				log.Printf("Stream closed by peer: %s", s.Conn().RemotePeer())
+			} else {
+				log.Printf("Error reading from stream: %v", err)
+			}
+			return
+		}
+		log.Printf("Received data: %s", data)
+		// Unmarshal the JSON data
+		var declineMessage map[string]string
+		err = json.Unmarshal(data, &declineMessage)
+		if err != nil {
+			log.Println("Error unmarshalling data:", err)
+			return
+		}
+
+		// Process the decline message
+		if status, ok := declineMessage["status"]; ok && status == "declined" {
+			fileHash := declineMessage["fileHash"]
+			log.Printf("Received decline message for file with hash: %s", fileHash)
+			// notify user on the front end of decline
+			// update transaction detail to DECLINED
+		} else {
+			log.Println("Received invalid decline message")
+		}
+		log.Printf("Received data: %s", data)
+	})
 }
 
 // OTHER - IGNORE WILL PROB DELETE
