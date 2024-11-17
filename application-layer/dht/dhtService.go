@@ -306,18 +306,19 @@ func StartDHTService() {
 	DHT = setupDHT(ctx, dht.Host())
 	ProviderStore = DHT.ProviderStore()
 	ConnectToPeer(node, Relay_node_addr) // connect to relay node
-	makeReservation(node)                     // make reservation on relay node
+	makeReservation(node)                // make reservation on relay node
 	go refreshReservation(node, 10*time.Minute)
 	ConnectToPeer(node, Bootstrap_node_addr) // connect to bootstrap node
 	go handlePeerExchange(node)
 
-	ReceiveDataFromPeer(node) //listen on stream /senddata/p2p
+	// ReceiveDataFromPeer(node) //listen on stream /senddata/p2p
 	// DHT.Host().SetStreamHandler("/sendRequest/p2p", handleStream)
 	// DHT.Host().SetStreamHandler("/requestResponse/p2p", handleStream)
-	
 
-	fmt.Println("Node multiaddresses:", node.Addrs())
-	fmt.Println("Node Peer ID:", PeerID)
+	setupStreams(node)
+
+	fmt.Println("My Node MULTIADDRESS:", node.Addrs())
+	fmt.Println("MY NODE PEER ID:", PeerID)
 	fmt.Println("Supported protocols:", node.Mux().Protocols())
 
 	go handleInput(ctx, dht)
@@ -326,6 +327,7 @@ func StartDHTService() {
 	select {}
 }
 
+// extra wip
 func handleStream(stream network.Stream) {
 	fmt.Println("Received a stream request!")
 
