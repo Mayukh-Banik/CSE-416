@@ -32,6 +32,8 @@ import { FileMetadata } from "../models/fileMetadata";
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
+const ipcRenderer = window.Electron?.ipcRenderer;
+
 interface FilesProp {
   uploadedFiles: FileMetadata[];
   setUploadedFiles: React.Dispatch<React.SetStateAction<FileMetadata[]>>;
@@ -94,6 +96,22 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 // const fileData = await file.arrayBuffer(); // Read file as ArrayBuffer
                 // const base64FileData = btoa(String.fromCharCode(...new Uint8Array(fileData))); // Convert to Base64
                 // setPublishDialogOpen(true);
+                console.log("start of loop");
+                const arrayBuffer = await file.arrayBuffer();
+                const fileData = new Uint8Array(arrayBuffer);
+                console.log("after reading file data");
+                console.log("Filename is ", file.name, "fileData is ", fileData);
+                const saveResponse = await ipcRenderer.invoke('save-file',{
+                  fileName: file.name,
+                  fileData,
+                });
+                
+                console.log("Before saveresponse");
+                if(!saveResponse.success)
+                {
+                  console.log("save error error error");
+                }
+                console.log("after save error response");
                 let metadata:FileMetadata = {
                   //id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
                   Name: file.name,

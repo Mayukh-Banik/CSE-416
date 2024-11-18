@@ -1,6 +1,6 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog} = require('electron');
 const path = require('path');
-
+const fs = require('fs')
 let mainWindow;
 
 function createWindow() {
@@ -9,7 +9,9 @@ function createWindow() {
         height: 600,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
-            nodeIntegration: true,
+            contextIsolation: true,
+            nodeIntegration: false,
+            enableRemoteModule: false,
         },
     });
 
@@ -17,11 +19,32 @@ function createWindow() {
         `file://${path.join(__dirname, 'build/index.html')}`
     );
 
-   // mainWindow.webContents.openDevTools();
-
+    // CLOSE LATER
+   mainWindow.webContents.openDevTools();
+    // CLOSE LATER
 
     mainWindow.on('closed', () => (mainWindow = null));
 }
+
+ipcMain.handle('save-file',async (event,{fileName, fileData})=>{
+    try {
+        const {filePath} = await dialog.showSaveDialog({
+            defaultPath: fileName,
+        })
+
+        if(!filePath){
+            return {success: false, message: 'File save was canceled'};
+        }
+
+        fs.writeFileSync(filePath, fileData);
+        return {success: true, message: 'File saved successfully'};
+        
+    } catch(error){
+        console.log('Error saving file: ', error);
+        return {success: false, message: "File was"}
+    }
+
+})
 
 // Secure Restorable State (Optional to prevent warning)
 app.on('ready', () => {

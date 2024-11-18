@@ -106,7 +106,7 @@ const App: React.FC = () => {
       <CssBaseline /> {/* This resets CSS to a consistent baseline */}
       <Router>
         <Routes>
-          <Route path="/" element={<SignupPage />} />
+          <Route path="/" element={<MarketPage />} />   
           <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
