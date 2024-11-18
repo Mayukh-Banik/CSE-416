@@ -9,15 +9,21 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 )
 
-var PendingRequests = make(map[string]models.Transaction) // all requests made by host node
-var FilePath = make(map[string]string)                    // file paths of files uploaded by host node
-var Mutex = &sync.Mutex{}
+var (
+	PendingRequests = make(map[string]models.Transaction) // all requests made by host node
+	FileHashToPath  = make(map[string]string)             // file paths of files uploaded by host node
+	Mutex           = &sync.Mutex{}
+	dir             = "squidcoinFiles"
+)
 
 // SENDING FUNCTIONS
 
@@ -64,6 +70,15 @@ func sendDecline(targetID string, fileHash string) {
 func sendFile(host host.Host, targetID string, fileHash string, requesterID string) {
 	fmt.Printf("Sending file %s to requester %s...\n", fileHash, targetID)
 
+	filePath := FileHashToPath[fileHash]
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		fmt.Printf("error: file %s not found in %s\n", fileHash, filePath)
+		return
+	}
+
+	fmt.Printf("sending file %s to requester %s \n", fileHash, requesterID)
+
 	// create stream to send the file
 	fileStream, err := CreateNewStream(DHT.Host(), targetID, "/sendFile/p2p")
 	if err != nil {
@@ -72,21 +87,33 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 	}
 	defer fileStream.Close()
 
-	// path := FilePath[fileHash]
-	// fileType := filepath.Ext(path)
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Printf("error opening file %s: %v", filePath, err)
+	}
+	defer file.Close()
 
-	// fileContent, err := os.Open(path)
-	// if err != nil {
-	// 	fmt.Println("error sending file to requester: %v", err)
-	// }
-	// defer fileContent.Close()
+	reader := bufio.NewReader(file)
+	buffer := make([]byte, 4096)
 
-	// // Simulate file sending (this should be replaced with actual file retrieval and transfer logic)
-	// fileData := []byte("This is the file data for " + fileHash)
-	// _, err = fileStream.Write(fileData)
-	// if err != nil {
-	// 	fmt.Println("Error sending file:", err)
-	//
+	for {
+		n, err := reader.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("all of file sent")
+				break
+			}
+			fmt.Printf("error reading file %s: %v\n", filePath, err)
+			return
+		}
+
+		_, err = fileStream.Write(buffer[:n])
+		if err != nil {
+			fmt.Printf("error sending chunk to requester %s: %v\n", requesterID, err)
+			return
+		}
+		fmt.Printf("sent %d bytes to requester %s\n", n, requesterID)
+	}
 
 	// for testing below - must implement actual file sharing
 	_, err = fileStream.Write([]byte("sending file to peer\n"))
@@ -125,7 +152,7 @@ func receieveDownloadRequest(node host.Host) {
 		log.Printf("Received data: %s", data)
 
 		// send file to requester if it exists
-		if FilePath[request.FileHash] != "" {
+		if FileHashToPath[request.FileHash] != "" {
 			sendFile(DHT.Host(), request.RequesterID, request.FileHash, PeerID)
 		} else {
 			sendDecline(request.RequesterID, request.FileHash)
@@ -139,10 +166,56 @@ func receieveFile(node host.Host) {
 	// listen for streams on "/sendFile/p2p"
 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream) {
 		defer s.Close()
-		buf := bufio.NewReader(s)
-		data, err := buf.ReadBytes('\n') // Reads until a newline character
+		// buf := bufio.NewReader(s)
+		// data, err := buf.ReadBytes('\n') // Reads until a newline character
 
-		// chunck, err := io.ReadAll(buf) // receieve chunk by chunck and put back together
+		// create output directory if it doesn't exist
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			err := os.MkdirAll(dir, os.ModePerm)
+			if err != nil {
+				log.Printf("error creating output directory for files: %v\n", err)
+				return
+			}
+		}
+
+		// read metadata - use metadata struct later
+		buf := bufio.NewReader(s)
+		fileName, err := buf.ReadString('\n') // Read until a newline character
+		if err != nil {
+			log.Printf("Error reading filename: %v\n", err)
+			return
+		}
+		fileName = strings.TrimSpace(fileName)
+
+		// open file for writing
+		outputPath := filepath.Join(dir, fileName)
+		file, err := os.Create(outputPath)
+		if err != nil {
+			log.Printf("error creating file %s: %v\n", outputPath, err)
+		}
+		defer file.Close()
+
+		// read and write chunks of data
+		buffer := make([]byte, 4086)
+		for {
+			n, err := buf.Read(buffer)
+			if err != nil {
+				if err == io.EOF {
+					log.Printf("file %s received and saved to %s\n", fileName, outputPath)
+					break
+				}
+				log.Printf("Ererrorror reading file chunk: %v\n", err)
+				return
+			}
+
+			_, writeErr := file.Write(buffer[:n])
+			if writeErr != nil {
+				log.Printf("error writing to file %s: %v\n", outputPath, writeErr)
+				return
+			}
+
+			log.Printf("receieved and wrote %d bytes of file %s\n", n, fileName)
+		}
 
 		if err != nil {
 			if err == io.EOF {
@@ -152,7 +225,6 @@ func receieveFile(node host.Host) {
 			}
 			return
 		}
-		log.Printf("Received data: %s", data)
 	})
 }
 
