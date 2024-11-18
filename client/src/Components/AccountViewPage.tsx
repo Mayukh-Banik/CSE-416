@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -13,11 +13,13 @@ import {
 } from "@mui/material";
 import Sidebar from "./Sidebar";
 import { useTheme } from "@mui/material/styles";
+import { FileMetadata } from "../models/fileMetadata";
 
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
 const AccountViewPage: React.FC = () => {
+  const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([])
   const theme = useTheme();
 
   // Initial account data
@@ -28,49 +30,62 @@ const AccountViewPage: React.FC = () => {
     balance: 100,
   });
 
-  // Dummy file data
-  const [files, setFiles] = useState([
-    { name: "file1.txt", size: 15, date: "2024-10-01", rating: 0, hasVoted: false },
-    { name: "file2.txt", size: 30, date: "2024-10-02", rating: 0, hasVoted: false },
-  ]);
+  useEffect(() => {
+      const fetchFiles = async () => {
+        try {
+          console.log("Getting local user's uploaded files");
+          const response = await fetch("http://localhost:8081/files/fetchAll");
+          if (!response.ok) throw new Error("Failed to load file data");
+  
+          const data = await response.json();
+          console.log("Fetched data", data);
+  
+          setUploadedFiles(data); // Set the state with the loaded data
+        } catch (error) {
+          console.error("Error fetching files:", error);
+        }
+      };
+  
+      fetchFiles();
+    }, []);
 
   // Function to calculate reputation out of 5 stars
   const calculateReputation = () => {
     return (accountDetails.totalScore / accountDetails.totalVotes).toFixed(2); // Round to 2 decimal points
   };
 
-  // Function to handle upvote (equivalent to a 5-star vote)
-  const handleUpvote = (index: number) => {
-    const newFiles = [...files];
-    if (!newFiles[index].hasVoted) {
-      newFiles[index].rating += 5;
-      newFiles[index].hasVoted = true;
-      setFiles(newFiles);
+  // // Function to handle upvote (equivalent to a 5-star vote)
+  // const handleUpvote = (index: number) => {
+  //   const newFiles = [...files];
+  //   if (!newFiles[index].hasVoted) {
+  //     newFiles[index].rating += 5;
+  //     newFiles[index].hasVoted = true;
+  //     setFiles(newFiles);
 
-      // Add 5 stars to the total score and increase vote count by 1
-      setAccountDetails((prevAccountDetails) => ({
-        ...prevAccountDetails,
-        totalVotes: prevAccountDetails.totalVotes + 1,
-        totalScore: prevAccountDetails.totalScore + 5,
-      }));
-    }
-  };
+  //     // Add 5 stars to the total score and increase vote count by 1
+  //     setAccountDetails((prevAccountDetails) => ({
+  //       ...prevAccountDetails,
+  //       totalVotes: prevAccountDetails.totalVotes + 1,
+  //       totalScore: prevAccountDetails.totalScore + 5,
+  //     }));
+  //   }
+  // };
 
-  // Function to handle downvote (equivalent to a 0-star vote)
-  const handleDownvote = (index: number) => {
-    const newFiles = [...files];
-    if (!newFiles[index].hasVoted) {
-      newFiles[index].rating += 0; // No change in rating for a downvote
-      newFiles[index].hasVoted = true;
-      setFiles(newFiles);
+  // // Function to handle downvote (equivalent to a 0-star vote)
+  // const handleDownvote = (index: number) => {
+  //   const newFiles = [...files];
+  //   if (!newFiles[index].hasVoted) {
+  //     newFiles[index].rating += 0; // No change in rating for a downvote
+  //     newFiles[index].hasVoted = true;
+  //     setFiles(newFiles);
 
-      // Add 0 stars to the total score and increase vote count by 1
-      setAccountDetails((prevAccountDetails) => ({
-        ...prevAccountDetails,
-        totalVotes: prevAccountDetails.totalVotes + 1,
-      }));
-    }
-  };
+  //     // Add 0 stars to the total score and increase vote count by 1
+  //     setAccountDetails((prevAccountDetails) => ({
+  //       ...prevAccountDetails,
+  //       totalVotes: prevAccountDetails.totalVotes + 1,
+  //     }));
+  //   }
+  // };
 
   return (
     <Box
@@ -122,23 +137,23 @@ const AccountViewPage: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {files.length > 0 ? (
-              files.map((file, index) => (
+            {uploadedFiles.length > 0 ? (
+              uploadedFiles.map((file, index) => (
                 <TableRow key={index}>
-                  <TableCell>{file.name}</TableCell>
-                  <TableCell>{file.size}</TableCell>
-                  <TableCell>{file.date}</TableCell>
-                  <TableCell>{file.rating}</TableCell>
+                  <TableCell>{file.Name}</TableCell>
+                  <TableCell>{file.Size}</TableCell>
+                  <TableCell>{file.CreatedAt}</TableCell>
+                  <TableCell>{file.Reputation}</TableCell>
                   <TableCell>
                     <Button
-                      onClick={() => handleUpvote(index)}
-                      disabled={file.hasVoted} // Disable button if already voted
+                      // onClick={() => handleUpvote(index)}
+                      // disabled={file.hasVoted} // Disable button if already voted
                     >
                       Upvote
                     </Button>
                     <Button
-                      onClick={() => handleDownvote(index)}
-                      disabled={file.hasVoted} // Disable button if already voted
+                      // onClick={() => handleDownvote(index)}
+                      // disabled={file.hasVoted} // Disable button if already voted
                     >
                       Downvote
                     </Button>

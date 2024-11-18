@@ -18,9 +18,10 @@ import {
   DialogActions,
   TextField,
   ListItemText,
+  LinearProgress,
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
-import { FileMetadata, saveFileMetadata } from "../utils/localStorage";
+import { FileMetadata } from "../models/fileMetadata";
 //import { FileMetadata } from '../../local_server/models/file';
 
 
@@ -31,46 +32,47 @@ import { FileMetadata, saveFileMetadata } from "../utils/localStorage";
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
-import fs from 'fs';
-import fsPromises from 'fs/promises';
-import path from 'path';
+interface FilesProp {
+  uploadedFiles: FileMetadata[];
+  setUploadedFiles: React.Dispatch<React.SetStateAction<FileMetadata[]>>;
+  initialFetch: boolean;
+  setInitialFetch: React.Dispatch<React.SetStateAction<boolean>>;
+}
 
-const FilesPage: React.FC = () => {
+const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initialFetch, setInitialFetch}) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({}); // Track descriptions
   const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({}); // Track hashes
-  const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([]);
+  // const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
   const [currentFileHash, setCurrentFileHash] = useState<string | null>(null); // Track the file being published
-  // const [fee, setFee] = useState<number | undefined>(undefined); // Fee value for publishing
   const [fees, setFees] = useState<{ [key: string]: number }>({}); // Track fees of to be uploaded files
-  
   const theme = useTheme();
-  
-  // useEffect(() => {
-  //   const fetchUploadedFiles = () => {
-  //     const files = getFilesForUser('123'); // Adjust user ID as necessary
-  //     setUploadedFiles(files);
-  //   };
-  //   fetchUploadedFiles();
-  // }, []);
+  const [loading, setLoading] = useState(false); // Loading state for file upload
 
-   useEffect(()=>{
-    const fetchUploadedFiles = async () => {
-      try{
-        const res = await fetch('/fetchUploadedFiles');
-        if (!res.ok) {
-          throw new Error('errordfhsf');
+  useEffect(() => {
+    if (!initialFetch) {
+      const fetchFiles = async () => {
+        try {
+          console.log("Getting local user's uploaded files");
+          const response = await fetch("http://localhost:8081/files/fetchAll");
+          if (!response.ok) throw new Error("Failed to load file data");
+  
+          const data = await response.json();
+          console.log("Fetched data", data);
+  
+          setUploadedFiles(data); // Set the state with the loaded data
+          setInitialFetch(true); // Set initialFetch to true to prevent further calls
+        } catch (error) {
+          console.error("Error fetching files:", error);
         }
-        const data = await res.json();
-        setUploadedFiles(data);
-      } catch (error) {
-        console.error('failed to get all')
-      }
+      };
+  
+      fetchFiles();
     }
-    fetchUploadedFiles();
-   }, [])
+  }, [initialFetch, setUploadedFiles, setInitialFetch]);
+  
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -84,59 +86,29 @@ const FilesPage: React.FC = () => {
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
+    setLoading(true);
     try {
         // Create uploaded file objects with descriptions, hashes, and metadata
         const newUploadedFiles = await Promise.all(
             selectedFiles.map(async (file) => {
-                const fileData = await file.arrayBuffer(); // Read file as ArrayBuffer
+                // const fileData = await file.arrayBuffer(); // Read file as ArrayBuffer
                 // const base64FileData = btoa(String.fromCharCode(...new Uint8Array(fileData))); // Convert to Base64
                 // setPublishDialogOpen(true);
                 let metadata:FileMetadata = {
-                    //id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
-                    name: file.name,
-                    type: file.type,
-                    size: file.size,
-                    // file_data: base64FileData, // Encode file data as Base64 if required
-                    description: descriptions[file.name] || "",
-                    hash: fileHashes[file.name], // not needed - computed on backend
-                    isPublished: true, // Initially published
-                    fee: fees[file.name],
+                  //id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
+                  Name: file.name,
+                  Type: file.type,
+                  Size: file.size,
+                  // file_data: base64FileData, // Encode file data as Base64 if required
+                  Description: descriptions[file.name] || "",
+                  Hash: fileHashes[file.name], // not needed - computed on backend
+                  IsPublished: true, // Initially published
+                  Fee: fees[file.name] || 0,
+                  Path: file.path,
                 };
-
-                // add into the json file in a certain predetermined path
-                /** 
-                const dir_path = path.join(__dirname, '..','utils','files.json');
-                try{
-                  if (!fs.existsSync(dir_path)){
-                    await fsPromises.mkdir(dir_path);
-                    console.log("should've created utils json file");
-                  }
-                  const file_data = await fsPromises.readFile(dir_path,'utf-8');
-                  const files_data: FileMetadata[] = JSON.parse(file_data);
-
-                 let dup = false;
-                 for (const file of files_data){
-                  if(file.name===metadata.name){
-                    dup = true;
-                    break;
-                  }
-                 }
-
-                 if(!dup){
-                  files_data.push(metadata);
-                  await fsPromises.writeFile(dir_path,JSON.stringify(files_data,null,2),'utf8');
-                  console.log("added file metadata");
-                }
-                else{
-                  console.log("duplicate found");
-                }
-                } catch (error){
-                  console.error("error checking/updating files.json",error);
-                }
-                  */
                 
                 // Send the metadata to the server
-                const response = await fetch("http://localhost:8081/upload", {
+                const response = await fetch("http://localhost:8081/files/upload", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -150,9 +122,6 @@ const FilesPage: React.FC = () => {
 
                 const data = await response.text();
                 console.log("File upload successful:", data, metadata);
-                
-                // update local server/database
-                //saveFileMetadata('123', metadata);
                 
                 return metadata;
             })
@@ -174,71 +143,43 @@ const FilesPage: React.FC = () => {
 
         // Show error notification
         setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
+    } finally {
+      setLoading(false);
     }
 };
 
-// redo
-  const updateFile = async (hash: string, updatedData: FileMetadata) => {
-    try {
-      const response = await fetch(`http://localhost:8082/update/${hash}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update file');
-      }
-
-      const result = await response.json();
-      console.log('File updated:', result);
-    } catch (error) {
-      console.error('Error updating file:', error);
-    }
-  };
-
   const handleDescriptionChange = (fileId: string, description: string) => {
-    setDescriptions((prev) => ({ ...prev, [fileId]: description }));
+    if (!loading) {
+      setDescriptions((prev) => ({ ...prev, [fileId]: description }));
+    }
   };
 
   const handleFeeChange = (fileId: string, fee: number) => {
-    setFees((prev: any) => ({ ...prev, [fileId]: fee }));
+    setFees((prev) => ({ ...prev, [fileId]: fee }));
   };
 
-  const handleTogglePublished = (hash: string) => {
-    const file = uploadedFiles.find(file => file.hash === hash); // Get the current file
+// have to fix deleting file
+  const handleDeleteUploadedFile = async (hash: string) => {
+    try {
+      const response = await fetch(`http://localhost:8081/files/delete?hash=${hash}`, {
+        method: "DELETE",
+      });
 
-    if (file) {
-      updateFile(hash, {
-        ...file,
-        isPublished: !file.isPublished,
- })
+      if (!response.ok) {
+        throw new Error("Failed to delete file")
+      }
+      const data = await response.json();
+      console.log('file deleted successfully', data);
+
+      setUploadedFiles((prev) => prev.filter((file) => file.Hash !== hash));
+      setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
+      setNotification({ open: true, message: "File deleted.", severity: "success" });
+    } catch (error) {
+      console.error("error: ", error);
+      setNotification({ open: true, message: "failed to delete file.", severity: "error" });
+
     }
-    if (file?.isPublished) {
-        // If the file is already published, set the unpublished state
-        setUploadedFiles((prev) =>
-            prev.map((f) =>
-                f.hash === hash ? { ...f, isPublished: false } : f
-            )
-        );
-    } else {
-        // If the file is not published, open the publish dialog
-        setCurrentFileHash(hash); // Set the current file ID to the one being published
-        setPublishDialogOpen(true); 
-    }
-    
-  };
-
-
-  const handleDeleteFile = (hash: string) => {
-    // deleteFileMetadata('123', id);
-    setUploadedFiles((prev) => prev.filter((file) => file.hash !== hash));
-    
-    setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
-    setNotification({ open: true, message: "File deleted.", severity: "success" });
-  };
+  }
 
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
@@ -262,49 +203,43 @@ const FilesPage: React.FC = () => {
     }));
   };
 
-  const handleConfirmPublish = async () => {
-    const fileToPublish = uploadedFiles.find(file => file.hash === currentFileHash);
+  const handleConfirmPublish = async (hash: string) => {
+    const fileToPublish = uploadedFiles.find(file => file.Hash === hash);
     
     if (!fileToPublish) {
         setNotification({ open: true, message: "File not found", severity: "error" });
         return;
     }
+    console.log("old metadata: ", fileToPublish)
 
-    const metadata = {
-        name: fileToPublish.name,
-        type: fileToPublish.type,
-        size: fileToPublish.size,
-        description: fileToPublish.description,
-        hash: fileToPublish.hash,
+    const updatedMetadata = {
+      ...fileToPublish,
+      IsPublished: !fileToPublish.IsPublished,
     };
 
-    console.log("Publishing file metadata:", metadata);
+    console.log("updated metadata: ", updatedMetadata)
 
     try {
-        const response = await fetch("http://localhost:8081/publish", {
+        const response = await fetch("http://localhost:8081/files/upload", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              key: fileToPublish.hash,           // The hash ID generated on upload
-              value: JSON.stringify(metadata),      // should not have metadata in value field
-          }),
+            body: JSON.stringify(updatedMetadata),
         });
 
         if (response.ok) {
-            setUploadedFiles((prev) =>
-                prev.map((file) =>
-                    file.hash === currentFileHash ? { ...file, isPublished: true, fees } : file
-                )
+            // Update the file's published status locally in the UI
+            setUploadedFiles(prevFiles => 
+              prevFiles.map(currentFile =>
+                currentFile.Hash === hash
+                  ? { ...currentFile, IsPublished: !currentFile.IsPublished }
+                  : currentFile
+              )
             );
-
             setNotification({ open: true, message: "File published successfully!", severity: "success" });
+
             const data = await response.text();
-            updateFile(fileToPublish.hash, {
-                ...fileToPublish,
-                isPublished: true, 
-           })
             console.log("Publish response: ", data);
         } else {
             const errorData = await response.text();
@@ -315,9 +250,15 @@ const FilesPage: React.FC = () => {
         console.error("Error publishing file:", error);
         setNotification({ open: true, message: "An error occurred", severity: "error" });
     } finally {
-        setPublishDialogOpen(false);
+        console.log("Published file:", updatedMetadata);
+        // setPublishDialogOpen(false);
     }
 };
+
+  const handleDeleteSelectedFile = (hash: string) => {
+    setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
+  }
+
 
   return (
       <Box
@@ -374,6 +315,8 @@ const FilesPage: React.FC = () => {
         >
           Upload Selected
         </Button>
+        
+        {loading && <LinearProgress sx={{ width: '100%', marginTop: 2 }} />} {/* Progress bar when loading is true */}
 
         {selectedFiles.length > 0 && (
           <Box sx={{ marginTop: 2 }}>
@@ -434,7 +377,7 @@ const FilesPage: React.FC = () => {
                   <IconButton 
                       edge="end" 
                       aria-label="delete" 
-                      onClick={() => handleDeleteFile(file.name)}
+                      onClick={() => handleDeleteSelectedFile(file.name)}
                       sx={{marginTop:15}}
                     >
                       <DeleteIcon />
@@ -452,15 +395,15 @@ const FilesPage: React.FC = () => {
             </Typography>
             <List>
               {uploadedFiles.map((file) => (
-                <ListItem key={file.hash} divider>
+                <ListItem key={file.Hash} divider>
                   <ListItemText 
-                    primary={file.name} 
+                    primary={file.Name} 
                     secondary={
                       <>
-                        {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
-                        {`Description: ${file.description}`} <br />
-                        {`SHA-256: ${file.hash.slice(0, 10)}...${file.hash.slice(-10)}`} <br />
-                        {`Fee: ${file.fee}`} <br />
+                        {`Size: ${(file.Size / 1024).toFixed(2)} KB`} <br />
+                        {`Description: ${file.Description}`} <br />
+                        {`SHA-256: ${file.Hash}`} <br />
+                        {`Fee: ${file.Fee}`} <br />
                         </>
                     }                  
                     />
@@ -470,12 +413,12 @@ const FilesPage: React.FC = () => {
                     </Typography>
                     <Switch 
                       edge="end" 
-                      onChange={() => handleTogglePublished(file.hash)} 
-                      checked={file.isPublished} 
+                      onChange={() => handleConfirmPublish(file.Hash)} 
+                      checked={file.IsPublished} 
                       color="primary"
-                      inputProps={{ 'aria-label': `make ${file.name} public` }}
+                      inputProps={{ 'aria-label': `make ${file.Name} public` }}
                     />
-                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteFile(file.hash)}>
+                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteUploadedFile(file.Hash)}>
                       <DeleteIcon />
                     </IconButton>
                   </Box>
