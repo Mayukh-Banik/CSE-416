@@ -213,7 +213,7 @@ func FindSpecificProvider(fileHash string, targetProviderID peer.ID) (*peer.Addr
 
 // adapted from sendDataToPeer
 func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protocol.ID) (network.Stream, error) {
-	fmt.Println("sending data to peer: ", targetPeerID)
+	fmt.Printf("CreateNewStream %v: sending data to peer %v\n", streamProtocol, targetPeerID)
 	var ctx = context.Background()
 	targetPeerID = strings.TrimSpace(targetPeerID)
 	relayAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)

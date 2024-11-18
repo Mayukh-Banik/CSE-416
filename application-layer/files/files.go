@@ -120,7 +120,17 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	if action == "added" {
 		publishFile(requestBody)
 		// fmt.Printf("new file %v | path: %v\n", requestBody.Hash, requestBody.Path)
-		dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
+
+		curDirectory, err := os.Getwd()
+		if err != nil {
+			fmt.Printf("Error getting cur directory %v\n", err)
+			return
+		}
+
+		newPath := filepath.Join(curDirectory, "../../squidcoinFiles", requestBody.Name)
+		dht_kad.FileHashToPath[requestBody.Hash] = newPath
+		// ///dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
+
 	}
 
 	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Name)

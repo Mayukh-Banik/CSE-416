@@ -312,9 +312,6 @@ func StartDHTService() {
 	go handlePeerExchange(node)
 
 	ReceiveDataFromPeer(node) //listen on stream /senddata/p2p
-	// DHT.Host().SetStreamHandler("/sendRequest/p2p", handleStream)
-	// DHT.Host().SetStreamHandler("/requestResponse/p2p", handleStream)
-
 	setupStreams(node)
 
 	fmt.Println("My Node MULTIADDRESS:", node.Addrs())

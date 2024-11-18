@@ -22,7 +22,7 @@ var (
 	PendingRequests = make(map[string]models.Transaction) // all requests made by host node
 	FileHashToPath  = make(map[string]string)             // file paths of files uploaded by host node
 	Mutex           = &sync.Mutex{}
-	dir             = "squidcoinFiles"
+	dir             = filepath.Join("..", "squidcoinFiles")
 )
 
 // SENDING FUNCTIONS
@@ -150,11 +150,14 @@ func receieveDownloadRequest(node host.Host) {
 			return
 		}
 		log.Printf("Received data: %s", data)
+		log.Println("files in FileHashToPath: ", FileHashToPath)
 
 		// send file to requester if it exists
 		if FileHashToPath[request.FileHash] != "" {
+			fmt.Println("receivedownloadrequest: sending file")
 			sendFile(DHT.Host(), request.RequesterID, request.FileHash, PeerID)
 		} else {
+			fmt.Println("receivedownloadrequest: decline")
 			sendDecline(request.RequesterID, request.FileHash)
 		}
 
@@ -166,8 +169,18 @@ func receieveFile(node host.Host) {
 	// listen for streams on "/sendFile/p2p"
 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream) {
 		defer s.Close()
-		// buf := bufio.NewReader(s)
-		// data, err := buf.ReadBytes('\n') // Reads until a newline character
+
+		// ??? delete
+		buf := bufio.NewReader(s)
+		_, err := buf.ReadBytes('\n') // Reads until a newline character
+		if err != nil {
+			if err == io.EOF {
+				log.Printf("Stream closed by peer: %s", s.Conn().RemotePeer())
+			} else {
+				log.Printf("Error reading from stream: %v", err)
+			}
+			return
+		}
 
 		// create output directory if it doesn't exist
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -179,7 +192,7 @@ func receieveFile(node host.Host) {
 		}
 
 		// read metadata - use metadata struct later
-		buf := bufio.NewReader(s)
+		buf = bufio.NewReader(s)
 		fileName, err := buf.ReadString('\n') // Read until a newline character
 		if err != nil {
 			log.Printf("Error reading filename: %v\n", err)
@@ -215,15 +228,6 @@ func receieveFile(node host.Host) {
 			}
 
 			log.Printf("receieved and wrote %d bytes of file %s\n", n, fileName)
-		}
-
-		if err != nil {
-			if err == io.EOF {
-				log.Printf("Stream closed by peer: %s", s.Conn().RemotePeer())
-			} else {
-				log.Printf("Error reading from stream: %v", err)
-			}
-			return
 		}
 	})
 }
