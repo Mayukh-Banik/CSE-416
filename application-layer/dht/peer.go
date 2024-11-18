@@ -233,7 +233,6 @@ func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protoco
 	if err != nil {
 		log.Fatalf("Failed to open stream to %s: %s", peerinfo.ID, err)
 	}
-	defer stream.Close()
 
 	fmt.Printf("Successfully created stream to peer %s\n", peerinfo.ID)
 	return stream, nil

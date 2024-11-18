@@ -122,6 +122,7 @@ func receieveDownloadRequest(node host.Host) {
 			fmt.Printf("error unmarshalling file request: %v", err)
 			return
 		}
+		log.Printf("Received data: %s", data)
 
 		// send file to requester if it exists
 		if FilePath[request.FileHash] != "" {
@@ -130,7 +131,6 @@ func receieveDownloadRequest(node host.Host) {
 			sendDecline(request.RequesterID, request.FileHash)
 		}
 
-		log.Printf("Received data: %s", data)
 	})
 }
 
