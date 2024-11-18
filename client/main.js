@@ -28,12 +28,12 @@ function createWindow() {
 
 ipcMain.handle('save-file',async (event,{fileName, fileData})=>{
     try {
-        const {filePath} = await dialog.showSaveDialog({
-            defaultPath: fileName,
-        })
-
-        if(!filePath){
-            return {success: false, message: 'File save was canceled'};
+        const directoryPath = path.join(__dirname, "..", 'squidcoinFiles'); // Adjust as needed for your file path
+        const filePath = path.join(directoryPath, fileName);
+        
+        // Ensure the directory exists
+        if (!fs.existsSync(directoryPath)) {
+            fs.mkdirSync(directoryPath, { recursive: true }); // Create the directory if it doesn't exist
         }
 
         fs.writeFileSync(filePath, fileData);
