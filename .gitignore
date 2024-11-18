@@ -10,3 +10,6 @@ private_key.pem
 
 /utils
 utils/files.json
+
+/squidcoinFiles
+squidcoinFiles/
