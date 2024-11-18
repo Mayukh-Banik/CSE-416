@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/libp2p/go-libp2p/core/host"
@@ -67,7 +66,7 @@ func sendDecline(targetID string, fileHash string) {
 	}
 }
 
-func sendFile(host host.Host, targetID string, fileHash string, requesterID string) {
+func sendFile(host host.Host, targetID string, fileHash string, requesterID string, fileName string) {
 	fmt.Printf("Sending file %s to requester %s...\n", fileHash, targetID)
 
 	filePath := FileHashToPath[fileHash]
@@ -77,7 +76,7 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 		return
 	}
 
-	fmt.Printf("sending file %s to requester %s \n", fileHash, requesterID)
+	fmt.Printf("sending file %s to requester %s \n", fileName, requesterID)
 
 	// create stream to send the file
 	fileStream, err := CreateNewStream(DHT.Host(), targetID, "/sendFile/p2p")
@@ -86,6 +85,29 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 		return
 	}
 	defer fileStream.Close()
+
+	// Prepare metadata as JSON
+	metadata := struct {
+		FileName string `json:"file_name"`
+	}{
+		FileName: fileName,
+	}
+
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		log.Fatalf("Failed to marshal metadata: %v", err)
+	}
+
+	// Add a newline to signify the end of metadata
+	metadataJSON = append(metadataJSON, '\n')
+
+	// Write metadata to stream
+	_, err = fileStream.Write(metadataJSON)
+	if err != nil {
+		log.Fatalf("Failed to write metadata to stream: %s", err)
+	}
+
+	fmt.Println("Metadata sent successfully.")
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -116,10 +138,10 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 	}
 
 	// for testing below - must implement actual file sharing
-	_, err = fileStream.Write([]byte("sending file to peer\n"))
-	if err != nil {
-		log.Fatalf("Failed to write to stream: %s", err)
-	}
+	// _, err = fileStream.Write([]byte("sending file to peer\n"))
+	// if err != nil {
+	// 	log.Fatalf("Failed to write to stream: %s", err)
+	// }
 }
 
 // RECEIVING FUNCTIONS
@@ -155,7 +177,7 @@ func receieveDownloadRequest(node host.Host) {
 		// send file to requester if it exists
 		if FileHashToPath[request.FileHash] != "" {
 			fmt.Println("receivedownloadrequest: sending file")
-			sendFile(DHT.Host(), request.RequesterID, request.FileHash, PeerID)
+			sendFile(DHT.Host(), request.RequesterID, request.FileHash, PeerID, request.FileName)
 		} else {
 			fmt.Println("receivedownloadrequest: decline")
 			sendDecline(request.RequesterID, request.FileHash)
@@ -170,18 +192,6 @@ func receieveFile(node host.Host) {
 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream) {
 		defer s.Close()
 
-		// ??? delete
-		buf := bufio.NewReader(s)
-		_, err := buf.ReadBytes('\n') // Reads until a newline character
-		if err != nil {
-			if err == io.EOF {
-				log.Printf("Stream closed by peer: %s", s.Conn().RemotePeer())
-			} else {
-				log.Printf("Error reading from stream: %v", err)
-			}
-			return
-		}
-
 		// create output directory if it doesn't exist
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			err := os.MkdirAll(dir, os.ModePerm)
@@ -192,16 +202,26 @@ func receieveFile(node host.Host) {
 		}
 
 		// read metadata - use metadata struct later
-		buf = bufio.NewReader(s)
-		fileName, err := buf.ReadString('\n') // Read until a newline character
+		buf := bufio.NewReader(s)
+		// Read metadata
+		metadataJSON, err := buf.ReadBytes('\n') // Read until newline
 		if err != nil {
-			log.Printf("Error reading filename: %v\n", err)
-			return
+			log.Fatalf("Failed to read metadata: %v", err)
 		}
-		fileName = strings.TrimSpace(fileName)
+
+		// Parse JSON metadata
+		var metadata struct {
+			FileName string `json:"file_name"`
+		}
+		err = json.Unmarshal(metadataJSON, &metadata)
+		if err != nil {
+			log.Fatalf("Failed to unmarshal metadata: %v", err)
+		}
+
+		fmt.Printf("Received metadata: FileName=%s\n", metadata.FileName)
 
 		// open file for writing
-		outputPath := filepath.Join(dir, fileName)
+		outputPath := filepath.Join(dir, metadata.FileName)
 		file, err := os.Create(outputPath)
 		if err != nil {
 			log.Printf("error creating file %s: %v\n", outputPath, err)
@@ -214,7 +234,7 @@ func receieveFile(node host.Host) {
 			n, err := buf.Read(buffer)
 			if err != nil {
 				if err == io.EOF {
-					log.Printf("file %s received and saved to %s\n", fileName, outputPath)
+					log.Printf("file %s received and saved to %s\n", metadata.FileName, outputPath)
 					break
 				}
 				log.Printf("Ererrorror reading file chunk: %v\n", err)
@@ -227,7 +247,7 @@ func receieveFile(node host.Host) {
 				return
 			}
 
-			log.Printf("receieved and wrote %d bytes of file %s\n", n, fileName)
+			log.Printf("receieved and wrote %d bytes of file %s\n", n, metadata.FileName)
 		}
 	})
 }
@@ -291,7 +311,7 @@ func handleDownloadRequestOrResponse(w http.ResponseWriter, r *http.Request) {
 	case "accepted":
 		existingTransaction.Status = "accepted"
 		// Send file to requester
-		sendFile(DHT.Host(), existingTransaction.TargetID, existingTransaction.FileHash, existingTransaction.RequesterID)
+		sendFile(DHT.Host(), existingTransaction.TargetID, existingTransaction.FileHash, existingTransaction.RequesterID, existingTransaction.FileName)
 	case "declined":
 		existingTransaction.Status = "declined"
 		// Notify decline

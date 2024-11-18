@@ -21,12 +21,6 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 
 	request.RequesterID = dht_kad.DHT.Host().ID().String()
 
-	// // Prevent a user from requesting their own file
-	// if request.RequesterID == request.TargetID {
-	// 	http.Error(w, "Cannot request self as a provider", http.StatusBadRequest)
-	// 	return
-	// }
-
 	// Log the requester and provider IDs
 	fmt.Printf("Requesting file download: Requester: %v | Provider: %v\n", request.RequesterID, request.TargetID)
 

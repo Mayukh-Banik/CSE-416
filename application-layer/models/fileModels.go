@@ -11,7 +11,7 @@ type FileMetadata struct {
 	Fee         int64  `json:"Fee"`
 	CreatedAt   string `json:"CreatedAt"`
 	Reputation  int64  `json:"Reputation"`
-	Path        string `json:"Path"`
+	Path        string `json:"Path"` // remove
 }
 
 type DHTMetadata struct {
@@ -39,4 +39,5 @@ type Transaction struct {
 	Status      string `json:"status"`      // "pending", "accepted", "declined"
 	Message     string `json:"message"`     // Additional info
 	CreatedAt   string `json:"CreatedAt"`
+	FileName    string `json:"fileName"`
 }

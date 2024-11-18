@@ -48,7 +48,8 @@ const MarketplacePage: React.FC = () => {
         FileHash: fileHash, 
         RequesterID: "",
         Status: "pending",
-        FileName: "",
+        FileName: selectedFile?.Name || "" ,
+        Size: selectedFile?.Size || 0,
         // CreatedAt: Date.now().toLocaleString(),
       }
       console.log("Request data being sent:", request);

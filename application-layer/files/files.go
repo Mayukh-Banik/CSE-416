@@ -127,7 +127,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		newPath := filepath.Join(curDirectory, "../../squidcoinFiles", requestBody.Name)
+		newPath := filepath.Join(curDirectory, "../squidcoinFiles", requestBody.Name)
 		dht_kad.FileHashToPath[requestBody.Hash] = newPath
 		// ///dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
 
