@@ -120,7 +120,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	if action == "added" {
 		publishFile(requestBody)
 		// fmt.Printf("new file %v | path: %v\n", requestBody.Hash, requestBody.Path)
-		dht_kad.FilePath[requestBody.Hash] = requestBody.Path // fix getting file path
+		dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
 	}
 
 	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Name)
@@ -217,7 +217,7 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	delete(dht_kad.FilePath, hash) // delete from map of file hash to file path
+	delete(dht_kad.FileHashToPath, hash) // delete from map of file hash to file path
 
 	response := map[string]string{
 		"status":  action,
