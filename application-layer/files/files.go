@@ -119,7 +119,8 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	if action == "added" {
 		publishFile(requestBody)
-		dht_kad.FilePath[requestBody.Hash] = requestBody.Path
+		// fmt.Printf("new file %v | path: %v\n", requestBody.Hash, requestBody.Path)
+		dht_kad.FilePath[requestBody.Hash] = requestBody.Path // fix getting file path
 	}
 
 	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Name)
