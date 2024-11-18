@@ -24,7 +24,14 @@ import { useTheme } from '@mui/material/styles';
 import { FileMetadata } from "../models/fileMetadata";
 //import { FileMetadata } from '../../local_server/models/file';
 
-
+declare global {
+  interface Window {
+      electron: {
+          ipcRenderer: typeof import('electron').ipcRenderer;
+          saveFile: (fileData: { fileName: string, fileData: Buffer }) => Promise<{ success: boolean, message: string }>;
+      };
+  }
+}
 // import { saveFileMetadata, getFilesForUser, deleteFileMetadata, updateFileMetadata, FileMetadata } from '../utils/localStorage'
 
 // user id/wallet id is hardcoded for now
@@ -32,7 +39,7 @@ import { FileMetadata } from "../models/fileMetadata";
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
-const ipcRenderer = window.Electron?.ipcRenderer;
+const ipcRenderer = window.electron?.ipcRenderer;
 
 interface FilesProp {
   uploadedFiles: FileMetadata[];
@@ -98,13 +105,13 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 // setPublishDialogOpen(true);
                 console.log("start of loop");
                 const arrayBuffer = await file.arrayBuffer();
-                const fileData = new Uint8Array(arrayBuffer);
+                const fileData = new String(arrayBuffer);
                 console.log("after reading file data");
                 console.log("Filename is ", file.name, "fileData is ", fileData);
-                const saveResponse = await ipcRenderer.invoke('save-file',{
+                const saveResponse = await window.electron.saveFile({
                   fileName: file.name,
-                  fileData,
-                });
+                  fileData: Buffer.from(arrayBuffer),
+              });
                 
                 console.log("Before saveresponse");
                 if(!saveResponse.success)
