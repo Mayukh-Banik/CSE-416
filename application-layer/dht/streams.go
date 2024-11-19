@@ -333,6 +333,10 @@ func receiveRefreshResponse(node host.Host){
 
 		var fileData []models.FileMetadata
 		err = json.Unmarshal(data, &fileData)
+		if err != nil {
+			fmt.Errorf("receiveRefreshResponse: error unmarshaling data", error)
+		}
+		fmt.Println("recieved files for marketplace")
 	})
 }
 
