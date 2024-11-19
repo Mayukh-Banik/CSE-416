@@ -314,14 +314,25 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
+
+
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // Make sure the status is OK
 
 	// Encode response
+	/**
 	if err := json.NewEncoder(w).Encode(peers); err != nil {
 		http.Error(w, "Failed to encode adjacent nodes", http.StatusInternalServerError)
 	}
+	*/
+
+	if err :=json.NewEncoder(w).Encode(RefreshResponse); err != nil{
+		http.Error(w,"failed to encode response", http.StatusInternalServerError)
+	}
+
+
 }
 
 // func receiveAdjacentNodeFilesMetadata(node host.Host) {

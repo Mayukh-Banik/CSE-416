@@ -214,26 +214,42 @@ func FindSpecificProvider(fileHash string, targetProviderID peer.ID) (*peer.Addr
 // adapted from sendDataToPeer
 func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protocol.ID) (network.Stream, error) {
 	fmt.Printf("CreateNewStream %v: sending data to peer %v\n", streamProtocol, targetPeerID)
+	
+	// Create a context for connection
 	var ctx = context.Background()
 	targetPeerID = strings.TrimSpace(targetPeerID)
+
+	// Create the relay address
 	relayAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)
 	if err != nil {
 		log.Printf("Failed to create relay multiaddr: %v", err)
+		return nil, fmt.Errorf("failed to create relay multiaddr: %v", err)
 	}
+
+	// Encapsulate the relay address with the target peer's address
 	peerMultiaddr := relayAddr.Encapsulate(multiaddr.StringCast("/p2p-circuit/p2p/" + targetPeerID))
 
+	// Parse the multiaddress into a PeerInfo object
 	peerinfo, err := peer.AddrInfoFromP2pAddr(peerMultiaddr)
 	if err != nil {
-		log.Fatalf("Failed to parse peer address: %s", err)
+		log.Printf("Failed to parse peer address: %s", err)
+		return nil, fmt.Errorf("failed to parse peer address: %v", err)
 	}
+
+	// Connect to the target peer
 	if err := node.Connect(ctx, *peerinfo); err != nil {
-		log.Fatalf("Failed to connect to peer %s via relay: %v", peerinfo.ID, err)
+		log.Printf("Failed to connect to peer %s via relay: %v", peerinfo.ID, err)
+		return nil, fmt.Errorf("failed to connect to peer %s via relay: %v", peerinfo.ID, err)
 	}
-	stream, err := node.NewStream(network.WithAllowLimitedConn(ctx, string(streamProtocol)), peerinfo.ID, streamProtocol)
+
+	// Create a new stream to the target peer
+	stream, err := node.NewStream(ctx, peerinfo.ID, streamProtocol)
 	if err != nil {
-		log.Fatalf("Failed to open stream to %s: %s", peerinfo.ID, err)
+		log.Printf("Failed to open stream to %s: %s", peerinfo.ID, err)
+		return nil, fmt.Errorf("failed to open stream to peer %s: %v", peerinfo.ID, err)
 	}
 
 	fmt.Printf("Successfully created stream to peer %s\n", peerinfo.ID)
 	return stream, nil
 }
+
