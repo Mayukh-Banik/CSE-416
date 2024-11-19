@@ -279,3 +279,34 @@ func deleteFileFromJSON(fileHash string) (string, error) {
 
 	return "deleted", nil
 }
+
+func getAdjacentNodeFiles(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Trying to get adjacent node files in backend")
+
+	// Retrieve connected peers
+	adjacentNodes := dht_kad.Host.Peerstore().Peers()
+	fmt.Println("Connected peers:", adjacentNodes)
+
+	// Convert PeerID to strings
+	var peers []string
+	for _, peer := range adjacentNodes {
+		peers = append(peers, peer.String())
+	}
+
+	// Handle no peers case
+	if len(peers) == 0 {
+		fmt.Println("No connected peers found")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("[]")) // Respond with an empty JSON array
+		return
+	}
+
+	// Set response headers
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK) // Make sure the status is OK
+
+	// Encode response
+	if err := json.NewEncoder(w).Encode(peers); err != nil {
+		http.Error(w, "Failed to encode adjacent nodes", http.StatusInternalServerError)
+	}
+}

@@ -11,5 +11,6 @@ func InitFileRoutes() *mux.Router {
 	r.HandleFunc("/files/fetchAll", getUploadedFiles).Methods("GET")
 	r.HandleFunc("/files/getFile", handleGetFileByHash).Methods("GET")
 	r.HandleFunc("/files/delete", deleteFile).Methods("DELETE")
+	r.HandleFunc("files/refresh", getAdjacentNodeFiles).Methods("GET")
 	return r
 }

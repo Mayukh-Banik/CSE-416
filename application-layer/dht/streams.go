@@ -276,7 +276,13 @@ func receieveFile(node host.Host) {
 
 			log.Printf("receieved and wrote %d bytes of file %s\n", n, metadata.Name)
 		}
+		// after successfully downloading file, add it to the json file of downloaded files
+		addFileToDownloads(metadata)
 	})
+}
+
+func addFileToDownloads(metadata models.FileMetadata) {
+	panic("unimplemented")
 }
 
 func receiveDecline(node host.Host) {

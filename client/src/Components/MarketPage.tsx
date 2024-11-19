@@ -35,6 +35,7 @@ const MarketplacePage: React.FC = () => {
     setNotification({ ...notification, open: false });
   };
   
+  
   const handleDownloadRequest = async (file: FileMetadata) => {
     setSelectedFile(file);
     setOpen(true); // Open the modal for provider selection
@@ -76,8 +77,30 @@ const MarketplacePage: React.FC = () => {
   };
 
   const handleRefresh = async () => {
-    console.log("HI");
+    console.log("Trying to refresh marketplace");
+  
+    try {
+      const response = await fetch(`http://localhost:8081/files/refresh`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+  
+      // Log raw response text before attempting to parse
+      
+      // const rawData = await response.json();
+      // console.log("Raw response data:", rawData);
+  
+      // Now attempt to parse the response
+      // const data = JSON.parse(rawData); // Use JSON.parse() after inspecting the raw response
+      // console.log("Data received is: ", data);
+      
+    } catch (error) {
+      console.error("Error getting adjacent nodes:", error);
+    }
   };
+  
 
   const handleDownloadByHash = async () => {
     console.log("HI");
