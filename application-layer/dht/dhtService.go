@@ -228,6 +228,25 @@ func handleInput(ctx context.Context, dht *dht.IpfsDHT) {
 			}
 			key := args[1]
 			ProvideKey(ctx, dht, key)
+		case "GET_FILE":
+			if len(args) < 2 {
+				fmt.Println("Expected file request")
+				continue
+			}
+			fmt.Println("download request", args[1])
+			jsonInput := os.Args[1]
+
+			// Create a Transaction struct
+			var transaction models.Transaction
+
+			// Parse the JSON string into the struct
+			err := json.Unmarshal([]byte(jsonInput), &transaction)
+			if err != nil {
+				fmt.Println("Error parsing JSON:", err)
+				return
+			}
+			SendDownloadRequest(transaction)
+
 		default:
 			fmt.Println("Expected GET, GET_PROVIDERS, PUT or PUT_PROVIDER")
 		}
