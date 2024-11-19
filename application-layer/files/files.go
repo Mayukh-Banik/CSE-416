@@ -301,20 +301,20 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// create stream to every adjacent node
-	for _, peer := range adjacentNodes {
-		// stream, err := dht_kad.CreateNewStream(dht_kad.Host, peer.String(), "/adjacentNodeFiles/p2p")
-		// if (err != nil) {
-		// 	return fmt.Errorf("error creating stream to %v", peer.String())
-		// }
-		// defer stream.Close()
-		peerID := peer.String()
-		if peerID != "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN" && peerID != "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE" && peerID != dht_kad.PeerID {
-			dht_kad.SendRefreshFilesRequest(peer.String())
-		}
-	}
+	// // create stream to every adjacent node
+	// for _, peer := range adjacentNodes {
+	// 	// stream, err := dht_kad.CreateNewStream(dht_kad.Host, peer.String(), "/adjacentNodeFiles/p2p")
+	// 	// if (err != nil) {
+	// 	// 	return fmt.Errorf("error creating stream to %v", peer.String())
+	// 	// }
+	// 	// defer stream.Close()
+	// 	peerID := peer.String()
+	// 	if peerID != "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN" && peerID != "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE" && peerID != dht_kad.PeerID {
+	// 		dht_kad.SendRefreshFilesRequest(peer.String())
+	// 	}
+	// }
 
-	// dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
+	dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
 
 
 	// Set response headers
