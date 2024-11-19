@@ -313,7 +313,6 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 			dht_kad.SendRefreshFilesRequest(peer.String())
 		}
 	}
-	
 
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")

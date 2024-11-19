@@ -22,6 +22,7 @@ var (
 	FileHashToPath  = make(map[string]string)             // file paths of files uploaded by host node
 	Mutex           = &sync.Mutex{}
 	dir             = filepath.Join("..", "squidcoinFiles")
+	RefreshResponse []models.FileMetadata
 	
 )
 
@@ -29,12 +30,34 @@ var (
 
 
 func SendRefreshFilesRequest(nodeID string) error{
-	fmt.Println("Requesting data from ",nodeID)
+	
+	fmt.Println("Requesting all files data from ",nodeID)
+	// refreshResponse = []model.FileMetadata{}
 	requestStream, err := CreateNewStream(DHT.Host(),nodeID,"/sendRefreshRequest/p2p")
 	if(err!=nil){
 		return fmt.Errorf("error sending refresh request")
 	}
 	defer requestStream.Close()
+
+	request := models.RefreshRequest {
+		Message: "gimme all your files",
+		RequesterID: PeerID,
+		TargetID: nodeID,
+	} 
+
+	// Marshal the request metadata to JSON
+	requestData, err := json.Marshal(request)
+	if err != nil {
+		return fmt.Errorf("error marshaling refresh request data: %v", err)
+	}
+
+	// send JSON data over the stream
+	_, err = requestStream.Write(requestData)
+	if err != nil {
+		return fmt.Errorf("error sending refresh request data: %v", err)
+	}
+
+	fmt.Printf("Sent refresh request to target peer %s\n", nodeID)
 	return nil
 }
 
@@ -186,6 +209,7 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 
 
 func sendRefreshResponse(node host.Host, targetID string) error {
+	fmt.Printf("sendRefreshResponse: sending all files to %v", targetID)
 	dirPath  := filepath.Join("..", "utils")
 	filePath := filepath.Join(dirPath, "files.json")
 
