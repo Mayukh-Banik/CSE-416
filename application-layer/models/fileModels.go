@@ -11,7 +11,6 @@ type FileMetadata struct {
 	Fee         int64  `json:"Fee"`
 	CreatedAt   string `json:"CreatedAt"`
 	Reputation  int64  `json:"Reputation"`
-	Path        string `json:"Path"` // remove
 }
 
 type DHTMetadata struct {

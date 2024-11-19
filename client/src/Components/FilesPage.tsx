@@ -129,7 +129,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                   Hash: fileHashes[file.name], // not needed - computed on backend
                   IsPublished: true, // Initially published
                   Fee: fees[file.name] || 0,
-                  Path: file.path,
+                  // Path: file.path,
                 };
                 
                 // Send the metadata to the server

@@ -56,14 +56,63 @@ func sendDecline(targetID string, fileHash string) {
 		"status":   "declined",
 		"fileHash": fileHash,
 	}
-	declineData, _ := json.Marshal(declineMessage)
-
-	// send decline to the target peer
-	requestStream, err := CreateNewStream(DHT.Host(), targetID, "/requestResponse/p2p")
-	if err == nil {
-		requestStream.Write(declineData)
-		requestStream.Close()
+	declineData, err := json.Marshal(declineMessage)
+	if err != nil {
+		log.Printf("Error marshaling decline message: %v", err)
+		return
 	}
+
+	// Send decline to the target peer
+	requestStream, err := CreateNewStream(DHT.Host(), targetID, "/requestResponse/p2p")
+	if err != nil {
+		log.Printf("Error creating stream to target peer %s: %v", targetID, err)
+		return
+	}
+	defer requestStream.Close()
+
+	// Write data with a newline as a delimiter
+	declineData = append(declineData, '\n')
+	_, err = requestStream.Write(declineData)
+	if err != nil {
+		log.Printf("Error writing to stream: %v", err)
+		return
+	}
+
+	log.Printf("Decline message sent to peer %s for file hash %s", targetID, fileHash)
+}
+
+// send metadata before sending file content
+func sendMetadata(stream network.Stream, fileHash string) error {
+	// Retrieve the file data from the DHT using the file hash
+	data, err := DHT.GetValue(GlobalCtx, "/orcanet/"+fileHash)
+	if err != nil {
+		return fmt.Errorf("sendMetadata: file hash not found in DHT: %w", err)
+	}
+
+	var metadata models.DHTMetadata
+
+	// unmarshal JSON data into the struct
+	err = json.Unmarshal(data, &metadata)
+	if err != nil {
+		return fmt.Errorf("sendMetadata: error decoding file metadata: %w", err)
+	}
+
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		return fmt.Errorf("sendMetadata: error encoding metadata to data: %w", err)
+	}
+
+	// newline signifies end of metadata
+	metadataJSON = append(metadataJSON, '\n')
+
+	// Write metadata to stream
+	_, err = stream.Write(metadataJSON)
+	if err != nil {
+		log.Fatalf("sendMetadata: failed to write metadata to stream: %s", err)
+	}
+
+	fmt.Println("metadata sent successfully :)")
+	return nil
 }
 
 func sendFile(host host.Host, targetID string, fileHash string, requesterID string, fileName string) {
@@ -79,39 +128,24 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 	fmt.Printf("sending file %s to requester %s \n", fileName, requesterID)
 
 	// create stream to send the file
-	fileStream, err := CreateNewStream(DHT.Host(), targetID, "/sendFile/p2p")
+	fileStream, err := CreateNewStream(host, targetID, "/sendFile/p2p")
 	if err != nil {
 		fmt.Println("Error creating file stream:", err)
 		return
 	}
 	defer fileStream.Close()
 
-	// Prepare metadata as JSON
-	metadata := struct {
-		FileName string `json:"file_name"`
-	}{
-		FileName: fileName,
-	}
-
-	metadataJSON, err := json.Marshal(metadata)
+	// send metadata first
+	err = sendMetadata(fileStream, fileHash)
 	if err != nil {
-		log.Fatalf("Failed to marshal metadata: %v", err)
+		fmt.Println("error sending file metadata")
+		return
 	}
-
-	// Add a newline to signify the end of metadata
-	metadataJSON = append(metadataJSON, '\n')
-
-	// Write metadata to stream
-	_, err = fileStream.Write(metadataJSON)
-	if err != nil {
-		log.Fatalf("Failed to write metadata to stream: %s", err)
-	}
-
-	fmt.Println("Metadata sent successfully.")
 
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Printf("error opening file %s: %v", filePath, err)
+		return
 	}
 	defer file.Close()
 
@@ -136,12 +170,6 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 		}
 		fmt.Printf("sent %d bytes to requester %s\n", n, requesterID)
 	}
-
-	// for testing below - must implement actual file sharing
-	// _, err = fileStream.Write([]byte("sending file to peer\n"))
-	// if err != nil {
-	// 	log.Fatalf("Failed to write to stream: %s", err)
-	// }
 }
 
 // RECEIVING FUNCTIONS
@@ -177,7 +205,7 @@ func receieveDownloadRequest(node host.Host) {
 		// send file to requester if it exists
 		if FileHashToPath[request.FileHash] != "" {
 			fmt.Println("receivedownloadrequest: sending file")
-			sendFile(DHT.Host(), request.RequesterID, request.FileHash, PeerID, request.FileName)
+			sendFile(node, request.RequesterID, request.FileHash, PeerID, request.FileName)
 		} else {
 			fmt.Println("receivedownloadrequest: decline")
 			sendDecline(request.RequesterID, request.FileHash)
@@ -210,18 +238,17 @@ func receieveFile(node host.Host) {
 		}
 
 		// Parse JSON metadata
-		var metadata struct {
-			FileName string `json:"file_name"`
-		}
+		var metadata models.FileMetadata
+
 		err = json.Unmarshal(metadataJSON, &metadata)
 		if err != nil {
 			log.Fatalf("Failed to unmarshal metadata: %v", err)
 		}
 
-		fmt.Printf("Received metadata: FileName=%s\n", metadata.FileName)
+		fmt.Printf("Received metadata: FileName=%s\n", metadata.Name)
 
 		// open file for writing
-		outputPath := filepath.Join(dir, metadata.FileName)
+		outputPath := filepath.Join(dir, metadata.Name)
 		file, err := os.Create(outputPath)
 		if err != nil {
 			log.Printf("error creating file %s: %v\n", outputPath, err)
@@ -234,7 +261,7 @@ func receieveFile(node host.Host) {
 			n, err := buf.Read(buffer)
 			if err != nil {
 				if err == io.EOF {
-					log.Printf("file %s received and saved to %s\n", metadata.FileName, outputPath)
+					log.Printf("file %s received and saved to %s\n", metadata.Name, outputPath)
 					break
 				}
 				log.Printf("Ererrorror reading file chunk: %v\n", err)
@@ -247,7 +274,7 @@ func receieveFile(node host.Host) {
 				return
 			}
 
-			log.Printf("receieved and wrote %d bytes of file %s\n", n, metadata.FileName)
+			log.Printf("receieved and wrote %d bytes of file %s\n", n, metadata.Name)
 		}
 	})
 }
@@ -256,8 +283,9 @@ func receiveDecline(node host.Host) {
 	node.SetStreamHandler("/requestResponse/p2p", func(s network.Stream) {
 		defer s.Close()
 		buf := bufio.NewReader(s)
-		data, err := buf.ReadBytes('\n') // Reads until a newline character
 
+		// Read data until a newline character
+		data, err := buf.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
 				log.Printf("Stream closed by peer: %s", s.Conn().RemotePeer())
@@ -266,26 +294,36 @@ func receiveDecline(node host.Host) {
 			}
 			return
 		}
-		log.Printf("Received data: %s", data)
+
+		log.Printf("Raw data received: %s", data)
+
 		// Unmarshal the JSON data
 		var declineMessage map[string]string
 		err = json.Unmarshal(data, &declineMessage)
 		if err != nil {
-			log.Println("Error unmarshalling data:", err)
+			log.Printf("Error unmarshalling data: %v", err)
 			return
 		}
 
 		// Process the decline message
-		if status, ok := declineMessage["status"]; ok && status == "declined" {
-			fileHash := declineMessage["fileHash"]
+		status, statusOK := declineMessage["status"]
+		fileHash, fileHashOK := declineMessage["fileHash"]
+
+		if statusOK && fileHashOK && status == "declined" {
 			log.Printf("Received decline message for file with hash: %s", fileHash)
-			// notify user on the front end of decline
-			// update transaction detail to DECLINED
+			// Notify user on the frontend of the decline
+			// Update transaction details to DECLINED
 		} else {
 			log.Println("Received invalid decline message")
 		}
-		log.Printf("Received data: %s", data)
 	})
+}
+
+// listen on streams
+func setupStreams(node host.Host) {
+	receieveDownloadRequest(node)
+	receiveDecline(node)
+	receieveFile(node)
 }
 
 // OTHER - IGNORE WILL PROB DELETE
@@ -342,12 +380,4 @@ func NotifyFrontendOfPendingRequest(request models.Transaction) {
 	} else {
 		fmt.Println("WebSocket connection not found for node:", request.TargetID)
 	}
-}
-
-// set up stream handlers/listeners?
-
-func setupStreams(node host.Host) {
-	receieveDownloadRequest(node)
-	receiveDecline(node)
-	receieveFile(node)
 }
