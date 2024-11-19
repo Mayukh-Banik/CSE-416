@@ -214,7 +214,7 @@ func FindSpecificProvider(fileHash string, targetProviderID peer.ID) (*peer.Addr
 // adapted from sendDataToPeer
 func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protocol.ID) (network.Stream, error) {
 	fmt.Printf("CreateNewStream %v: sending data to peer %v\n", streamProtocol, targetPeerID)
-	
+
 	// Create a context for connection
 	var ctx = context.Background()
 	targetPeerID = strings.TrimSpace(targetPeerID)
@@ -241,6 +241,7 @@ func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protoco
 		log.Printf("Failed to connect to peer %s via relay: %v", peerinfo.ID, err)
 		return nil, fmt.Errorf("failed to connect to peer %s via relay: %v", peerinfo.ID, err)
 	}
+	fmt.Printf("connected to node %v, now creating stream %v", targetPeerID, streamProtocol)
 
 	// Create a new stream to the target peer
 	stream, err := node.NewStream(ctx, peerinfo.ID, streamProtocol)
@@ -252,4 +253,3 @@ func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protoco
 	fmt.Printf("Successfully created stream to peer %s\n", peerinfo.ID)
 	return stream, nil
 }
-

@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var (
@@ -144,7 +146,12 @@ func publishFile(requestBody models.FileMetadata) {
 
 	// only one provider (uploader) for now bc it was just uploaded
 	provider := []models.Provider{
-		{PeerID: dht_kad.PeerID, PeerAddr: dht_kad.DHT.Host().Addrs()[0].String(), IsActive: true, Fee: requestBody.Fee},
+		{
+			PeerID:   dht_kad.PeerID,
+			PeerAddr: dht_kad.DHT.Host().Addrs()[0].String(),
+			IsActive: true,
+			Fee:      requestBody.Fee,
+		},
 	}
 
 	dhtMetadata := models.DHTMetadata{
@@ -283,39 +290,33 @@ func deleteFileFromJSON(fileHash string) (string, error) {
 func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Trying to get adjacent node files in backend")
 
+	relayNode := "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
+	bootstrapNode := "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE"
+
 	// Retrieve connected peers
 	adjacentNodes := dht_kad.Host.Peerstore().Peers()
 	fmt.Println("Connected peers:", adjacentNodes)
 
 	// Convert PeerID to strings
-	var peers []string
+	// var peers []string
 	for _, peer := range adjacentNodes {
-		peers = append(peers, peer.String())
+		peerID := peer.String()
+		if peerID != relayNode && peerID != bootstrapNode && peerID != dht_kad.PeerID && nodeSupportRefreshStreams(peer) {
+			dht_kad.SendRefreshFilesRequest(peerID)
+			// peers = append(peers, peer.String())
+		}
 	}
 
-	// Handle no peers case
-	if len(peers) == 0 {
-		fmt.Println("No connected peers found")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("[]")) // Respond with an empty JSON array
-		return
-	}
-	
 	// // create stream to every adjacent node
-	// for _, peer := range adjacentNodes {
-	// 	// stream, err := dht_kad.CreateNewStream(dht_kad.Host, peer.String(), "/adjacentNodeFiles/p2p")
-	// 	// if (err != nil) {
-	// 	// 	return fmt.Errorf("error creating stream to %v", peer.String())
-	// 	// }
-	// 	// defer stream.Close()
-	// 	peerID := peer.String()
-	// 	if peerID != "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN" && peerID != "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE" && peerID != dht_kad.PeerID {
-	// 		dht_kad.SendRefreshFilesRequest(peer.String())
+	// for _, peer := range peers {
+	// 	if peer != "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN" &&
+	// 		peer != "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE" &&
+	// 		peer != dht_kad.PeerID { // cannot connect to relay node, bootstrap node, or self
+	// 		dht_kad.SendRefreshFilesRequest(peer)
 	// 	}
 	// }
 
-	dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
-
+	// dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
 
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
@@ -328,19 +329,25 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 	*/
 
-	if err :=json.NewEncoder(w).Encode(dht_kad.RefreshResponse); err != nil{
-		http.Error(w,"failed to encode response", http.StatusInternalServerError)
+	if err := json.NewEncoder(w).Encode(dht_kad.RefreshResponse); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
-
 
 }
 
-// func receiveAdjacentNodeFilesMetadata(node host.Host) {
-// 	fmt.Println("listening for adjacent node files")
-// 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream)) {
-// 		defer s.Close()
+func nodeSupportRefreshStreams(peerID peer.ID) bool {
+	supportSendRefreshRequest := false
+	supportSendRefreshResponse := false
 
-// 	}
-// }
+	protocols, _ := dht_kad.Host.Peerstore().GetProtocols(peerID)
+	fmt.Printf("protocols supported by peer %v: %v\n", peerID, protocols)
 
-// func sendAdjacentNodeFilesMetadata()
+	for _, protocol := range protocols {
+		if protocol == "/sendRefreshRequest/p2p" {
+			supportSendRefreshRequest = true
+		} else if protocol == "/sendRefreshResponse/p2p" {
+			supportSendRefreshResponse = true
+		}
+	}
+	return supportSendRefreshRequest && supportSendRefreshResponse
+}
