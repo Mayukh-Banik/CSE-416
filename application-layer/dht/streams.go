@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"bytes"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -240,12 +241,12 @@ func sendRefreshResponse(node host.Host, targetID string) error {
 				fmt.Println("All JSON data sent")
 				break 
 			}
-			fmt.Errorf("error reading JSON data: %w",err)
+			return fmt.Errorf("error reading JSON data: %w",err)
 		}
 
 		_, err = refreshRequestStream.Write(buffer[:n])
 		if err!=nil{
-			fmt.Errorf("Error sending byte data for JSON")
+			return fmt.Errorf("error sending byte data for JSON")
 		}
 		fmt.Printf("Sent %d bytes\n",n)
 	}
@@ -318,27 +319,43 @@ func receieveDownloadRequest(node host.Host) {
 	})
 }
 
-				
-func receiveRefreshResponse(node host.Host){
-	fmt.Println("listening for refresh response")
-	node.SetStreamHandler("/sendRefreshResponse/p2p",func(s network.Stream){
+func receiveRefreshResponse(node host.Host) {
+	fmt.Println("Listening for refresh response")
+	node.SetStreamHandler("/sendRefreshResponse/p2p", func(s network.Stream) {
 		defer s.Close()
-		
-		buf := bufio.NewReader(s)
-		data, err := buf.ReadBytes('\n') // read up to newline
 
-		if err != nil{
-			log.Fatalf("Failed to read metadata: %v", err)
+		// Use a buffer to read the incoming data
+		var receivedData bytes.Buffer
+		buf := make([]byte, 4096) // Chunk size should match sender's buffer
+
+		for {
+			n, err := s.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					fmt.Println("All data received from sender")
+					break
+				}
+				log.Fatalf("Failed to read data: %v", err)
+			}
+			receivedData.Write(buf[:n])
 		}
 
+		// Parse the accumulated JSON data
 		var fileData []models.FileMetadata
-		err = json.Unmarshal(data, &fileData)
+		err := json.Unmarshal(receivedData.Bytes(), &fileData)
 		if err != nil {
-			fmt.Errorf("receiveRefreshResponse: error unmarshaling data", err)
+			log.Fatalf("Error unmarshaling received data: %v", err)
 		}
-		fmt.Println("recieved files for marketplace")
+
+		// for _,file := range fileData {
+		// 	RefreshResponse = append(RefreshResponse, file)
+
+		// }
+		RefreshResponse = append(RefreshResponse, fileData...)
+		fmt.Println("Received files for marketplace:", RefreshResponse)
 	})
 }
+
 
 func receieveFile(node host.Host) {
 	fmt.Println("listening for file data")
