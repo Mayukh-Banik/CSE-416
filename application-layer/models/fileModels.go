@@ -40,3 +40,9 @@ type Transaction struct {
 	CreatedAt   string `json:"CreatedAt"`
 	FileName    string `json:"fileName"`
 }
+
+type RefreshRequest struct {
+	Message		string `json:"message"`
+	RequesterID string `json:"requesterID"`
+	TargetID string `json:"targetID"`
+}

@@ -88,13 +88,13 @@ const MarketplacePage: React.FC = () => {
       });
   
       // Log raw response text before attempting to parse
-      
-      // const rawData = await response.json();
+
+      const data = await response.json();
       // console.log("Raw response data:", rawData);
   
       // Now attempt to parse the response
       // const data = JSON.parse(rawData); // Use JSON.parse() after inspecting the raw response
-      // console.log("Data received is: ", data);
+      console.log("Data received is: ", data);
       
     } catch (error) {
       console.error("Error getting adjacent nodes:", error);

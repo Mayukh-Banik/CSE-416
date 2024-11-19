@@ -22,9 +22,21 @@ var (
 	FileHashToPath  = make(map[string]string)             // file paths of files uploaded by host node
 	Mutex           = &sync.Mutex{}
 	dir             = filepath.Join("..", "squidcoinFiles")
+	
 )
 
 // SENDING FUNCTIONS
+
+
+func SendRefreshFilesRequest(nodeID string) error{
+	fmt.Println("Requesting data from ",nodeID)
+	requestStream, err := CreateNewStream(DHT.Host(),nodeID,"/sendRefreshRequest/p2p")
+	if(err!=nil){
+		return fmt.Errorf("error sending refresh request")
+	}
+	defer requestStream.Close()
+	return nil
+}
 
 func SendDownloadRequest(requestMetadata models.Transaction) error {
 	// create stream to send the download request
@@ -172,7 +184,75 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 	}
 }
 
+
+func sendRefreshResponse(node host.Host, targetID string) error {
+	dirPath  := filepath.Join("..", "utils")
+	filePath := filepath.Join(dirPath, "files.json")
+
+	fileData, err := os.Open(filePath)
+	if (err!=nil) {
+		return fmt.Errorf("failed to read files.json: %v", err)
+	}
+
+	// var files []models.FileMetadata 
+	// if err := json.Unmarshal(fileData, &files); err != nil {
+	// 	return fmt.Errorf("failed to parse JSON: %v", err)
+		
+	// }
+
+	refreshRequestStream,err := CreateNewStream(node, targetID, "/sendRefreshResponse/p2p")
+	if err!=nil {
+		fmt.Println("Error creating file stream:", err)
+	}
+	defer refreshRequestStream.Close()
+
+	reader := bufio.NewReader(fileData)
+	buffer := make([]byte,4096)
+
+	for {
+		n, err:=reader.Read(buffer)
+		if err!=nil{
+			if err == io.EOF{
+				fmt.Println("All JSON data sent")
+				break 
+			}
+			fmt.Errorf("error reading JSON data: %w",err)
+		}
+
+		_, err = refreshRequestStream.Write(buffer[:n])
+		if err!=nil{
+			fmt.Errorf("Error sending byte data for JSON")
+		}
+		fmt.Printf("Sent %d bytes\n",n)
+	}
+	return nil
+}
 // RECEIVING FUNCTIONS
+
+func receiveRefreshRequest(node host.Host) error {
+    fmt.Println("listening for refresh requests")
+    node.SetStreamHandler("/sendRefreshRequest/p2p",func(s network.Stream){
+        defer s.Close()
+        buf :=bufio.NewReader(s)
+
+        data, err := io.ReadAll(buf) //read in request
+
+        if err!=nil{
+            if err == io.EOF{
+                log.Printf("Stream closed by peer :%s",s.Conn().RemotePeer())
+            } else {
+                log.Printf("Error receiving refresh request %v", err)
+            }
+            return
+        }
+
+        var refreshReq models.RefreshRequest
+        err = json.Unmarshal(data, &refreshReq)
+		
+		sendRefreshResponse(node, refreshReq.RequesterID)
+        })
+        return nil
+}
 
 func receieveDownloadRequest(node host.Host) {
 	fmt.Println("listening for download requests")
@@ -214,6 +294,24 @@ func receieveDownloadRequest(node host.Host) {
 	})
 }
 
+				
+func receiveRefreshResponse(node host.Host){
+	fmt.Println("listening for refresh response")
+	node.SetStreamHandler("/sendRefreshResponse/p2p",func(s network.Stream){
+		defer s.Close()
+		
+		buf := bufio.NewReader(s)
+		data, err := buf.ReadBytes('\n') // read up to newline
+
+		if err != nil{
+			log.Fatalf("Failed to read metadata: %v", err)
+		}
+
+		var fileData []models.FileMetadata
+		err = json.Unmarshal(data, &fileData)
+	})
+}
+
 func receieveFile(node host.Host) {
 	fmt.Println("listening for file data")
 	// listen for streams on "/sendFile/p2p"
@@ -225,7 +323,6 @@ func receieveFile(node host.Host) {
 			err := os.MkdirAll(dir, os.ModePerm)
 			if err != nil {
 				log.Printf("error creating output directory for files: %v\n", err)
-				return
 			}
 		}
 
@@ -330,6 +427,8 @@ func setupStreams(node host.Host) {
 	receieveDownloadRequest(node)
 	receiveDecline(node)
 	receieveFile(node)
+	receiveRefreshRequest(node)
+	receiveRefreshResponse(node)
 }
 
 // OTHER - IGNORE WILL PROB DELETE

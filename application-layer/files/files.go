@@ -280,7 +280,7 @@ func deleteFileFromJSON(fileHash string) (string, error) {
 	return "deleted", nil
 }
 
-func getAdjacentNodeFiles(w http.ResponseWriter, r *http.Request) {
+func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Trying to get adjacent node files in backend")
 
 	// Retrieve connected peers
@@ -300,6 +300,20 @@ func getAdjacentNodeFiles(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("[]")) // Respond with an empty JSON array
 		return
 	}
+	
+	// create stream to every adjacent node
+	for _, peer := range adjacentNodes {
+		// stream, err := dht_kad.CreateNewStream(dht_kad.Host, peer.String(), "/adjacentNodeFiles/p2p")
+		// if (err != nil) {
+		// 	return fmt.Errorf("error creating stream to %v", peer.String())
+		// }
+		// defer stream.Close()
+		peerID := peer.String()
+		if peerID != "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN" && peerID != "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE" && peerID != dht_kad.PeerID {
+			dht_kad.SendRefreshFilesRequest(peer.String())
+		}
+	}
+	
 
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
@@ -310,3 +324,13 @@ func getAdjacentNodeFiles(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to encode adjacent nodes", http.StatusInternalServerError)
 	}
 }
+
+// func receiveAdjacentNodeFilesMetadata(node host.Host) {
+// 	fmt.Println("listening for adjacent node files")
+// 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream)) {
+// 		defer s.Close()
+
+// 	}
+// }
+
+// func sendAdjacentNodeFilesMetadata()
