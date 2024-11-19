@@ -244,7 +244,9 @@ func CreateNewStream(node host.Host, targetPeerID string, streamProtocol protoco
 	fmt.Printf("connected to node %v, now creating stream %v", targetPeerID, streamProtocol)
 
 	// Create a new stream to the target peer
-	stream, err := node.NewStream(ctx, peerinfo.ID, streamProtocol)
+	// stream, err := node.NewStream(ctx, peerinfo.ID, streamProtocol)
+	stream, err := node.NewStream(network.WithAllowLimitedConn(ctx, string(streamProtocol)), peerinfo.ID, streamProtocol)
+
 	if err != nil {
 		log.Printf("Failed to open stream to %s: %s", peerinfo.ID, err)
 		return nil, fmt.Errorf("failed to open stream to peer %s: %v", peerinfo.ID, err)

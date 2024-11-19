@@ -29,6 +29,7 @@ const MarketplacePage: React.FC = () => {
     // setSearchTerm("");
     setLoadingRequest(false);
     setLoadingSearch(false);
+    setSearchResults([])
   }
 
   const handleCloseNotification = () => {
@@ -77,6 +78,7 @@ const MarketplacePage: React.FC = () => {
   };
 
   const handleRefresh = async () => {
+    resetStates()
     console.log("Trying to refresh marketplace");
   
     try {
@@ -95,7 +97,7 @@ const MarketplacePage: React.FC = () => {
       // Now attempt to parse the response
       // const data = JSON.parse(rawData); // Use JSON.parse() after inspecting the raw response
       console.log("Data received is: ", data);
-      
+      setSearchResults(data)
     } catch (error) {
       console.error("Error getting adjacent nodes:", error);
     }

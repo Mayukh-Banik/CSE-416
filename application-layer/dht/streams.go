@@ -4,6 +4,7 @@ import (
 	"application-layer/models"
 	"application-layer/websocket"
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"bytes"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -24,27 +24,26 @@ var (
 	Mutex           = &sync.Mutex{}
 	dir             = filepath.Join("..", "squidcoinFiles")
 	RefreshResponse []models.FileMetadata
-	
 )
 
 // SENDING FUNCTIONS
 
+func SendRefreshFilesRequest(nodeID string, wg *sync.WaitGroup) error {
+	defer wg.Done()
 
-func SendRefreshFilesRequest(nodeID string) error{
-	
-	fmt.Println("Requesting all files data from ",nodeID)
+	fmt.Println("Requesting all files data from ", nodeID)
 	// refreshResponse = []model.FileMetadata{}
-	requestStream, err := CreateNewStream(DHT.Host(),nodeID,"/sendRefreshRequest/p2p")
-	if(err!=nil){
+	requestStream, err := CreateNewStream(DHT.Host(), nodeID, "/sendRefreshRequest/p2p")
+	if err != nil {
 		return fmt.Errorf("error sending refresh request")
 	}
 	defer requestStream.Close()
 
-	request := models.RefreshRequest {
-		Message: "gimme all your files",
+	request := models.RefreshRequest{
+		Message:     "gimme all your files",
 		RequesterID: PeerID,
-		TargetID: nodeID,
-	} 
+		TargetID:    nodeID,
+	}
 
 	// Marshal the request metadata to JSON
 	requestData, err := json.Marshal(request)
@@ -208,75 +207,75 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 	}
 }
 
-
 func sendRefreshResponse(node host.Host, targetID string) error {
 	fmt.Printf("sendRefreshResponse: sending all files to %v", targetID)
-	dirPath  := filepath.Join("..", "utils")
+	dirPath := filepath.Join("..", "utils")
 	filePath := filepath.Join(dirPath, "files.json")
 
 	fileData, err := os.Open(filePath)
-	if (err!=nil) {
+	if err != nil {
 		return fmt.Errorf("failed to read files.json: %v", err)
 	}
 
-	// var files []models.FileMetadata 
+	// var files []models.FileMetadata
 	// if err := json.Unmarshal(fileData, &files); err != nil {
 	// 	return fmt.Errorf("failed to parse JSON: %v", err)
-		
+
 	// }
 
-	refreshRequestStream,err := CreateNewStream(node, targetID, "/sendRefreshResponse/p2p")
-	if err!=nil {
+	refreshRequestStream, err := CreateNewStream(node, targetID, "/sendRefreshResponse/p2p")
+	if err != nil {
 		fmt.Println("Error creating file stream:", err)
 	}
 	defer refreshRequestStream.Close()
 
 	reader := bufio.NewReader(fileData)
-	buffer := make([]byte,4096)
+	buffer := make([]byte, 4096)
 
 	for {
-		n, err:=reader.Read(buffer)
-		if err!=nil{
-			if err == io.EOF{
+		n, err := reader.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
 				fmt.Println("All JSON data sent")
-				break 
+				break
 			}
-			return fmt.Errorf("error reading JSON data: %w",err)
+			return fmt.Errorf("error reading JSON data: %w", err)
 		}
 
 		_, err = refreshRequestStream.Write(buffer[:n])
-		if err!=nil{
+		if err != nil {
 			return fmt.Errorf("error sending byte data for JSON")
 		}
-		fmt.Printf("Sent %d bytes\n",n)
+		fmt.Printf("Sent %d bytes\n", n)
 	}
 	return nil
 }
+
 // RECEIVING FUNCTIONS
 
 func receiveRefreshRequest(node host.Host) error {
-    fmt.Println("listening for refresh requests")
-    node.SetStreamHandler("/sendRefreshRequest/p2p",func(s network.Stream){
-        defer s.Close()
-        buf :=bufio.NewReader(s)
+	fmt.Println("listening for refresh requests")
+	node.SetStreamHandler("/sendRefreshRequest/p2p", func(s network.Stream) {
+		defer s.Close()
+		buf := bufio.NewReader(s)
 
-        data, err := io.ReadAll(buf) //read in request
+		data, err := io.ReadAll(buf) //read in request
 
-        if err!=nil{
-            if err == io.EOF{
-                log.Printf("Stream closed by peer :%s",s.Conn().RemotePeer())
-            } else {
-                log.Printf("Error receiving refresh request %v", err)
-            }
-            return
-        }
+		if err != nil {
+			if err == io.EOF {
+				log.Printf("Stream closed by peer :%s", s.Conn().RemotePeer())
+			} else {
+				log.Printf("Error receiving refresh request %v", err)
+			}
+			return
+		}
 
-        var refreshReq models.RefreshRequest
-        err = json.Unmarshal(data, &refreshReq)
-		
+		var refreshReq models.RefreshRequest
+		err = json.Unmarshal(data, &refreshReq)
+
 		sendRefreshResponse(node, refreshReq.RequesterID)
-        })
-        return nil
+	})
+	return nil
 }
 
 func receieveDownloadRequest(node host.Host) {
@@ -351,11 +350,12 @@ func receiveRefreshResponse(node host.Host) {
 		// 	RefreshResponse = append(RefreshResponse, file)
 
 		// }
+		Mutex.Lock()
 		RefreshResponse = append(RefreshResponse, fileData...)
+		Mutex.Unlock()
 		fmt.Println("Received files for marketplace:", RefreshResponse)
 	})
 }
-
 
 func receieveFile(node host.Host) {
 	fmt.Println("listening for file data")

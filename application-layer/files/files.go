@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -289,6 +291,7 @@ func deleteFileFromJSON(fileHash string) (string, error) {
 
 func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Trying to get adjacent node files in backend")
+	dht_kad.RefreshResponse = dht_kad.RefreshResponse[:0]
 
 	relayNode := "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
 	bootstrapNode := "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE"
@@ -297,15 +300,26 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	adjacentNodes := dht_kad.Host.Peerstore().Peers()
 	fmt.Println("Connected peers:", adjacentNodes)
 
+	var sendWG sync.WaitGroup
+	var responseWG sync.WaitGroup
+
 	// Convert PeerID to strings
 	// var peers []string
 	for _, peer := range adjacentNodes {
 		peerID := peer.String()
 		if peerID != relayNode && peerID != bootstrapNode && peerID != dht_kad.PeerID && nodeSupportRefreshStreams(peer) {
-			dht_kad.SendRefreshFilesRequest(peerID)
+			sendWG.Add(1)
+			responseWG.Add(1)
+			go func(peerID string) {
+				defer responseWG.Done()
+				go dht_kad.SendRefreshFilesRequest(peerID, &sendWG)
+			}(peerID)
 			// peers = append(peers, peer.String())
 		}
 	}
+
+	sendWG.Wait()
+	responseWG.Wait()
 
 	// // create stream to every adjacent node
 	// for _, peer := range peers {
@@ -317,10 +331,13 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	// dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
+	<-time.After(3 * time.Second)
 
+	fmt.Println("getAdjacentNodeFilesMetadata: received everyone's uploaded files: ", dht_kad.RefreshResponse)
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // Make sure the status is OK
+	fmt.Println("getAdjacentNodeFilesMetadata: back to frontend...")
 
 	// Encode response
 	/**
@@ -332,6 +349,7 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(dht_kad.RefreshResponse); err != nil {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
+	fmt.Println("getAdjacentNodeFilesMetadata: back to frontend...")
 
 }
 
