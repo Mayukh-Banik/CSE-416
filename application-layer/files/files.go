@@ -328,7 +328,7 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 	*/
 
-	if err :=json.NewEncoder(w).Encode(RefreshResponse); err != nil{
+	if err :=json.NewEncoder(w).Encode(dht_kad.RefreshResponse); err != nil{
 		http.Error(w,"failed to encode response", http.StatusInternalServerError)
 	}
 
