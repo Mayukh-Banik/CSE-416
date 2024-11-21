@@ -19,6 +19,14 @@ import {
   TextField,
   ListItemText,
   LinearProgress,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tooltip,
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
 import { FileMetadata } from "../models/fileMetadata";
@@ -57,6 +65,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
   const [currentFileHash, setCurrentFileHash] = useState<string | null>(null); // Track the file being published
   const [fees, setFees] = useState<{ [key: string]: number }>({}); // Track fees of to be uploaded files
+  const [names, setNames] = useState<{ [key: string]: string }>({}); // Track names of to be uploaded files
   const theme = useTheme();
   const [loading, setLoading] = useState(false); // Loading state for file upload
 
@@ -120,7 +129,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 }
                 console.log("after save error response");
                 let metadata:FileMetadata = {
-                  //id: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
+                  // ID: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
                   Name: file.name,
                   Type: file.type,
                   Size: file.size,
@@ -183,6 +192,10 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     setFees((prev) => ({ ...prev, [fileId]: fee }));
   };
 
+  const handleNameChange = (fileId: string, name: string) => {
+    setNames((prev) => ({ ...prev, [fileId]: name }));
+  };
+
 // have to fix deleting file
   const handleDeleteUploadedFile = async (hash: string) => {
     try {
@@ -202,7 +215,6 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     } catch (error) {
       console.error("error: ", error);
       setNotification({ open: true, message: "failed to delete file.", severity: "error" });
-
     }
   }
 
@@ -300,7 +312,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       <Sidebar />
       <Box sx={{ flexGrow: 1}}>
         <Typography variant="h4" gutterBottom>
-          Import Files
+          My Files
         </Typography>
         <input
           type="file"
@@ -346,110 +358,135 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         {selectedFiles.length > 0 && (
           <Box sx={{ marginTop: 2 }}>
             <Typography variant="h6">Selected Files:</Typography>
-            <List>
-              {selectedFiles.map((file, index) => (
-                <ListItem key={index} divider>
-                  <Box 
-                    sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', // Align text and input fields vertically
-                      width: '100%', 
-                    }}
-                  >
-                    {/* selected file details */}
-                    <ListItemText
-                      sx={{
-                        width:'100%',
-                        whiteSpace: 'normal',  // wrap text
-                        wordBreak: 'break-word',
-                        overflowWrap: 'break-word',
-                      }}
-                      primary={file.name}
-                      secondary={
-                        <>
-                          {`Size: ${(file.size / 1024).toFixed(2)} KB`} <br />
-                          {/* {`Description: ${(file.description)}`} <br /> */}
-
-                          {`SHA-256 Hash: ${fileHashes[file.name] || "Computing..."}`}                       
-                        </>
-                      }  
-                    />
-                    
-                    <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: 1 }}>
-                      <TextField
-                        label="Description"
-                        variant="outlined"
-                        fullWidth
-                        margin="normal"
-                        value={descriptions[file.name] || ""}
-                        onChange={(e) => handleDescriptionChange(file.name, e.target.value)}
-                      />
-                    </Box>
-
-                    <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: 1 }}>
-                      <TextField
-                        label="Fee"
-                        type="number"
-                        variant="outlined"
-                        fullWidth
-                        margin="normal"
-                        value={fees[file.name] || 0}
-                        onChange={(e) => handleFeeChange(file.name, parseFloat(e.target.value))}
-                      />
-                    </Box>
-
-                  </Box>
-                  <IconButton 
-                      edge="end" 
-                      aria-label="delete" 
-                      onClick={() => handleDeleteSelectedFile(file.name)}
-                      sx={{marginTop:15}}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                </ListItem>
-              ))}
-            </List>
+            <TableContainer component={Paper} sx={{ marginTop: 2 }}>
+              <Table>
+                {/* Table Header */}
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>File Size</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell>Fee</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                {/* Table Body */}
+                <TableBody>
+                  {selectedFiles.map((file, index) => (
+                    <TableRow key={index}>
+                      {/* Editable File Name */}
+                      <TableCell sx={{ width: '25%' }}>
+                        <TextField
+                          label="File Name"
+                          variant="outlined"
+                          fullWidth
+                          value={names[file.name] || file.name} // Use fileNames state or the original name
+                          onChange={(e) => handleNameChange(file.name, e.target.value)}
+                        />
+                      </TableCell>
+                      {/* File Size */}
+                      <TableCell>{`${(file.size / 1024).toFixed(2)} KB`}</TableCell>
+                      {/* Description */}
+                      <TableCell sx={{ width: '40%' }}>
+                        <TextField
+                          label="Description"
+                          variant="outlined"
+                          fullWidth
+                          multiline
+                          rows={2} // Makes the description box larger
+                          value={descriptions[file.name] || ""}
+                          onChange={(e) => handleDescriptionChange(file.name, e.target.value)}
+                        />
+                      </TableCell>
+                      {/* File Fee */}
+                      <TableCell>
+                        <TextField
+                          type="number"
+                          variant="outlined"
+                          size="small"
+                          value={fees[file.name] || 0}
+                          onChange={(e) => handleFeeChange(file.name, parseFloat(e.target.value))}
+                        />
+                      </TableCell>
+                      {/* Actions */}
+                      <TableCell>
+                        <IconButton
+                          edge="end"
+                          aria-label="delete"
+                          onClick={() => handleDeleteSelectedFile(file.name)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )}
-        
+
+
         {uploadedFiles.length > 0 && (
-          <Box sx={{ marginTop: 4 }}>
-            <Typography variant="h5" gutterBottom>
-              Uploaded Files
-            </Typography>
-            <List>
-              {uploadedFiles.map((file) => (
-                <ListItem key={file.Hash} divider>
-                  <ListItemText 
-                    primary={file.Name} 
-                    secondary={
-                      <>
-                        {`Size: ${(file.Size / 1024).toFixed(2)} KB`} <br />
-                        {`Description: ${file.Description}`} <br />
-                        {`SHA-256: ${file.Hash}`} <br />
-                        {`Fee: ${file.Fee}`} <br />
-                        </>
-                    }                  
-                    />
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="body2" component="span" sx={{ marginRight: 1 }}>
-                      Publish
-                    </Typography>
-                    <Switch 
-                      edge="end" 
-                      onChange={() => handleConfirmPublish(file.Hash)} 
-                      checked={file.IsPublished} 
-                      color="primary"
-                      inputProps={{ 'aria-label': `make ${file.Name} public` }}
-                    />
-                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteUploadedFile(file.Hash)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
-                </ListItem>
-              ))}
-            </List>
+          <Box sx={{ marginTop: 2 }}>
+            <Typography variant="h6">Uploaded Files</Typography>
+            <TableContainer component={Paper} sx={{ marginTop: 2 }}>
+              <Table>
+                {/* Table Header */}
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Hash</TableCell>
+                    <TableCell>Size</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell>Fee</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                {/* Table Body */}
+                <TableBody>
+                  {uploadedFiles.map((file, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{file.Name}</TableCell>
+                      <TableCell
+                        sx={{
+                          maxWidth: '200px', // Set a max width to control the wrapping
+                          whiteSpace: 'normal', // Allows the text to break lines
+                          wordWrap: 'break-word', // Breaks words if they're too long
+                          overflowWrap: 'break-word', // Fallback for compatibility
+                        }}
+                      >
+                        {file.Hash}
+                      </TableCell>
+                      <TableCell>{`${(file.Size / 1024).toFixed(2)} KB`}</TableCell>
+                      <TableCell>{file.Description}</TableCell>
+                      <TableCell>{file.Fee}</TableCell>
+                      {/* Actions */}
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Tooltip title="Publish File" arrow>
+                            <Switch
+                              edge="end"
+                              onChange={() => handleConfirmPublish(file.Hash)}
+                              checked={file.IsPublished}
+                              color="primary"
+                              inputProps={{ 'aria-label': `publish ${file.Name}` }}
+                            />
+                          </Tooltip>
+                          <IconButton
+                            edge="end"
+                            aria-label="delete"
+                            onClick={() => handleDeleteUploadedFile(file.Hash)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )}
       </Box>

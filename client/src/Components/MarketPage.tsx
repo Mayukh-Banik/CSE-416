@@ -104,15 +104,15 @@ const MarketplacePage: React.FC = () => {
   };
   
 
-  const handleDownloadByHash = async () => {
-    console.log("HI");
-    const hash = prompt("Enter the file hash");
-    console.log('you entered:', hash)
-    if (hash == null || hash.length==0) return;
-    setFileHash(hash);
-    getFileByHash(hash);
-    setOpen(true);
-  }
+  // const handleDownloadByHash = async () => {
+  //   console.log("HI");
+  //   const hash = prompt("Enter the file hash");
+  //   console.log('you entered:', hash)
+  //   if (hash == null || hash.length==0) return;
+  //   setFileHash(hash);
+  //   getFileByHash(hash);
+  //   setOpen(true);
+  // }
 
   
   // only works for complete file hashes
@@ -176,9 +176,9 @@ const MarketplacePage: React.FC = () => {
   };
 
   // pagination
-  // const indexOfLastFile = (page + 1) * rowsPerPage;
-  // const indexOfFirstFile = indexOfLastFile - rowsPerPage;
-  // const currentFiles = filteredFiles.slice(indexOfFirstFile, indexOfLastFile);
+  const indexOfLastFile = (page + 1) * rowsPerPage;
+  const indexOfFirstFile = indexOfLastFile - rowsPerPage;
+  const currentFiles = searchResults?.slice(indexOfFirstFile, indexOfLastFile);
 
   return (
     <Box
@@ -197,12 +197,16 @@ const MarketplacePage: React.FC = () => {
         Marketplace
       </Typography>
 
-      <Button variant="contained" onClick={() => {handleRefresh()}}>
+      <Button 
+        variant="contained" 
+        onClick={() => {handleRefresh()}}
+        sx={{marginBottom:2}}
+        >
         Refresh
       </Button>
-      <Button variant="contained" onClick={() => handleDownloadByHash()}>
+      {/* <Button variant="contained" onClick={() => handleDownloadByHash()}>
         Download by Hash
-      </Button>
+      </Button> */}
 
       <TextField
         label="Search Files"
@@ -220,7 +224,7 @@ const MarketplacePage: React.FC = () => {
 
       {loadingSearch && <LinearProgress sx={{ width: '100%', marginTop: 2 }} />} {/* Progress bar when loading is true */}
       
-      <TableContainer component={Paper}>
+      {currentFiles != null && currentFiles.length > 0 && <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
@@ -232,7 +236,7 @@ const MarketplacePage: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {searchResults?.map((file) => (
+            {currentFiles?.map((file) => (
               <TableRow key={file.Hash}>
                 <TableCell>{file.Name}</TableCell>
                 <TableCell>{(file.Size / 1024).toFixed(2)}</TableCell>
@@ -250,17 +254,18 @@ const MarketplacePage: React.FC = () => {
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
-      {/* <TablePagination
+      </TableContainer>}
+
+      {searchResults != null && searchResults.length > 0 && <TablePagination
         component="div"
-        count={filteredFiles.length}
+        count={searchResults.length}
         page={page}
         onPageChange={handleChangePage}
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={handleChangeRowsPerPage}
         rowsPerPageOptions={[5, 10, 25]}
         sx={{ marginTop: 2 }}
-      /> */}
+      />}
 
       <Dialog open={open} onClose={() => setOpen(false)}>
         {loadingRequest && <LinearProgress sx={{ width: '100%', marginTop: 2 }} />} {/* Progress bar when loading is true */}
@@ -279,7 +284,7 @@ const MarketplacePage: React.FC = () => {
             providers
               .filter((value, index, self) =>
                 index === self.findIndex((t) => (
-                  t.PeerID === value.PeerID // or use t.address if filtering by address
+                  t.PeerID === value.PeerID && t.IsActive // only display peer if currently providing
                 ))
               )
               .map((provider) => (

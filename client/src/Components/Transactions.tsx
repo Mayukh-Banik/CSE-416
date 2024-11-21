@@ -14,35 +14,56 @@ const collapsedDrawerWidth = 100;
 
 const GlobalTransactions : React.FC = () => {
   const theme = useTheme();
-  const [pendingRequests, setPendingRequests] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState<number>(2); // Default to Pending Requests tab
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Fetch pending requests from the backend
-    const fetchPendingRequests = async () => {
-      try {
-        const response = await fetch('http://localhost:8081/download/getRequests');
-        if (!response.ok) {
-          throw new Error(`Error fetching pending requests: ${response.statusText}`);
-        }
+  // useEffect(() => {
+  //   // Fetch pending requests from the backend
+  //   const fetchPendingRequests = async () => {
+  //     try {
+  //       const response = await fetch('http://localhost:8081/download/getRequests');
+  //       if (!response.ok) {
+  //         throw new Error(`Error fetching pending requests: ${response.statusText}`);
+  //       }
   
-        // Parse JSON response
+  //       // Parse JSON response
+  //       const data = await response.json();
+  //       if (Array.isArray(data)) {
+  //         console.log("pending requests: ", data)
+  //         setPendingRequests(data); // Directly set the array of transactions
+  //       } else {
+  //         console.error("Unexpected response format:", data);
+  //       }
+  //     } catch (error) {
+  //       console.error('Failed to fetch pending requests:', error);
+  //     }
+  //   };
+  
+  //   fetchPendingRequests();
+  // }, []);
+  
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const response = await fetch("http://localhost:8081/download/getAllTransactions")
+        if (!response.ok) {
+          throw new Error(`Error fetching all transactions: ${response.statusText}`);
+        }
         const data = await response.json();
         if (Array.isArray(data)) {
-          console.log("pending requests: ", data)
-          setPendingRequests(data); // Directly set the array of transactions
+          console.log("all transactions: ", data)
+          setTransactions(data); // Directly set the array of transactions
         } else {
           console.error("Unexpected response format:", data);
         }
       } catch (error) {
-        console.error('Failed to fetch pending requests:', error);
+        console.error("failed to fetch all transactions: ", error)
       }
-    };
-  
-    fetchPendingRequests();
-  }, []);
-  
+    } 
+    fetchTransactions();
+  }, [])
+
 
   const renderTable = (data: Transaction[]) => (
     <Table component={Paper}>
@@ -50,10 +71,11 @@ const GlobalTransactions : React.FC = () => {
         <TableRow>
           <TableCell>Date</TableCell>
           {/* <TableCell>Time</TableCell> */}
-          <TableCell>File Name</TableCell>
+          {/* <TableCell>File Name</TableCell> */}
+          <TableCell>File Hash</TableCell>
           <TableCell>Sender</TableCell>
           <TableCell>Receiver</TableCell>
-          <TableCell>Transaction Amount</TableCell>
+          <TableCell>Total Fee</TableCell>
           <TableCell>Status</TableCell>
         </TableRow>
       </TableHead>
@@ -64,8 +86,9 @@ const GlobalTransactions : React.FC = () => {
             {/* <TableCell>{transaction.time}</TableCell> */}
             <TableCell>{transaction.CreatedAt}</TableCell>
             <TableCell>
-              <Button onClick={() => navigate(`/fileview/${transaction.FileName}`)}>{transaction.FileName}</Button>
+              <Button onClick={() => navigate(`/fileview/${transaction.FileHash}`)}>{transaction.FileHash}</Button>
             </TableCell>
+            {/* <TableCell>{transaction.FileHash}</TableCell> */}
             <TableCell>
               <Button onClick={() => navigate(`/account/${transaction.RequesterID}`)}>{transaction.RequesterID}</Button>
             </TableCell>
@@ -93,19 +116,19 @@ const GlobalTransactions : React.FC = () => {
     >
       <Sidebar />
       <Typography variant="h4" component="h1" gutterBottom>
-        Transactions
+        Transaction History
       </Typography>
 
-      <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)}>
+      {/* <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)}>
         <Tab label="Global Transactions" />
         <Tab label="My Transactions" />
         <Tab label="Pending Requests" />
-      </Tabs>
+      </Tabs> */}
 
       {/* {activeTab === 0 && renderTable(transactionData)}  Global Transactions */}
       {/* {activeTab === 1 && renderTable(transactionData.filter(tx => tx.sender === 'john_doe' || tx.receiver === 'john_doe'))} My Transactions */}
-      
-      {activeTab === 2 && renderTable(pendingRequests)}  {/* Pending Requests */}
+      {/* {activeTab === 2 && renderTable(transactions)}   */}
+      {renderTable(transactions)}
     </Box>
   );
 };

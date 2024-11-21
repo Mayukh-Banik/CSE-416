@@ -43,6 +43,7 @@ func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// use for user uploaded files and user downlaoded files
 func saveOrUpdateFile(newFileData models.FileMetadata) (string, error) {
 	// check if directory and file exist
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {

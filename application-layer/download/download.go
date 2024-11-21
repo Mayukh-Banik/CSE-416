@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// api calls
 func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 	var request models.Transaction
 
@@ -73,4 +74,10 @@ func handleGetPendingRequests(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to encode pending requests", http.StatusInternalServerError)
 		return
 	}
+}
+
+// additional downloading stuff
+
+func updateDownloadJSON (metadata models.FileMetadata) {
+	
 }

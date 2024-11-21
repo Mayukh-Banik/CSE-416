@@ -36,7 +36,7 @@ func ConnectToPeer(node host.Host, peerAddr string) {
 	node.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 	err = node.Connect(GlobalCtx, *info)
 	if err != nil {
-		log.Printf("Failed to connect to peer: %s", err)
+		log.Printf("ConnectToPeer: Failed to connect to peer: %s", err)
 		return
 	}
 
