@@ -450,7 +450,6 @@ func receiveRefreshResponse(node host.Host) {
 			}
 			receivedData.Write(buf[:n])
 		}
-		fmt.Println("file data received from refresh", receivedData)
 
 		// Parse the accumulated JSON data
 		var fileData []models.FileMetadata

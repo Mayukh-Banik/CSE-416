@@ -38,6 +38,11 @@ func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to parse files data", http.StatusInternalServerError)
 		return
 	}
+
+	// refresh TTL of files in dht
+	republishFiles(UploadedFilePath)
+	republishFiles(DownloadedFilePath)
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(files); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
@@ -67,7 +72,19 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	if action == "added" {
 		PublishFile(requestBody)
 		// fmt.Printf("new file %v | path: %v\n", requestBody.Hash, requestBody.Path)
+
+		curDirectory, err := os.Getwd()
+		if err != nil {
+			fmt.Printf("Error getting cur directory %v\n", err)
+			return
+		}
+
+		newPath := filepath.Join(curDirectory, "../squidcoinFiles", requestBody.Name)
+		dht_kad.FileMapMutex.Lock()
+		dht_kad.FileHashToPath[requestBody.Hash] = newPath
+		dht_kad.FileMapMutex.Unlock()
 		// ///dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
+
 	}
 
 	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Name)
@@ -124,18 +141,6 @@ func PublishFile(requestBody models.FileMetadata) {
 
 	// Begin providing ourselves as a provider for that file
 	dht_kad.ProvideKey(dht_kad.GlobalCtx, dht_kad.DHT, requestBody.Hash)
-
-	// append to filehashtopath map - put uploaded and downloaded files into different folders later??
-	curDirectory, err := os.Getwd()
-	if err != nil {
-		fmt.Printf("Error getting cur directory %v\n", err)
-		return
-	}
-
-	newPath := filepath.Join(curDirectory, "../squidcoinFiles", requestBody.Name)
-	dht_kad.FileMapMutex.Lock()
-	dht_kad.FileHashToPath[requestBody.Hash] = newPath
-	dht_kad.FileMapMutex.Unlock()
 }
 
 // bug
@@ -276,7 +281,7 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 
 	// Retrieve connected peers
 	adjacentNodes := dht_kad.Host.Peerstore().Peers()
-	fmt.Println("getAdjacentNodeFilesMetadata: Connected peers:", adjacentNodes)
+	fmt.Println("Connected peers:", adjacentNodes)
 
 	var sendWG sync.WaitGroup
 	var responseWG sync.WaitGroup
@@ -309,7 +314,7 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	// dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
-	<-time.After(5 * time.Second)
+	<-time.After(3 * time.Second)
 
 	fmt.Println("getAdjacentNodeFilesMetadata: received everyone's uploaded files: ", dht_kad.RefreshResponse)
 	// Set response headers
@@ -349,11 +354,6 @@ func nodeSupportRefreshStreams(peerID peer.ID) bool {
 }
 
 // republish files in the dht incase the TTL expired - called upon successful login
-func getPublishedFiles(w http.ResponseWriter, r *http.Request) {
-	republishFiles(UploadedFilePath)
-	republishFiles(DownloadedFilePath)
-}
-
 func republishFiles(filePath string) {
 	// Open the JSON file
 	file, err := os.Open(filePath) // Replace "files.json" with your file name
@@ -379,12 +379,10 @@ func republishFiles(filePath string) {
 		log.Fatalf("Failed to unmarshal JSON: %v", err)
 	}
 
-	// only republish if user is currently providing
+	// Print parsed structs
 	for _, file := range files {
-		if file.IsPublished {
-			fmt.Printf("Republishing File: %+v\n", file)
-			PublishFile(file)
-		}
+		fmt.Printf("Republishing File: %+v\n", file)
+		PublishFile(file)
 	}
 
 }
