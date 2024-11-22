@@ -2,6 +2,7 @@ package dht_kad
 
 import (
 	"application-layer/models"
+	"application-layer/utils"
 	"application-layer/websocket"
 	"bufio"
 	"bytes"
@@ -24,42 +25,13 @@ var (
 	Mutex           = &sync.Mutex{}
 	dir             = filepath.Join("..", "squidcoinFiles")
 	RefreshResponse []models.FileMetadata
+
+	dirPath            = filepath.Join("..", "utils")
+	UploadedFilePath   = filepath.Join(dirPath, "files.json")
+	DownloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
 )
 
 // SENDING FUNCTIONS
-
-func SendRefreshFilesRequest(nodeID string, wg *sync.WaitGroup) error {
-	defer wg.Done()
-
-	fmt.Println("Requesting all files data from ", nodeID)
-	// refreshResponse = []model.FileMetadata{}
-	requestStream, err := CreateNewStream(DHT.Host(), nodeID, "/sendRefreshRequest/p2p")
-	if err != nil {
-		return fmt.Errorf("error sending refresh request")
-	}
-	defer requestStream.Close()
-
-	request := models.RefreshRequest{
-		Message:     "gimme all your files",
-		RequesterID: PeerID,
-		TargetID:    nodeID,
-	}
-
-	// Marshal the request metadata to JSON
-	requestData, err := json.Marshal(request)
-	if err != nil {
-		return fmt.Errorf("error marshaling refresh request data: %v", err)
-	}
-
-	// send JSON data over the stream
-	_, err = requestStream.Write(requestData)
-	if err != nil {
-		return fmt.Errorf("error sending refresh request data: %v", err)
-	}
-
-	fmt.Printf("Sent refresh request to target peer %s\n", nodeID)
-	return nil
-}
 
 func SendDownloadRequest(requestMetadata models.Transaction) error {
 	// create stream to send the download request
@@ -207,6 +179,39 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 	}
 }
 
+func SendRefreshFilesRequest(nodeID string, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
+	fmt.Println("Requesting all files data from ", nodeID)
+	// refreshResponse = []model.FileMetadata{}
+	requestStream, err := CreateNewStream(DHT.Host(), nodeID, "/sendRefreshRequest/p2p")
+	if err != nil {
+		return fmt.Errorf("error sending refresh request")
+	}
+	defer requestStream.Close()
+
+	request := models.RefreshRequest{
+		Message:     "gimme all your files",
+		RequesterID: PeerID,
+		TargetID:    nodeID,
+	}
+
+	// Marshal the request metadata to JSON
+	requestData, err := json.Marshal(request)
+	if err != nil {
+		return fmt.Errorf("error marshaling refresh request data: %v", err)
+	}
+
+	// send JSON data over the stream
+	_, err = requestStream.Write(requestData)
+	if err != nil {
+		return fmt.Errorf("error sending refresh request data: %v", err)
+	}
+
+	fmt.Printf("Sent refresh request to target peer %s\n", nodeID)
+	return nil
+}
+
 func sendRefreshResponse(node host.Host, targetID string) error {
 	fmt.Printf("sendRefreshResponse: sending all files to %v", targetID)
 	dirPath := filepath.Join("..", "utils")
@@ -253,31 +258,6 @@ func sendRefreshResponse(node host.Host, targetID string) error {
 
 // RECEIVING FUNCTIONS
 
-func receiveRefreshRequest(node host.Host) error {
-	fmt.Println("listening for refresh requests")
-	node.SetStreamHandler("/sendRefreshRequest/p2p", func(s network.Stream) {
-		defer s.Close()
-		buf := bufio.NewReader(s)
-
-		data, err := io.ReadAll(buf) //read in request
-
-		if err != nil {
-			if err == io.EOF {
-				log.Printf("Stream closed by peer :%s", s.Conn().RemotePeer())
-			} else {
-				log.Printf("Error receiving refresh request %v", err)
-			}
-			return
-		}
-
-		var refreshReq models.RefreshRequest
-		err = json.Unmarshal(data, &refreshReq)
-
-		sendRefreshResponse(node, refreshReq.RequesterID)
-	})
-	return nil
-}
-
 func receieveDownloadRequest(node host.Host) {
 	fmt.Println("listening for download requests")
 	// listen for streams on "/sendRequest/p2p"
@@ -318,42 +298,43 @@ func receieveDownloadRequest(node host.Host) {
 	})
 }
 
-func receiveRefreshResponse(node host.Host) {
-	fmt.Println("Listening for refresh response")
-	node.SetStreamHandler("/sendRefreshResponse/p2p", func(s network.Stream) {
+func receiveDecline(node host.Host) {
+	node.SetStreamHandler("/requestResponse/p2p", func(s network.Stream) {
 		defer s.Close()
+		buf := bufio.NewReader(s)
 
-		// Use a buffer to read the incoming data
-		var receivedData bytes.Buffer
-		buf := make([]byte, 4096) // Chunk size should match sender's buffer
-
-		for {
-			n, err := s.Read(buf)
-			if err != nil {
-				if err == io.EOF {
-					fmt.Println("All data received from sender")
-					break
-				}
-				log.Fatalf("Failed to read data: %v", err)
-			}
-			receivedData.Write(buf[:n])
-		}
-
-		// Parse the accumulated JSON data
-		var fileData []models.FileMetadata
-		err := json.Unmarshal(receivedData.Bytes(), &fileData)
+		// Read data until a newline character
+		data, err := buf.ReadBytes('\n')
 		if err != nil {
-			log.Fatalf("Error unmarshaling received data: %v", err)
+			if err == io.EOF {
+				log.Printf("Stream closed by peer: %s", s.Conn().RemotePeer())
+			} else {
+				log.Printf("Error reading from stream: %v", err)
+			}
+			return
 		}
 
-		// for _,file := range fileData {
-		// 	RefreshResponse = append(RefreshResponse, file)
+		log.Printf("Raw data received: %s", data)
 
-		// }
-		Mutex.Lock()
-		RefreshResponse = append(RefreshResponse, fileData...)
-		Mutex.Unlock()
-		fmt.Println("Received files for marketplace:", RefreshResponse)
+		// Unmarshal the JSON data
+		var declineMessage map[string]string
+		err = json.Unmarshal(data, &declineMessage)
+		if err != nil {
+			log.Printf("Error unmarshalling data: %v", err)
+			return
+		}
+
+		// Process the decline message
+		status, statusOK := declineMessage["status"]
+		fileHash, fileHashOK := declineMessage["fileHash"]
+
+		if statusOK && fileHashOK && status == "declined" {
+			log.Printf("Received decline message for file with hash: %s", fileHash)
+			// Notify user on the frontend of the decline
+			// Update transaction details to DECLINED
+		} else {
+			log.Println("Received invalid decline message")
+		}
 	})
 }
 
@@ -362,14 +343,6 @@ func receieveFile(node host.Host) {
 	// listen for streams on "/sendFile/p2p"
 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream) {
 		defer s.Close()
-
-		// create output directory if it doesn't exist
-		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			err := os.MkdirAll(dir, os.ModePerm)
-			if err != nil {
-				log.Printf("error creating output directory for files: %v\n", err)
-			}
-		}
 
 		// read metadata - use metadata struct later
 		buf := bufio.NewReader(s)
@@ -420,57 +393,78 @@ func receieveFile(node host.Host) {
 		}
 
 		// after successfully downloading file, the user is now a provider of the file
-		// files.FileMapMutex.Lock()
-		// FileHashToPath[metadata.Hash] = files.DownloadedFilePath // add file and its path to the map
-		// files.FileMapMutex.Unlock()
+		filePath := filepath.Join("..", "utils", "files.json")
+		utils.SaveOrUpdateFile(metadata, dirPath, DownloadedFilePath)
 
-		addFileToDownloads(metadata) // add metadata to downloaded files file
+		Mutex.Lock()
+		FileHashToPath[metadata.Hash] = filePath // add file and its path to the map
+		Mutex.Unlock()
 
 		ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
 	})
 }
 
-func addFileToDownloads(metadata models.FileMetadata) {
-	panic("unimplemented")
-}
-
-func receiveDecline(node host.Host) {
-	node.SetStreamHandler("/requestResponse/p2p", func(s network.Stream) {
+func receiveRefreshRequest(node host.Host) error {
+	fmt.Println("listening for refresh requests")
+	node.SetStreamHandler("/sendRefreshRequest/p2p", func(s network.Stream) {
 		defer s.Close()
 		buf := bufio.NewReader(s)
 
-		// Read data until a newline character
-		data, err := buf.ReadBytes('\n')
+		data, err := io.ReadAll(buf) //read in request
+
 		if err != nil {
 			if err == io.EOF {
-				log.Printf("Stream closed by peer: %s", s.Conn().RemotePeer())
+				log.Printf("Stream closed by peer :%s", s.Conn().RemotePeer())
 			} else {
-				log.Printf("Error reading from stream: %v", err)
+				log.Printf("Error receiving refresh request %v", err)
 			}
 			return
 		}
 
-		log.Printf("Raw data received: %s", data)
+		var refreshReq models.RefreshRequest
+		err = json.Unmarshal(data, &refreshReq)
 
-		// Unmarshal the JSON data
-		var declineMessage map[string]string
-		err = json.Unmarshal(data, &declineMessage)
+		sendRefreshResponse(node, refreshReq.RequesterID)
+	})
+	return nil
+}
+
+func receiveRefreshResponse(node host.Host) {
+	fmt.Println("Listening for refresh response")
+	node.SetStreamHandler("/sendRefreshResponse/p2p", func(s network.Stream) {
+		defer s.Close()
+
+		// Use a buffer to read the incoming data
+		var receivedData bytes.Buffer
+		buf := make([]byte, 4096) // Chunk size should match sender's buffer
+
+		for {
+			n, err := s.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					fmt.Println("All data received from sender")
+					break
+				}
+				log.Fatalf("Failed to read data: %v", err)
+			}
+			receivedData.Write(buf[:n])
+		}
+
+		// Parse the accumulated JSON data
+		var fileData []models.FileMetadata
+		err := json.Unmarshal(receivedData.Bytes(), &fileData)
 		if err != nil {
-			log.Printf("Error unmarshalling data: %v", err)
-			return
+			log.Fatalf("Error unmarshaling received data: %v", err)
 		}
 
-		// Process the decline message
-		status, statusOK := declineMessage["status"]
-		fileHash, fileHashOK := declineMessage["fileHash"]
+		// for _,file := range fileData {
+		// 	RefreshResponse = append(RefreshResponse, file)
 
-		if statusOK && fileHashOK && status == "declined" {
-			log.Printf("Received decline message for file with hash: %s", fileHash)
-			// Notify user on the frontend of the decline
-			// Update transaction details to DECLINED
-		} else {
-			log.Println("Received invalid decline message")
-		}
+		// }
+		Mutex.Lock()
+		RefreshResponse = append(RefreshResponse, fileData...)
+		Mutex.Unlock()
+		fmt.Println("Received files for marketplace:", RefreshResponse)
 	})
 }
 

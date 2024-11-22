@@ -3,6 +3,7 @@ package files
 import (
 	dht_kad "application-layer/dht"
 	"application-layer/models"
+	"application-layer/utils"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,7 +21,7 @@ var (
 	dirPath            = filepath.Join("..", "utils")
 	UploadedFilePath   = filepath.Join(dirPath, "files.json")
 	DownloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
-	FileMapMutex       sync.Mutex
+	fileMapMutex       = &sync.Mutex{}
 )
 
 // fetch all uploaded files from JSON file
@@ -46,67 +47,6 @@ func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// use for user uploaded files and user downlaoded files
-func saveOrUpdateFile(newFileData models.FileMetadata, filePath string) (string, error) {
-	// check if directory and file exist
-	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {
-			return "", fmt.Errorf("failed to create utils directory: %v", err)
-		}
-	}
-
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		if err := os.WriteFile(filePath, []byte("[]"), 0644); err != nil {
-			return "", fmt.Errorf("failed to create files.json: %v", err)
-		}
-	}
-
-	fmt.Println("file to be added/updated: ", newFileData)
-
-	// read in JSON file
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read files.json: %v", err)
-	}
-
-	var files []models.FileMetadata
-	if err := json.Unmarshal(data, &files); err != nil {
-		return "", fmt.Errorf("failed to parse JSON: %v", err)
-	}
-
-	// update if file is already in JSON file
-	isUpdated := false
-	for i := range files {
-		if files[i].Hash == newFileData.Hash {
-			files[i] = newFileData
-			isUpdated = true
-			break
-		}
-	}
-
-	// add file if not already in JSON file
-	if !isUpdated {
-		files = append([]models.FileMetadata{newFileData}, files...)
-	}
-
-	// convert updated list of files back to JSON
-	updatedData, err := json.MarshalIndent(files, "", "  ")
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal JSON: %v", err)
-	}
-
-	if err := os.WriteFile(filePath, updatedData, 0644); err != nil {
-		return "", fmt.Errorf("failed to write updated data to files.json: %v", err)
-	}
-
-	action := "updated"
-	if !isUpdated {
-		action = "added"
-	}
-
-	return action, nil
-}
-
 func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -119,7 +59,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	action, err := saveOrUpdateFile(requestBody, UploadedFilePath)
+	action, err := utils.SaveOrUpdateFile(requestBody, dirPath, UploadedFilePath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -136,9 +76,9 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		newPath := filepath.Join(curDirectory, "../squidcoinFiles", requestBody.Name)
-		FileMapMutex.Lock()
+		fileMapMutex.Lock()
 		dht_kad.FileHashToPath[requestBody.Hash] = newPath
-		FileMapMutex.Unlock()
+		fileMapMutex.Unlock()
 		// ///dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
 
 	}
@@ -272,9 +212,9 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	FileMapMutex.Lock()
+	fileMapMutex.Lock()
 	delete(dht_kad.FileHashToPath, hash) // delete from map of file hash to file path
-	FileMapMutex.Unlock()
+	fileMapMutex.Unlock()
 
 	response := map[string]string{
 		"status":  action,
