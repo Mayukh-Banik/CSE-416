@@ -26,5 +26,6 @@ export interface FileMetadata {
   Reputation?: number;
   IsPublished?: boolean;
   Fee: number;
+  Downloaded: boolean; // true is user acquire file by downloading, false if user themselves uploaded file
   // Path: string;
 }

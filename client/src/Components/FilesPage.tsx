@@ -139,6 +139,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                   IsPublished: true, // Initially published
                   Fee: fees[file.name] || 0,
                   // Path: file.path,
+                  Downloaded: false,
                 };
                 
                 // Send the metadata to the server
@@ -197,9 +198,9 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   };
 
 // have to fix deleting file
-  const handleDeleteUploadedFile = async (hash: string) => {
+  const handleDeleteUploadedFile = async (hash: string, downloadedJSON: boolean) => {
     try {
-      const response = await fetch(`http://localhost:8081/files/delete?hash=${hash}`, {
+      const response = await fetch(`http://localhost:8081/files/delete?hash=${hash}&isDownloaded=${downloadedJSON}`, {
         method: "DELETE",
       });
 
@@ -476,7 +477,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                           <IconButton
                             edge="end"
                             aria-label="delete"
-                            onClick={() => handleDeleteUploadedFile(file.Hash)}
+                            onClick={() => handleDeleteUploadedFile(file.Hash, file.Downloaded)}
                           >
                             <DeleteIcon />
                           </IconButton>

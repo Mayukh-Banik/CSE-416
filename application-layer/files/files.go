@@ -16,14 +16,15 @@ import (
 )
 
 var (
-	dirPath  = filepath.Join("..", "utils")
-	filePath = filepath.Join(dirPath, "files.json")
+	dirPath            = filepath.Join("..", "utils")
+	uploadedFilePath   = filepath.Join(dirPath, "files.json")
+	downloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
 )
 
 // fetch all uploaded files from JSON file
 func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("tring to fetch user's uploaded files")
-	file, err := os.ReadFile(filePath)
+	file, err := os.ReadFile(uploadedFilePath)
 
 	if err != nil {
 		http.Error(w, "Failed to read file", http.StatusInternalServerError)
@@ -44,7 +45,7 @@ func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 // use for user uploaded files and user downlaoded files
-func saveOrUpdateFile(newFileData models.FileMetadata) (string, error) {
+func saveOrUpdateFile(newFileData models.FileMetadata, filePath string) (string, error) {
 	// check if directory and file exist
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {
@@ -116,7 +117,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	action, err := saveOrUpdateFile(requestBody)
+	action, err := saveOrUpdateFile(requestBody, uploadedFilePath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -231,7 +232,21 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	action, err := deleteFileFromJSON(hash)
+	isDownloaded := r.URL.Query().Get("isDownloaded")
+	if isDownloaded == "" {
+		http.Error(w, "json file not provided", http.StatusBadRequest)
+		return
+	}
+
+	var filePath string
+	if isDownloaded == "true" {
+		filePath = downloadedFilePath
+	} else {
+		filePath = uploadedFilePath
+	}
+
+	// update so it works for both uplaoded and downloaded files
+	action, err := deleteFileFromJSON(hash, filePath)
 	if err != nil {
 		http.Error(w, fmt.Sprint("failed to delete file from file", err), http.StatusInternalServerError)
 		return
@@ -250,7 +265,7 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 }
 
 // removeFileFromJSON removes the file entry with the given hash from the JSON file
-func deleteFileFromJSON(fileHash string) (string, error) {
+func deleteFileFromJSON(fileHash string, filePath string) (string, error) {
 	// Read the JSON file
 	data, err := os.ReadFile(filePath)
 	if err != nil {
