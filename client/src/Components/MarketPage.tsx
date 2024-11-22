@@ -38,7 +38,7 @@ const MarketplacePage: React.FC = () => {
   
   
   const handleDownloadRequest = async (file: FileMetadata) => {
-    setSelectedFile(file);
+    await getFileByHash(file.Hash)
     setOpen(true); // Open the modal for provider selection
   };
 
@@ -79,7 +79,7 @@ const MarketplacePage: React.FC = () => {
   };
 
   const handleRefresh = async () => {
-    resetStates()
+    await resetStates()
     console.log("Trying to refresh marketplace");
   
     try {
@@ -105,17 +105,7 @@ const MarketplacePage: React.FC = () => {
   };
   
 
-  // const handleDownloadByHash = async () => {
-  //   console.log("HI");
-  //   const hash = prompt("Enter the file hash");
-  //   console.log('you entered:', hash)
-  //   if (hash == null || hash.length==0) return;
-  //   setFileHash(hash);
-  //   getFileByHash(hash);
-  //   setOpen(true);
-  // }
 
-  
   // only works for complete file hashes
   const handleSearchRequest = async (searchTerm: string) => {
     await resetStates();
@@ -164,10 +154,6 @@ const MarketplacePage: React.FC = () => {
   };
 
 
-  // const handleDownload = (fileHash:string) => {
-  //   getFile(fileHash);
-  // };
-
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
   };
@@ -206,9 +192,6 @@ const MarketplacePage: React.FC = () => {
         >
         Refresh
       </Button>
-      {/* <Button variant="contained" onClick={() => handleDownloadByHash()}>
-        Download by Hash
-      </Button> */}
 
       <TextField
         label="Search Files"
