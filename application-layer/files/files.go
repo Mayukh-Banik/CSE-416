@@ -5,6 +5,7 @@ import (
 	"application-layer/models"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -17,14 +18,15 @@ import (
 
 var (
 	dirPath            = filepath.Join("..", "utils")
-	uploadedFilePath   = filepath.Join(dirPath, "files.json")
-	downloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
+	UploadedFilePath   = filepath.Join(dirPath, "files.json")
+	DownloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
+	FileMapMutex       sync.Mutex
 )
 
 // fetch all uploaded files from JSON file
 func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("tring to fetch user's uploaded files")
-	file, err := os.ReadFile(uploadedFilePath)
+	file, err := os.ReadFile(UploadedFilePath)
 
 	if err != nil {
 		http.Error(w, "Failed to read file", http.StatusInternalServerError)
@@ -117,14 +119,14 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	action, err := saveOrUpdateFile(requestBody, uploadedFilePath)
+	action, err := saveOrUpdateFile(requestBody, UploadedFilePath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if action == "added" {
-		publishFile(requestBody)
+		PublishFile(requestBody)
 		// fmt.Printf("new file %v | path: %v\n", requestBody.Hash, requestBody.Path)
 
 		curDirectory, err := os.Getwd()
@@ -134,7 +136,9 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		newPath := filepath.Join(curDirectory, "../squidcoinFiles", requestBody.Name)
+		FileMapMutex.Lock()
 		dht_kad.FileHashToPath[requestBody.Hash] = newPath
+		FileMapMutex.Unlock()
 		// ///dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
 
 	}
@@ -145,46 +149,60 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(responseMsg)
 }
 
-func publishFile(requestBody models.FileMetadata) {
+func PublishFile(requestBody models.FileMetadata) {
 	fmt.Println("publishing new file")
 
-	// only one provider (uploader) for now bc it was just uploaded
-	provider := []models.Provider{
-		{
-			PeerID:   dht_kad.PeerID,
-			PeerAddr: dht_kad.DHT.Host().Addrs()[0].String(),
-			IsActive: true,
-			Fee:      requestBody.Fee,
-		},
+	// Retrieve the current metadata for the file, if it exists
+	var currentMetadata models.DHTMetadata
+	existingData, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+requestBody.Hash)
+	if err == nil { // If data exists, unmarshal it
+		err = json.Unmarshal(existingData, &currentMetadata)
+		if err != nil {
+			log.Fatal("Failed to unmarshal existing DHTMetadata:", err)
+		}
+	} else {
+		// If no existing metadata, initialize a new DHTMetadata
+		currentMetadata = models.DHTMetadata{
+			Name:        requestBody.Name,
+			Type:        requestBody.Type,
+			Size:        requestBody.Size,
+			Description: requestBody.Description,
+			CreatedAt:   requestBody.CreatedAt,
+			Reputation:  requestBody.Reputation,
+		}
 	}
 
-	dhtMetadata := models.DHTMetadata{
-		Name:        requestBody.Name,
-		Type:        requestBody.Type,
-		Size:        requestBody.Size,
-		Description: requestBody.Description,
-		CreatedAt:   requestBody.CreatedAt,
-		Reputation:  requestBody.Reputation,
-		Providers:   provider,
+	// Add the new provider to the list of current providers
+	provider := models.Provider{
+		PeerID:   dht_kad.PeerID,
+		PeerAddr: dht_kad.DHT.Host().Addrs()[0].String(),
+		IsActive: true,
+		Fee:      requestBody.Fee,
 	}
 
-	dhtMetadataBytes, err := json.Marshal(dhtMetadata)
+	currentMetadata.Providers = append(currentMetadata.Providers, provider)
+
+	// Marshal the updated metadata
+	dhtMetadataBytes, err := json.Marshal(currentMetadata)
 	if err != nil {
-		log.Fatal("Failed to marshal DHTMetadata:", err)
+		log.Fatal("Failed to marshal updated DHTMetadata:", err)
 	}
 
+	// Store the updated metadata in the DHT
 	err = dht_kad.DHT.PutValue(dht_kad.GlobalCtx, "/orcanet/"+requestBody.Hash, dhtMetadataBytes)
 	if err != nil {
-		log.Fatal("failed to register file to dht")
+		log.Fatal("failed to register updated file to dht")
 	}
-	fmt.Println("successfully registered file to dht", requestBody.Hash)
+	fmt.Println("successfully updated file to dht with new provider", requestBody.Hash)
 
 	// Begin providing ourselves as a provider for that file
 	dht_kad.ProvideKey(dht_kad.GlobalCtx, dht_kad.DHT, requestBody.Hash)
 }
 
+// bug
 func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
 	// Get file hash from the query parameters (instead of the body)
+	fmt.Println("getting file by hash")
 	fileHash := r.URL.Query().Get("val")
 	fmt.Println("filehash:", fileHash)
 
@@ -192,6 +210,7 @@ func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "File hash not provided", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("before getting file data from dht:")
 
 	// Retrieve the file data from the DHT using the file hash
 	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash)
@@ -199,6 +218,7 @@ func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error retrieving file data: %v", err), http.StatusInternalServerError)
 		return
 	}
+	fmt.Println("file data from dht:", data)
 
 	// Create an instance of FileMetadata to hold the decoded data
 	var metadata models.DHTMetadata
@@ -240,9 +260,9 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 
 	var filePath string
 	if isDownloaded == "true" {
-		filePath = downloadedFilePath
+		filePath = DownloadedFilePath
 	} else {
-		filePath = uploadedFilePath
+		filePath = UploadedFilePath
 	}
 
 	// update so it works for both uplaoded and downloaded files
@@ -252,7 +272,9 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	FileMapMutex.Lock()
 	delete(dht_kad.FileHashToPath, hash) // delete from map of file hash to file path
+	FileMapMutex.Unlock()
 
 	response := map[string]string{
 		"status":  action,
@@ -305,6 +327,7 @@ func deleteFileFromJSON(fileHash string, filePath string) (string, error) {
 	return "deleted", nil
 }
 
+// functions below are used in marketplace to get all dht files
 func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Trying to get adjacent node files in backend")
 	dht_kad.RefreshResponse = dht_kad.RefreshResponse[:0]
@@ -384,4 +407,38 @@ func nodeSupportRefreshStreams(peerID peer.ID) bool {
 		}
 	}
 	return supportSendRefreshRequest && supportSendRefreshResponse
+}
+
+// republish files in the dht incase the TTL expired - called upon successful login
+func republishFiles(filePath string) {
+	// Open the JSON file
+	file, err := os.Open(filePath) // Replace "files.json" with your file name
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("No files to republish, node has not uploaded any files.")
+			return
+		}
+		log.Fatalf("Failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	// Read file content
+	byteValue, err := io.ReadAll(file)
+	if err != nil {
+		log.Fatalf("Failed to read file: %v", err)
+	}
+
+	// Parse JSON into structs
+	var files []models.FileMetadata
+	err = json.Unmarshal(byteValue, &files)
+	if err != nil {
+		log.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	// Print parsed structs
+	for _, file := range files {
+		fmt.Printf("Republishing File: %+v\n", file)
+		PublishFile(file)
+	}
+
 }

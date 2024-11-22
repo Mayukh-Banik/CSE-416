@@ -301,51 +301,28 @@ func refreshReservation(node host.Host, interval time.Duration) {
 }
 
 func getNodeId() {
-	fmt.Print("Enter SBU ID: ")
-	var id string
-	reader := bufio.NewReader(os.Stdin)
-	id, _ = reader.ReadString('\n')
-	id = strings.TrimSpace(id)
+	for {
+		fmt.Print("Enter SBU ID: ")
+		reader := bufio.NewReader(os.Stdin)
+		id, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error reading input:", err)
+			continue // Retry on error
+		}
 
-	Node_id = id
+		id = strings.TrimSpace(id)
+		if id == "" {
+			fmt.Println("SBU ID cannot be empty. Please try again.")
+			continue // Retry on empty input
+		}
 
-	fmt.Println("Your SBUID is:", Node_id)
-}
-
-func StartDHTService() {
-	getNodeId()
-	node, dht, err := createNode()
-	PeerID = node.ID().String()
-	if err != nil {
-		log.Fatalf("Failed to create node: %s", err)
+		Node_id = id
+		fmt.Println("Your SBUID is:", Node_id)
+		break // Exit the loop on valid input
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	GlobalCtx = ctx
-
-	DHT = setupDHT(ctx, dht.Host())
-	ProviderStore = DHT.ProviderStore()
-	ConnectToPeer(node, Relay_node_addr) // connect to relay node
-	makeReservation(node)                // make reservation on relay node
-	go refreshReservation(node, 10*time.Minute)
-	ConnectToPeer(node, Bootstrap_node_addr) // connect to bootstrap node
-	go handlePeerExchange(node)
-
-	ReceiveDataFromPeer(node) //listen on stream /senddata/p2p
-	setupStreams(node)
-
-	fmt.Println("My Node MULTIADDRESS:", node.Addrs())
-	fmt.Println("MY NODE PEER ID:", PeerID)
-	fmt.Println("Supported protocols:", node.Mux().Protocols())
-
-	go handleInput(ctx, dht)
-	Host = node
-	// block until a signal is received
-	select {}
 }
 
-// extra wip
+// extra wip - prob not neeeded
 func handleStream(stream network.Stream) {
 	fmt.Println("Received a stream request!")
 

@@ -106,82 +106,96 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     if (selectedFiles.length === 0) return;
     setLoading(true);
     try {
-        // Create uploaded file objects with descriptions, hashes, and metadata
-        const newUploadedFiles = await Promise.all(
-            selectedFiles.map(async (file) => {
-                // const fileData = await file.arrayBuffer(); // Read file as ArrayBuffer
-                // const base64FileData = btoa(String.fromCharCode(...new Uint8Array(fileData))); // Convert to Base64
-                // setPublishDialogOpen(true);
-                console.log("start of loop");
+      // Process files and upload metadata
+      const uploadResults = await Promise.allSettled(
+          selectedFiles.map(async (file) => {
+              try {
+                console.log("Processing file:", file.name);
+
+                // Read file data
                 const arrayBuffer = await file.arrayBuffer();
-                const fileData = new String(arrayBuffer);
-                console.log("after reading file data");
-                console.log("Filename is ", file.name, "fileData is ", fileData);
+                const fileData = Buffer.from(arrayBuffer); // Convert to Buffer for backend
+                console.log("File read successfully:", file.name);
+
+                // Save file locally using Electron API
                 const saveResponse = await window.electron.saveFile({
-                  fileName: file.name,
-                  fileData: Buffer.from(arrayBuffer),
-              });
-                
-                console.log("Before saveresponse");
-                if(!saveResponse.success)
-                {
-                  console.log("save error error error");
+                    fileName: file.name,
+                    fileData,
+                });
+
+                if (!saveResponse.success) {
+                    throw new Error(`Failed to save file: ${file.name}`);
                 }
-                console.log("after save error response");
-                let metadata:FileMetadata = {
-                  // ID: `${file.name}-${file.size}-${Date.now()}`, // Unique ID for the uploaded file
-                  Name: file.name,
-                  Type: file.type,
-                  Size: file.size,
-                  // file_data: base64FileData, // Encode file data as Base64 if required
-                  Description: descriptions[file.name] || "",
-                  Hash: fileHashes[file.name], // not needed - computed on backend
-                  IsPublished: true, // Initially published
-                  Fee: fees[file.name] || 0,
-                  // Path: file.path,
-                  Downloaded: false,
+                console.log("File saved locally:", file.name);
+
+                // Create metadata object
+                const metadata: FileMetadata = {
+                    Name: names[file.name] || file.name,
+                    Type: file.type,
+                    Size: file.size,
+                    Description: descriptions[file.name] || "",
+                    Hash: fileHashes[file.name],
+                    IsPublished: true,
+                    Fee: fees[file.name] || 0,
+                    Downloaded: false,
                 };
-                
-                // Send the metadata to the server
+
+                // Send metadata to the backend
                 const response = await fetch("http://localhost:8081/files/upload", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(metadata),
                 });
-                console.log("body is ",JSON.stringify(metadata));
+
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(`Failed to upload metadata for: ${file.name}`);
                 }
 
-                const data = await response.text();
-                console.log("File upload successful:", data, metadata);
-                
-                return metadata;
-            })
-        );
+                console.log("File metadata uploaded:", file.name);
+                return metadata; // Return metadata for successful uploads
+              } catch (error) {
+                console.error("Error processing file:", file.name, error);
+                throw error; // Allow Promise.allSettled to catch the error
+              }
+          })
+      );
 
-        // Update uploadedFiles state
-        setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+      // Handle successful and failed uploads
+      const successfulUploads = uploadResults
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => (result as PromiseFulfilledResult<FileMetadata>).value);
 
-        // Clear selected files, descriptions, and hashes after successful upload
-        setSelectedFiles([]);
-        setDescriptions({});
-        setFees({});
-        setFileHashes({});
+      const failedUploads = uploadResults
+        .filter((result) => result.status === "rejected")
+        .map((result) => (result as PromiseRejectedResult).reason);
 
-        // Show success notification
+      if (successfulUploads.length > 0) {
+        // Update uploaded files state
+        setUploadedFiles((prev) => [...prev, ...successfulUploads]);
         setNotification({ open: true, message: "Files uploaded successfully!", severity: "success" });
-    } catch (error) {
-        console.error("Error uploading files:", error);
+      }
 
-        // Show error notification
+      if (failedUploads.length > 0) {
+        console.warn("Some files failed to upload:", failedUploads);
+        setNotification({
+          open: true,
+          message: `${failedUploads.length} file(s) failed to upload.`,
+          severity: "error",
+        });
+      }
+
+      // Clear form data for selected files
+      setSelectedFiles([]);
+      setDescriptions({});
+      setFees({});
+      setFileHashes({});
+    } catch (error) {
+        console.error("Error during file upload:", error);
         setNotification({ open: true, message: "Failed to upload files.", severity: "error" });
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-};
+  };
 
   const handleDescriptionChange = (fileId: string, description: string) => {
     if (!loading) {

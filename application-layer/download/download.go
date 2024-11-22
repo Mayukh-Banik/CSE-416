@@ -57,6 +57,7 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "request sent"})
 }
 
+// prob gonna delete
 func handleGetPendingRequests(w http.ResponseWriter, r *http.Request) {
 	dht_kad.Mutex.Lock()
 	defer dht_kad.Mutex.Unlock()
@@ -78,6 +79,6 @@ func handleGetPendingRequests(w http.ResponseWriter, r *http.Request) {
 
 // additional downloading stuff
 
-func updateDownloadJSON (metadata models.FileMetadata) {
-	
+func updateDownloadJSON(metadata models.FileMetadata) {
+	panic("unimplemented")
 }
