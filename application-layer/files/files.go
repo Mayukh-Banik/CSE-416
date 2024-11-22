@@ -21,7 +21,6 @@ var (
 	dirPath            = filepath.Join("..", "utils")
 	UploadedFilePath   = filepath.Join(dirPath, "files.json")
 	DownloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
-	fileMapMutex       = &sync.Mutex{}
 )
 
 // fetch all uploaded files from JSON file
@@ -76,9 +75,9 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		newPath := filepath.Join(curDirectory, "../squidcoinFiles", requestBody.Name)
-		fileMapMutex.Lock()
+		dht_kad.FileMapMutex.Lock()
 		dht_kad.FileHashToPath[requestBody.Hash] = newPath
-		fileMapMutex.Unlock()
+		dht_kad.FileMapMutex.Unlock()
 		// ///dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
 
 	}
@@ -212,9 +211,9 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileMapMutex.Lock()
+	dht_kad.FileMapMutex.Lock()
 	delete(dht_kad.FileHashToPath, hash) // delete from map of file hash to file path
-	fileMapMutex.Unlock()
+	dht_kad.FileMapMutex.Unlock()
 
 	response := map[string]string{
 		"status":  action,

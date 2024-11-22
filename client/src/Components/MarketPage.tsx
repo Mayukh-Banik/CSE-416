@@ -43,6 +43,7 @@ const MarketplacePage: React.FC = () => {
   };
 
   const handleProviderSelect = async (provider: string) => {
+    console.log("requesting file from provider: ", provider)
     setLoadingRequest(true)
     try {
       let request: Transaction = {
@@ -129,6 +130,7 @@ const MarketplacePage: React.FC = () => {
   }
 
   const getFileByHash = async (hash: string) => {
+    resetStates()
     setLoadingSearch(true)
     try {
         const encodedHash = encodeURIComponent(hash);  // Ensure hash is URL-safe

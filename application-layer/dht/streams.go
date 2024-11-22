@@ -23,6 +23,7 @@ var (
 	PendingRequests = make(map[string]models.Transaction) // all requests made by host node
 	FileHashToPath  = make(map[string]string)             // file paths of files uploaded by host node
 	Mutex           = &sync.Mutex{}
+	FileMapMutex    = &sync.Mutex{}
 	dir             = filepath.Join("..", "squidcoinFiles")
 	RefreshResponse []models.FileMetadata
 
@@ -338,7 +339,7 @@ func receiveDecline(node host.Host) {
 	})
 }
 
-func receieveFile(node host.Host) {
+func receiveFile(node host.Host) {
 	fmt.Println("listening for file data")
 	// listen for streams on "/sendFile/p2p"
 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream) {
@@ -396,9 +397,9 @@ func receieveFile(node host.Host) {
 		filePath := filepath.Join("..", "utils", "files.json")
 		utils.SaveOrUpdateFile(metadata, dirPath, DownloadedFilePath)
 
-		Mutex.Lock()
+		FileMapMutex.Lock()
 		FileHashToPath[metadata.Hash] = filePath // add file and its path to the map
-		Mutex.Unlock()
+		FileMapMutex.Unlock()
 
 		ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
 	})
@@ -453,6 +454,7 @@ func receiveRefreshResponse(node host.Host) {
 		// Parse the accumulated JSON data
 		var fileData []models.FileMetadata
 		err := json.Unmarshal(receivedData.Bytes(), &fileData)
+		fmt.Println("file data received from refresh", fileData)
 		if err != nil {
 			log.Fatalf("Error unmarshaling received data: %v", err)
 		}
@@ -472,7 +474,7 @@ func receiveRefreshResponse(node host.Host) {
 func setupStreams(node host.Host) {
 	receieveDownloadRequest(node)
 	receiveDecline(node)
-	receieveFile(node)
+	receiveFile(node)
 	receiveRefreshRequest(node)
 	receiveRefreshResponse(node)
 }
