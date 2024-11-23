@@ -130,7 +130,7 @@ const MarketplacePage: React.FC = () => {
   }
 
   const getFileByHash = async (hash: string) => {
-    resetStates()
+    // resetStates()
     setLoadingSearch(true)
     try {
         const encodedHash = encodeURIComponent(hash);  // Ensure hash is URL-safe

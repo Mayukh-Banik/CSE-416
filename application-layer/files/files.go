@@ -21,12 +21,23 @@ var (
 	dirPath            = filepath.Join("..", "utils")
 	UploadedFilePath   = filepath.Join(dirPath, "files.json")
 	DownloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
+	fileCopyPath       = filepath.Join("..", "squidcoinFiles")
+	republished        = false
 )
 
 // fetch all uploaded files from JSON file
-func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("tring to fetch user's uploaded files")
-	file, err := os.ReadFile(UploadedFilePath)
+func getFiles(w http.ResponseWriter, r *http.Request) {
+	fileType := r.URL.Query().Get("file")
+	fmt.Printf("trying to fetch user's %s files \n", fileType)
+
+	var filePath string
+	if fileType == "uploaded" {
+		filePath = UploadedFilePath
+	} else {
+		filePath = DownloadedFilePath
+	}
+
+	file, err := os.ReadFile(filePath)
 
 	if err != nil {
 		http.Error(w, "Failed to read file", http.StatusInternalServerError)
@@ -39,9 +50,14 @@ func getUploadedFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// refresh TTL of files in dht
-	republishFiles(UploadedFilePath)
-	republishFiles(DownloadedFilePath)
+	if !republished {
+		if fileType == "uploaded" {
+			republishFiles(UploadedFilePath)
+		} else {
+			republishFiles(DownloadedFilePath)
+		}
+		republished = true
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(files); err != nil {
@@ -73,15 +89,8 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		PublishFile(requestBody)
 		// fmt.Printf("new file %v | path: %v\n", requestBody.Hash, requestBody.Path)
 
-		curDirectory, err := os.Getwd()
-		if err != nil {
-			fmt.Printf("Error getting cur directory %v\n", err)
-			return
-		}
-
-		newPath := filepath.Join(curDirectory, "../squidcoinFiles", requestBody.Name)
 		dht_kad.FileMapMutex.Lock()
-		dht_kad.FileHashToPath[requestBody.Hash] = newPath
+		dht_kad.FileHashToPath[requestBody.Hash] = filepath.Join(fileCopyPath, requestBody.Name)
 		dht_kad.FileMapMutex.Unlock()
 		// ///dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
 
@@ -196,29 +205,35 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isDownloaded := r.URL.Query().Get("isDownloaded")
-	if isDownloaded == "" {
-		http.Error(w, "json file not provided", http.StatusBadRequest)
+	originalUploader := r.URL.Query().Get("originalUploader")
+	if originalUploader == "" {
+		http.Error(w, "did not specify is user uplaoded the file or downloaded it", http.StatusBadRequest)
 		return
 	}
 
 	var filePath string
-	if isDownloaded == "true" {
+	if originalUploader == "true" {
 		filePath = DownloadedFilePath
 	} else {
 		filePath = UploadedFilePath
 	}
 
-	// update so it works for both uplaoded and downloaded files
-	action, err := deleteFileFromJSON(hash, filePath)
+	err := deleteFileContent(hash)
 	if err != nil {
-		http.Error(w, fmt.Sprint("failed to delete file from file", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprint("failed to delete file from squidcoinFiles", err), http.StatusInternalServerError)
 		return
 	}
 
 	dht_kad.FileMapMutex.Lock()
 	delete(dht_kad.FileHashToPath, hash) // delete from map of file hash to file path
 	dht_kad.FileMapMutex.Unlock()
+
+	// update so it works for both uploaded and downloaded files
+	action, err := deleteFileFromJSON(hash, filePath)
+	if err != nil { // will still show up but will not be able to provide
+		http.Error(w, fmt.Sprint("failed to delete file json file", err), http.StatusInternalServerError)
+		return
+	}
 
 	response := map[string]string{
 		"status":  action,
@@ -269,6 +284,22 @@ func deleteFileFromJSON(fileHash string, filePath string) (string, error) {
 	}
 
 	return "deleted", nil
+}
+
+// currently using file name but user can download files of the same name
+// from different providers so we have to switch to file hash
+func deleteFileContent(hash string) error {
+	filePath := filepath.Join(fileCopyPath, hash)
+
+	// Attempt to delete the file
+	err := os.Remove(filePath)
+	if err != nil {
+		fmt.Printf("Failed to delete file: %v\n", err)
+		return err
+	}
+
+	fmt.Println("File deleted successfully")
+	return nil
 }
 
 // functions below are used in marketplace to get all dht files

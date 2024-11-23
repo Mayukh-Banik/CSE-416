@@ -394,11 +394,10 @@ func receiveFile(node host.Host) {
 		}
 
 		// after successfully downloading file, the user is now a provider of the file
-		filePath := filepath.Join("..", "utils", "files.json")
 		utils.SaveOrUpdateFile(metadata, dirPath, DownloadedFilePath)
 
 		FileMapMutex.Lock()
-		FileHashToPath[metadata.Hash] = filePath // add file and its path to the map
+		FileHashToPath[metadata.Hash] = DownloadedFilePath // add file and its path to the map
 		FileMapMutex.Unlock()
 
 		ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider

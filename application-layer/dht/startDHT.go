@@ -23,7 +23,7 @@ func StartDHTService() {
 	ProviderStore = DHT.ProviderStore()
 	ConnectToPeer(node, Relay_node_addr) // connect to relay node
 	makeReservation(node)                // make reservation on relay node
-	go refreshReservation(node, 10*time.Minute)
+	go refreshReservation(node, 5*time.Minute)
 	ConnectToPeer(node, Bootstrap_node_addr) // connect to bootstrap node
 	go handlePeerExchange(node)
 

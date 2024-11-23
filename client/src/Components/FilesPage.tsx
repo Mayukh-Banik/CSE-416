@@ -60,7 +60,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({}); // Track descriptions
   const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({}); // Track hashes
-  // const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([]);
+  const [downloadedFiles, setDownloadedFiles] = useState<FileMetadata[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
   const [currentFileHash, setCurrentFileHash] = useState<string | null>(null); // Track the file being published
@@ -69,12 +69,13 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const theme = useTheme();
   const [loading, setLoading] = useState(false); // Loading state for file upload
 
+  // initial fetch of uploaded data
   useEffect(() => {
     if (!initialFetch) {
       const fetchFiles = async () => {
         try {
           console.log("Getting local user's uploaded files");
-          const response = await fetch("http://localhost:8081/files/fetchAll");
+          const response = await fetch("http://localhost:8081/files/fetch?file=uploaded");
           if (!response.ok) throw new Error("Failed to load file data");
   
           const data = await response.json();
@@ -91,6 +92,24 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     }
   }, [initialFetch, setUploadedFiles, setInitialFetch]);
   
+  // called every time page loads to refresh downloaded files
+  useEffect(()=> {
+    const fetchDownloadedFiles = async () => {
+      try {
+        console.log("Getting local user's downloaded files");
+        const response = await fetch("http://localhost:8081/files/fetch?files=downloaded");
+        if (!response.ok) throw new Error("Failed to load file data");
+
+        const data = await response.json();
+        console.log("Fetched data", data);
+
+        setDownloadedFiles(data); // Set the state with the loaded data
+      } catch (error) {
+        console.error("Error fetching files:", error);
+      }
+    }; 
+    fetchDownloadedFiles();
+  }, [])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -137,7 +156,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                     Hash: fileHashes[file.name],
                     IsPublished: true,
                     Fee: fees[file.name] || 0,
-                    Downloaded: false,
+                    OriginalUploader: true,
                 };
 
                 // Send metadata to the backend
@@ -212,9 +231,9 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   };
 
 // have to fix deleting file
-  const handleDeleteUploadedFile = async (hash: string, downloadedJSON: boolean) => {
+  const handleDeleteUploadedFile = async (hash: string, originalUploader: boolean) => {
     try {
-      const response = await fetch(`http://localhost:8081/files/delete?hash=${hash}&isDownloaded=${downloadedJSON}`, {
+      const response = await fetch(`http://localhost:8081/files/delete?hash=${hash}&originalUploader=${originalUploader}`, {
         method: "DELETE",
       });
 
@@ -289,14 +308,22 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                   : currentFile
               )
             );
-            setNotification({ open: true, message: "File published successfully!", severity: "success" });
+
+            let message;
+            if (updatedMetadata.IsPublished) {
+              message = "File published successfully!"
+            } else {
+              message = "File unpublished successfully!"
+            }
+
+            setNotification({ open: true, message: message, severity: "success" });
 
             const data = await response.text();
             console.log("Publish response: ", data);
         } else {
             const errorData = await response.text();
             console.error("Publish response error:", errorData);
-            setNotification({ open: true, message: "Failed to publish file", severity: "error" });
+            setNotification({ open: true, message: "Failed to change publish status", severity: "error" });
         }
     } catch (error) {
         console.error("Error publishing file:", error);
@@ -491,7 +518,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                           <IconButton
                             edge="end"
                             aria-label="delete"
-                            onClick={() => handleDeleteUploadedFile(file.Hash, file.Downloaded)}
+                            onClick={() => handleDeleteUploadedFile(file.Hash, file.OriginalUploader)}
                           >
                             <DeleteIcon />
                           </IconButton>
