@@ -12,6 +12,7 @@ type FileMetadata struct {
 	CreatedAt        string `json:"CreatedAt"`
 	Reputation       int64  `json:"Reputation"`
 	OriginalUploader bool   `json:"OriginalUploader"`
+	Extension        string `json:"Extension"`
 }
 
 type DHTMetadata struct {

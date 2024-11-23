@@ -81,6 +81,7 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// add new file or update existing file
 func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -93,18 +94,24 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	action, err := utils.SaveOrUpdateFile(requestBody, dirPath, UploadedFilePath)
+	var filePath string
+	fmt.Println("original uploader: ", requestBody.OriginalUploader)
+	if requestBody.OriginalUploader {
+		fmt.Println("updating uploaded file path")
+		filePath = UploadedFilePath
+	} else {
+		fmt.Println("updating downloaded file path")
+		filePath = DownloadedFilePath
+	}
+	fmt.Println("filePath: ", filePath)
+	action, err := utils.SaveOrUpdateFile(requestBody, dirPath, filePath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if action == "added" {
-		PublishFile(requestBody)
-		// fmt.Printf("new file %v | path: %v\n", requestBody.Hash, requestBody.Path)
-		// ///dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
-
-	}
+	// update publishing info - reflects if user is currently providing or not
+	PublishFile(requestBody)
 
 	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Name)
 	w.WriteHeader(http.StatusOK)
@@ -139,7 +146,7 @@ func PublishFile(requestBody models.FileMetadata) {
 	provider := models.Provider{
 		PeerID:   dht_kad.PeerID,
 		PeerAddr: dht_kad.DHT.Host().Addrs()[0].String(),
-		IsActive: true,
+		IsActive: requestBody.IsPublished,
 		Fee:      requestBody.Fee,
 	}
 
@@ -170,6 +177,7 @@ func PublishFile(requestBody models.FileMetadata) {
 	newPath := filepath.Join(currentDir, "../squidcoinFiles", requestBody.Name)
 	dht_kad.FileMapMutex.Lock()
 	dht_kad.FileHashToPath[requestBody.Hash] = newPath
+	fmt.Println("fileHashToPath: ", dht_kad.FileHashToPath)
 	dht_kad.FileMapMutex.Unlock()
 }
 
@@ -231,15 +239,24 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "did not specify is user uplaoded the file or downloaded it", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("user is original uploader?", originalUploader)
+
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		http.Error(w, "file name not provided", http.StatusBadRequest)
+		return
+	}
+	fmt.Println("trying to delete file", name)
 
 	var filePath string
 	if originalUploader == "true" {
-		filePath = DownloadedFilePath
-	} else {
 		filePath = UploadedFilePath
+	} else {
+		filePath = DownloadedFilePath
 	}
 
-	err := deleteFileContent(hash)
+	// VERY BUGGY
+	err := deleteFileContent(name)
 	if err != nil {
 		http.Error(w, fmt.Sprint("failed to delete file from squidcoinFiles", err), http.StatusInternalServerError)
 		return
@@ -269,6 +286,7 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 // removeFileFromJSON removes the file entry with the given hash from the JSON file
 func deleteFileFromJSON(fileHash string, filePath string) (string, error) {
 	// Read the JSON file
+	fmt.Println("deleting file from JSON:", filePath)
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read files.json: %v", err)
