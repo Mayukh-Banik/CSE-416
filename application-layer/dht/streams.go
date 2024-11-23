@@ -397,7 +397,8 @@ func receiveFile(node host.Host) {
 		utils.SaveOrUpdateFile(metadata, dirPath, DownloadedFilePath)
 
 		FileMapMutex.Lock()
-		FileHashToPath[metadata.Hash] = DownloadedFilePath // add file and its path to the map
+
+		FileHashToPath[metadata.Hash] = filepath.Join(dir, metadata.Name) // add file and its path to the map
 		FileMapMutex.Unlock()
 
 		ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider

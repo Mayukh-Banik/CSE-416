@@ -75,8 +75,11 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       const fetchFiles = async () => {
         try {
           console.log("Getting local user's uploaded files");
-          const response = await fetch("http://localhost:8081/files/fetch?file=uploaded");
-          if (!response.ok) throw new Error("Failed to load file data");
+          let fileType = "uploaded"
+          const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
+            method: "GET",
+          });
+          if (!response.ok) throw new Error("Failed to load uploaded file data");
   
           const data = await response.json();
           console.log("Fetched data", data);
@@ -84,7 +87,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
           setUploadedFiles(data); // Set the state with the loaded data
           setInitialFetch(true); // Set initialFetch to true to prevent further calls
         } catch (error) {
-          console.error("Error fetching files:", error);
+          console.error("Error fetching uploaded files:", error);
         }
       };
   
@@ -97,15 +100,18 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     const fetchDownloadedFiles = async () => {
       try {
         console.log("Getting local user's downloaded files");
-        const response = await fetch("http://localhost:8081/files/fetch?files=downloaded");
-        if (!response.ok) throw new Error("Failed to load file data");
+        let fileType = "downloaded"
+        const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
+          method: "GET",
+        });
+        if (!response.ok) throw new Error("Failed to load downloaded file data");
 
         const data = await response.json();
         console.log("Fetched data", data);
 
         setDownloadedFiles(data); // Set the state with the loaded data
       } catch (error) {
-        console.error("Error fetching files:", error);
+        console.error("Error fetching downloaded files:", error);
       }
     }; 
     fetchDownloadedFiles();

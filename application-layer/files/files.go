@@ -5,6 +5,7 @@ import (
 	"application-layer/models"
 	"application-layer/utils"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -21,25 +22,34 @@ var (
 	dirPath            = filepath.Join("..", "utils")
 	UploadedFilePath   = filepath.Join(dirPath, "files.json")
 	DownloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
-	fileCopyPath       = filepath.Join("..", "squidcoinFiles")
+	FileCopyPath       = filepath.Join("..", "squidcoinFiles")
+	republishMutex     sync.Mutex
 	republished        = false
 )
 
 // fetch all uploaded files from JSON file
 func getFiles(w http.ResponseWriter, r *http.Request) {
 	fileType := r.URL.Query().Get("file")
-	fmt.Printf("trying to fetch user's %s files \n", fileType)
+	fmt.Printf("trying to fetch user's %v files \n", fileType)
 
 	var filePath string
 	if fileType == "uploaded" {
+		fmt.Println("getting uploaded files")
 		filePath = UploadedFilePath
 	} else {
+		fmt.Println("getting downloaded files")
 		filePath = DownloadedFilePath
 	}
 
 	file, err := os.ReadFile(filePath)
 
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Printf("No %s files found for user\n", fileType)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode([]models.FileMetadata{}) // Return empty array
+			return
+		}
 		http.Error(w, "Failed to read file", http.StatusInternalServerError)
 		return
 	}
@@ -50,6 +60,9 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	republishMutex.Lock()
+	defer republishMutex.Unlock()
+	fmt.Println("republished bool: ", republished)
 	if !republished {
 		if fileType == "uploaded" {
 			republishFiles(UploadedFilePath)
@@ -59,12 +72,13 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 		republished = true
 	}
 
+	fmt.Println("fileHashToPath:", dht_kad.FileHashToPath)
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(files); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
-
 }
 
 func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
@@ -88,10 +102,6 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	if action == "added" {
 		PublishFile(requestBody)
 		// fmt.Printf("new file %v | path: %v\n", requestBody.Hash, requestBody.Path)
-
-		dht_kad.FileMapMutex.Lock()
-		dht_kad.FileHashToPath[requestBody.Hash] = filepath.Join(fileCopyPath, requestBody.Name)
-		dht_kad.FileMapMutex.Unlock()
 		// ///dht_kad.FileHashToPath[requestBody.Hash] = requestBody.Path // fix getting file path
 
 	}
@@ -150,6 +160,17 @@ func PublishFile(requestBody models.FileMetadata) {
 
 	// Begin providing ourselves as a provider for that file
 	dht_kad.ProvideKey(dht_kad.GlobalCtx, dht_kad.DHT, requestBody.Hash)
+
+	currentDir, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("error getting currentDir %v\n", err)
+		return
+	}
+
+	newPath := filepath.Join(currentDir, "../squidcoinFiles", requestBody.Name)
+	dht_kad.FileMapMutex.Lock()
+	dht_kad.FileHashToPath[requestBody.Hash] = newPath
+	dht_kad.FileMapMutex.Unlock()
 }
 
 // bug
@@ -289,7 +310,7 @@ func deleteFileFromJSON(fileHash string, filePath string) (string, error) {
 // currently using file name but user can download files of the same name
 // from different providers so we have to switch to file hash
 func deleteFileContent(hash string) error {
-	filePath := filepath.Join(fileCopyPath, hash)
+	filePath := filepath.Join(FileCopyPath, hash)
 
 	// Attempt to delete the file
 	err := os.Remove(filePath)
@@ -386,6 +407,7 @@ func nodeSupportRefreshStreams(peerID peer.ID) bool {
 
 // republish files in the dht incase the TTL expired - called upon successful login
 func republishFiles(filePath string) {
+	fmt.Println("republishing files in ", filePath)
 	// Open the JSON file
 	file, err := os.Open(filePath) // Replace "files.json" with your file name
 	if err != nil {
