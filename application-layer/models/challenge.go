@@ -7,4 +7,3 @@ type Challenge struct {
     Challenge   string    `json:"challenge"`    // Random string to sign
     Expiry      time.Time `json:"expiry"`       // Expiry time for the challenge
 }
-

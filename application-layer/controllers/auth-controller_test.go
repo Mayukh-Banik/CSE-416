@@ -54,147 +54,100 @@ func TestHandleSignUp(t *testing.T) {
 	t.Logf("SignUp test passed. User: %+v, PrivateKey: %s", responseData.User, responseData.PrivateKey)
 }
 
+// TestHandleLoginRequest tests the generation of a login challenge for a given wallet address.
+func TestHandleLoginRequest(t *testing.T) {
+	// Step 1: Initialize services
+	walletService := wallet.NewWalletService("user", "password")
+	userService := wallet.NewUserService()
+	authController := NewAuthController(userService, walletService)
 
-// func TestHandleLogin(t *testing.T) {
-// 	// Step 1: Initialize WalletService with test private key, UserService, and AuthController
-// 	testPrivKey := generateTestKey()
-// 	walletService := wallet.NewWalletService("user", "password", testPrivKey)
-// 	// wallet.MockVerification = false // Disable mock verification
-// 	userService := wallet.NewUserService()
-// 	authController := NewAuthController(userService, walletService)
+	// Step 2: Create a test wallet address
+	address, _, _, _, err := walletService.GenerateNewAddressWithPubKeyAndPrivKey("CSE416")
+	if err != nil {
+		t.Fatalf("Failed to generate new address: %v", err)
+	}
 
-// 	// Step 2: Perform signup to create a test user
-// 	user, privKey, err := userService.SignUp(*walletService)
-// 	if err != nil {
-// 		t.Fatalf("Signup failed: %v", err)
-// 	}
+	// Step 3: Create the login request
+	loginRequest := map[string]string{
+		"address": address,
+	}
+	loginRequestBody, _ := json.Marshal(loginRequest)
 
-// 	// Step 3: Generate a challenge for the user
-// 	challengeRequest := map[string]string{
-// 		"address": user.Address,
-// 	}
-// 	challengeRequestBody, _ := json.Marshal(challengeRequest)
-// 	challengeReq := httptest.NewRequest(http.MethodPost, "/login/request", bytes.NewBuffer(challengeRequestBody))
-// 	challengeReq.Header.Set("Content-Type", "application/json")
-// 	challengeReqRecorder := httptest.NewRecorder()
+	// Step 4: Create an HTTP request to generate a challenge
+	req := httptest.NewRequest(http.MethodPost, "/login/request", bytes.NewBuffer(loginRequestBody))
+	req.Header.Set("Content-Type", "application/json")
+	respRecorder := httptest.NewRecorder()
 
-// 	authController.HandleLoginRequest(challengeReqRecorder, challengeReq)
+	// Step 5: Call HandleLoginRequest to generate the challenge
+	authController.HandleLoginRequest(respRecorder, req)
 
-// 	// Step 4: Decode the challenge response
-// 	challengeResp := challengeReqRecorder.Result()
-// 	defer challengeResp.Body.Close()
+	// Step 6: Decode the challenge response
+	resp := respRecorder.Result()
+	defer resp.Body.Close()
 
-// 	var challengeData map[string]string
-// 	if err := json.NewDecoder(challengeResp.Body).Decode(&challengeData); err != nil {
-// 		t.Fatalf("Failed to decode challenge response: %v", err)
-// 	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status OK, got %v", resp.Status)
+	}
 
-// 	challenge, exists := challengeData["challenge"]
-// 	if !exists {
-// 		t.Fatalf("Challenge not found in response")
-// 	}
+	var challengeData map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&challengeData); err != nil {
+		t.Fatalf("Failed to decode challenge response: %v", err)
+	}
 
-// 	// Step 5: Generate a valid signature for the challenge
-// 	signature, err := walletService.SignChallenge(challenge)
-// 	if err != nil {
-// 		t.Fatalf("Failed to sign challenge: %v", err)
-// 	}
+	if challengeData["challenge"] == "" {
+		t.Fatalf("Expected a challenge string, got empty string")
+	}
 
-// 	// Step 6: Create the login request with the valid signature
-// 	loginRequest := map[string]string{
-// 		"address":   user.Address,
-// 		"signature": signature,
-// 	}
-// 	loginRequestBody, _ := json.Marshal(loginRequest)
+	t.Logf("Challenge generated successfully for address %s: %s", address, challengeData["challenge"])
+}
 
-// 	loginReq := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(loginRequestBody))
-// 	loginReq.Header.Set("Content-Type", "application/json")
-// 	loginRespRecorder := httptest.NewRecorder()
+// TestHandleLogin tests the verification of a signed challenge.
+func TestHandleLogin(t *testing.T) {
+    // Step 1: Initialize services
+    walletService := wallet.NewWalletService("user", "password")
+    userService := wallet.NewUserService()
+    authController := NewAuthController(userService, walletService)
 
-// 	// Step 7: Call HandleLogin
-// 	authController.HandleLogin(loginRespRecorder, loginReq)
+    // Step 2: Create a test wallet address and generate a challenge
+    address, _, _, _, err := walletService.GenerateNewAddressWithPubKeyAndPrivKey("CSE416")
+    if err != nil {
+        t.Fatalf("Failed to generate new address with private key: %v", err)
+    }
 
-// 	// Step 8: Validate the response
-// 	loginResp := loginRespRecorder.Result()
-// 	defer loginResp.Body.Close()
+    // Step 3: Generate a challenge for the address
+    challenge, err := userService.GenerateChallenge(address)
+    if err != nil {
+        t.Fatalf("Failed to generate challenge: %v", err)
+    }
 
-// 	if loginResp.StatusCode != http.StatusOK {
-// 		t.Fatalf("Expected status OK, got %v", loginResp.Status)
-// 	}
+    // Step 4: Sign the challenge using btcctl (using the SignMessage function)
+    signature, err := walletService.SignMessage(address, challenge.Challenge, "CSE416")
+    if err != nil {
+        t.Fatalf("Failed to sign challenge: %v", err)
+    }
 
-// 	// Optionally, verify the response body
-// 	body := new(bytes.Buffer)
-// 	body.ReadFrom(loginResp.Body)
-// 	if body.String() != "Login successful" {
-// 		t.Fatalf("Unexpected login response: %s", body.String())
-// 	}
+    // Step 5: Create the login verification request
+    loginVerification := map[string]string{
+        "address":   address,
+        "signature": signature,
+    }
+    loginVerificationBody, _ := json.Marshal(loginVerification)
 
-// 	t.Logf("Login test passed for user: %s", user.UUID)
-// }
+    // Step 6: Create an HTTP request for login verification
+    req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(loginVerificationBody))
+    req.Header.Set("Content-Type", "application/json")
+    respRecorder := httptest.NewRecorder()
 
-// func TestHandleLogin(t *testing.T) {
-// 	// Step 1: Initialize WalletService, UserService, and AuthController
-// 	walletService := wallet.NewWalletService("user", "password")
-// 	wallet.MockVerification = true // Enable mock verification for testing
-// 	userService := wallet.NewUserService()
-// 	authController := NewAuthController(userService, walletService)
+    // Step 7: Call HandleLogin to verify the signed challenge
+    authController.HandleLogin(respRecorder, req)
 
-// 	// Step 2: Perform signup to create a test user
-// 	user, err := userService.SignUp(*walletService)
-// 	if err != nil {
-// 		t.Fatalf("Signup failed: %v", err)
-// 	}
+    // Step 8: Validate the response
+    resp := respRecorder.Result()
+    defer resp.Body.Close()
 
-// 	// Step 3: Generate a challenge for the user
-// 	challengeRequest := map[string]string{
-// 		"address": user.Address,
-// 	}
-// 	challengeRequestBody, _ := json.Marshal(challengeRequest)
-// 	challengeReq := httptest.NewRequest(http.MethodPost, "/login/request", bytes.NewBuffer(challengeRequestBody))
-// 	challengeReq.Header.Set("Content-Type", "application/json")
-// 	challengeReqRecorder := httptest.NewRecorder()
+    if resp.StatusCode != http.StatusOK {
+        t.Fatalf("Expected status OK, got %v", resp.Status)
+    }
 
-// 	authController.HandleLoginRequest(challengeReqRecorder, challengeReq)
-
-// 	// Step 4: Decode the challenge response
-// 	challengeResp := challengeReqRecorder.Result()
-// 	defer challengeResp.Body.Close()
-
-// 	var challengeData map[string]string
-// 	if err := json.NewDecoder(challengeResp.Body).Decode(&challengeData); err != nil {
-// 		t.Fatalf("Failed to decode challenge response: %v", err)
-// 	}
-
-// 	// Step 5: Mock a signature for the challenge
-// 	signature := challengeData["challenge"]
-
-// 	// Step 6: Create the login request
-// 	loginRequest := map[string]string{
-// 		"address":   user.Address,
-// 		"signature": signature,
-// 	}
-// 	loginRequestBody, _ := json.Marshal(loginRequest)
-
-// 	loginReq := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(loginRequestBody))
-// 	loginReq.Header.Set("Content-Type", "application/json")
-// 	loginRespRecorder := httptest.NewRecorder()
-
-// 	// Step 7: Call HandleLogin
-// 	authController.HandleLogin(loginRespRecorder, loginReq)
-
-// 	// Step 8: Validate the response
-// 	loginResp := loginRespRecorder.Result()
-// 	defer loginResp.Body.Close()
-
-// 	if loginResp.StatusCode != http.StatusOK {
-// 		t.Fatalf("Expected status OK, got %v", loginResp.Status)
-// 	}
-
-// 	t.Logf("Login test passed for user: %s", user.UUID)
-// }
-
-
-// func generateTestKey() *ecdsa.PrivateKey {
-// 	privKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-// 	return privKey
-// }
+    t.Logf("Login test passed for address %s with signature %s", address, signature)
+}

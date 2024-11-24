@@ -29,7 +29,7 @@ func NewWalletService(rpcUser, rpcPass string) *WalletService {
 func (ws *WalletService) GenerateNewAddress() (string, error) {
 	cmd := exec.Command(`../btcd/cmd/btcctl/btcctl`, "--wallet", "--rpcuser="+ws.RpcUser, "--rpcpass="+ws.RpcPass, "--rpcserver="+ws.RpcServer, "--notls", "getnewaddress")
 	output, err := cmd.CombinedOutput()
-	fmt.Printf("@@Command Output: %s\n", output) // Debug: Print the output of the command
+	fmt.Printf("@@ Command Output for GenerateNewAddress: %s\n", output) // Debug: Print the output of the command
 	if err != nil {
 		return "", fmt.Errorf("failed to generate new address: %v", err)
 	}
@@ -163,6 +163,37 @@ func (ws *WalletService) GetBalance(address string) (float64, error) {
 	}
 
 	return balanceValue, nil
+}
+
+// SignMessage signs a given message using the specified wallet address
+func (ws *WalletService) SignMessage(address string, message string, passphrase string) (string, error) {
+	// Unlock the wallet first
+	err := ws.UnlockWallet(passphrase, 600)
+	if err != nil {
+		return "", fmt.Errorf("failed to unlock wallet: %v", err)
+	}
+
+	// Run the btcctl command to sign the message
+	cmd := exec.Command(ws.BtcctlPath, "--wallet", "--rpcuser="+ws.RpcUser, "--rpcpass="+ws.RpcPass, "--rpcserver="+ws.RpcServer, "--notls", "signmessage", address, message)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to sign message: %v\nOutput: %s", err, output)
+	}
+
+	signature := strings.TrimSpace(string(output))
+	return signature, nil
+}
+
+// VerifySignature uses btcctl to verify the signed challenge.
+func (ws *WalletService) VerifySignature(address, challenge, signature string) (bool, error) {
+	cmd := exec.Command(ws.BtcctlPath, "--wallet", "--rpcuser="+ws.RpcUser, "--rpcpass="+ws.RpcPass, "--rpcserver="+ws.RpcServer, "--notls", "verifymessage", address, signature, challenge)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("failed to verify signature: %v\nOutput: %s", err, output)
+	}
+
+	result := strings.TrimSpace(string(output))
+	return result == "true", nil
 }
 
 // btcctl --wallet --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:8332 --notls help
