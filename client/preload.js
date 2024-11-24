@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
+  ipcRenderer: ipcRenderer,
+  saveFile: async(fileData) => await ipcRenderer.invoke('save-file',fileData),
   send: (channel, data) => {
     ipcRenderer.send(channel, data);
   },
