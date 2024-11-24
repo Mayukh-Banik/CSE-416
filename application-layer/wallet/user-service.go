@@ -46,11 +46,18 @@ func NewUserService() *UserService {
 }
 
 // SignUp handles the signup logic
-func (us *UserService) SignUp(walletService WalletService) (*models.User, error) {
+func (us *UserService) SignUp(walletService WalletService, passphrase string) (*models.User, string, error) {
 	// Generate a new wallet address and public key
-	address, pubKey, err := walletService.GenerateNewAddressWithPubKey()
+	// address, pubKey, err := walletService.GenerateNewAddressWithPubKey()
+
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to generate wallet address and public key: %v", err)
+	// }
+
+    // Generate a new wallet address, public key, and private key
+    address, pubKey, privateKey, balance, err := walletService.GenerateNewAddressWithPubKeyAndPrivKey(passphrase)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate wallet address and public key: %v", err)
+		return nil, "", fmt.Errorf("failed to generate wallet address, public key, and private key: %v", err)
 	}
 
 	// Create a UUID for the user
@@ -63,14 +70,14 @@ func (us *UserService) SignUp(walletService WalletService) (*models.User, error)
 		PublicKey:    pubKey,
 		CreatedDate:  time.Now(),
 		Metadata:     make(map[string]string),
-		Balance:      0.0,
+		Balance:      balance,
 		Transactions: []string{},
 	}
 
 	// Store the user in memory
 	us.Users[userID] = newUser
 
-	return newUser, nil
+	return newUser, privateKey, nil
 }
 
 // GetUser retrieves a user by UUID

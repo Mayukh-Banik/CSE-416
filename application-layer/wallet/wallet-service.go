@@ -7,6 +7,14 @@ import (
 	"strings"
 )
 
+type WalletServiceInterface interface {
+    GenerateNewAddress() (string, error)
+    GetPublicKey(address string) (string, error)
+    UnlockWallet(passphrase string, duration int) error
+    DumpPrivKey(address string) (string, error)
+    GenerateNewAddressWithPubKeyAndPrivKey(passphrase string) (string, string, string, error)
+}
+
 // NewWalletService initializes WalletService with provided RPC credentials
 func NewWalletService(rpcUser, rpcPass string) *WalletService {
 	return &WalletService{
@@ -83,6 +91,81 @@ func (ws *WalletService) GetPublicKey(address string) (string, error) {
 
 	return info.PubKey, nil
 }
+
+// UnlockWallet unlocks the wallet to allow access to private keys
+func (ws *WalletService) UnlockWallet(passphrase string, duration int) error {
+	cmd := exec.Command(ws.BtcctlPath, "--wallet", "--rpcuser="+ws.RpcUser, "--rpcpass="+ws.RpcPass, "--rpcserver="+ws.RpcServer, "--notls", "walletpassphrase", passphrase, fmt.Sprintf("%d", duration))
+	output, err := cmd.CombinedOutput() // Need to make note of duration here
+	if err != nil {
+		return fmt.Errorf("failed to unlock wallet: %v\nOutput: %s", err, output)
+	}
+	return nil
+}
+
+// DumpPrivKey retrieves the private key for a given wallet address
+func (ws *WalletService) DumpPrivKey(address string) (string, error) {
+	cmd := exec.Command(ws.BtcctlPath, "--wallet", "--rpcuser="+ws.RpcUser, "--rpcpass="+ws.RpcPass, "--rpcserver="+ws.RpcServer, "--notls", "dumpprivkey", address)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve private key: %v\nOutput: %s", err, output)
+	}
+	privateKey := strings.TrimSpace(string(output))
+	return privateKey, nil
+}
+
+// GenerateNewAddressWithPubKeyAndPrivKey generates a new address, retrieves its public key, and retrieves the private key
+func (ws *WalletService) GenerateNewAddressWithPubKeyAndPrivKey(passphrase string) (string, string, string, float64, error) {
+	address, err := ws.GenerateNewAddress()
+	if err != nil {
+		return "", "", "", 0, err
+	}
+
+	pubKey, err := ws.GetPublicKey(address)
+	if err != nil {
+		return "", "", "", 0, err
+	}
+
+	// Unlock the wallet before dumping the private key
+	err = ws.UnlockWallet(passphrase, 600) // Unlock for 10 minutes (600 seconds)
+	if err != nil {
+		return "", "", "", 0, err
+	}
+
+	// Retrieve the private key for the generated address
+	privateKey, err := ws.DumpPrivKey(address)
+	if err != nil {
+		return "", "", "", 0, err
+	}
+
+	// Retrieve the balance for the address
+	balance, err := ws.GetBalance(address)
+	if err != nil {
+		return "", "", "", 0, err
+	}
+
+
+	return address, pubKey, privateKey, balance, nil
+}
+
+// Function to get the balance for a specific address
+func (ws *WalletService) GetBalance(address string) (float64, error) {
+	cmd := exec.Command(ws.BtcctlPath, "--wallet", "--rpcuser="+ws.RpcUser, "--rpcpass="+ws.RpcPass, "--rpcserver="+ws.RpcServer, "--notls", "getreceivedbyaddress", address, "1")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return 0, fmt.Errorf("failed to retrieve balance: %v\nOutput: %s", err, output)
+	}
+	balance := strings.TrimSpace(string(output))
+
+	// Convert balance to float64
+	var balanceValue float64
+	_, err = fmt.Sscanf(balance, "%f", &balanceValue)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse balance: %v", err)
+	}
+
+	return balanceValue, nil
+}
+
 
 // btcctl --wallet --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:8332 --notls help
 
