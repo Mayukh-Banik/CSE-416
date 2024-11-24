@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, LinearProgress } from '@mui/material';
 import Sidebar from './Sidebar';
 import { useTheme } from '@mui/material/styles';
@@ -30,6 +30,10 @@ const MarketplacePage: React.FC = () => {
           // Update UI accordingly
       }
   };
+
+  useEffect(() => {
+    handleRefresh();
+  }, []);
 
   const resetStates = async () => {
     setFileHash("");
