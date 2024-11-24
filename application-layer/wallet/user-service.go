@@ -2,14 +2,8 @@ package wallet
 
 import (
 	"application-layer/models"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
 	"sync"
 	"time"
 
@@ -21,8 +15,8 @@ var jwtKey = []byte("your_secret_key")
 
 type UserService struct {
 	Users  map[string]*models.User // In-memory user store
-	Nonces map[string]string       // Nonce store for login challenges
-	mutex  sync.Mutex              // Mutex for concurrent access
+	Challenges map[string]*models.Challenge // In-memory challenge store
+	Mutex     sync.Mutex                    // Mutex for concurrent access
 }
 
 // WalletService defines wallet-related operations and configurations
@@ -42,18 +36,12 @@ type Claims struct {
 func NewUserService() *UserService {
 	return &UserService{
 		Users: make(map[string]*models.User),
+        Challenges: make(map[string]*models.Challenge),
 	}
 }
 
 // SignUp handles the signup logic
 func (us *UserService) SignUp(walletService WalletService, passphrase string) (*models.User, string, error) {
-	// Generate a new wallet address and public key
-	// address, pubKey, err := walletService.GenerateNewAddressWithPubKey()
-
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to generate wallet address and public key: %v", err)
-	// }
-
     // Generate a new wallet address, public key, and private key
     address, pubKey, privateKey, balance, err := walletService.GenerateNewAddressWithPubKeyAndPrivKey(passphrase)
 	if err != nil {
@@ -89,108 +77,42 @@ func (us *UserService) GetUser(uuid string) (*models.User, error) {
 	return user, nil
 }
 
-// InitiateLogin generates a nonce for the user to sign
-func (us *UserService) InitiateLogin(userUUID string) (string, error) {
-	us.mutex.Lock()
-	defer us.mutex.Unlock()
+// GenerateChallenge creates a new challenge for a given wallet address.
+func (us *UserService) GenerateChallenge(address string) (*models.Challenge, error) {
+    us.Mutex.Lock()
+    defer us.Mutex.Unlock()
 
-	// Check if user exists
-	if _, exists := us.Users[userUUID]; !exists {
-		return "", errors.New("user not found")
-	}
+    challenge := uuid.NewString() // Create a unique string challenge.
+    expiry := time.Now().Add(5 * time.Minute) // Set challenge expiry time.
 
-	// Generate a random nonce
-	nonceBytes := make([]byte, 16)
-	_, err := rand.Read(nonceBytes)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate nonce: %v", err)
-	}
-	nonce := hex.EncodeToString(nonceBytes)
+    newChallenge := &models.Challenge{
+        Address:   address,
+        Challenge: challenge,
+        Expiry:    expiry,
+    }
 
-	// Store the nonce with an expiration time (e.g., 5 minutes)
-	us.Nonces[userUUID] = nonce
+    us.Challenges[address] = newChallenge
 
-	return nonce, nil
+    return newChallenge, nil
 }
 
-// CompleteLogin verifies the signed nonce and returns a JWT token if successful
-func (us *UserService) CompleteLogin(userUUID, signature, message string) (string, error) {
-	us.mutex.Lock()
-	nonce, exists := us.Nonces[userUUID]
-	us.mutex.Unlock()
+// GetChallenge retrieves a stored challenge for the given wallet address.
+func (us *UserService) GetChallenge(address string) (*models.Challenge, error) {
+    us.Mutex.Lock()
+    defer us.Mutex.Unlock()
 
-	if !exists {
-		return "", errors.New("no login initiation found for this user")
-	}
+    challenge, exists := us.Challenges[address]
+    if !exists || time.Now().After(challenge.Expiry) {
+        return nil, errors.New("challenge expired or not found")
+    }
 
-	// Verify that the message is the nonce
-	if message != nonce {
-		return "", errors.New("invalid message")
-	}
-
-	// Get the user's public key
-	user, err := us.GetUser(userUUID)
-	if err != nil {
-		return "", err
-	}
-
-	// Decode the public key
-	pubKeyBytes, err := hex.DecodeString(user.PublicKey)
-	if err != nil {
-		return "", errors.New("invalid public key format")
-	}
-
-	if len(pubKeyBytes) != 64 {
-		return "", errors.New("invalid public key length")
-	}
-
-	pubKey := ecdsa.PublicKey{
-		Curve: elliptic.P256(),
-		X:     new(big.Int).SetBytes(pubKeyBytes[:32]),
-		Y:     new(big.Int).SetBytes(pubKeyBytes[32:]),
-	}
-
-	// Decode the signature
-	signatureBytes, err := hex.DecodeString(signature)
-	if err != nil {
-		return "", errors.New("invalid signature format")
-	}
-
-	if len(signatureBytes) != 64 {
-		return "", errors.New("invalid signature length")
-	}
-
-	rSig := new(big.Int).SetBytes(signatureBytes[:32])
-	sSig := new(big.Int).SetBytes(signatureBytes[32:])
-
-	// Hash the message
-	messageHash := sha256.Sum256([]byte(message))
-
-	// Verify the signature
-	valid := ecdsa.Verify(&pubKey, messageHash[:], rSig, sSig)
-	if !valid {
-		return "", errors.New("invalid signature")
-	}
-
-	// Remove the nonce as it's single-use
-	us.mutex.Lock()
-	delete(us.Nonces, userUUID)
-	us.mutex.Unlock()
-
-	// Create JWT token
-	expirationTime := time.Now().Add(24 * time.Hour)
-	claims := &Claims{
-		UUID: userUUID,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expirationTime.Unix(),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate token: %v", err)
-	}
-
-	return tokenString, nil
+    return challenge, nil
 }
+
+// RemoveChallenge deletes the challenge after successful verification.
+func (us *UserService) RemoveChallenge(address string) {
+    us.Mutex.Lock()
+    defer us.Mutex.Unlock()
+    delete(us.Challenges, address)
+}
+
