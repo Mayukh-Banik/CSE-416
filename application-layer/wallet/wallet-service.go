@@ -8,17 +8,17 @@ import (
 )
 
 type WalletServiceInterface interface {
-    GenerateNewAddress() (string, error)
-    GetPublicKey(address string) (string, error)
-    UnlockWallet(passphrase string, duration int) error
-    DumpPrivKey(address string) (string, error)
-    GenerateNewAddressWithPubKeyAndPrivKey(passphrase string) (string, string, string, error)
+	GenerateNewAddress() (string, error)
+	GetPublicKey(address string) (string, error)
+	UnlockWallet(passphrase string, duration int) error
+	DumpPrivKey(address string) (string, error)
+	GenerateNewAddressWithPubKeyAndPrivKey(passphrase string) (string, string, string, error)
 }
 
 // NewWalletService initializes WalletService with provided RPC credentials
 func NewWalletService(rpcUser, rpcPass string) *WalletService {
 	return &WalletService{
-		BtcctlPath: `../btcd/cmd/btcctl/btcctl`,
+		BtcctlPath: `../btcd/cmd/btcctl/btcctl.exe`,
 		RpcUser:    rpcUser,
 		RpcPass:    rpcPass,
 		RpcServer:  "127.0.0.1:8332",
@@ -143,7 +143,6 @@ func (ws *WalletService) GenerateNewAddressWithPubKeyAndPrivKey(passphrase strin
 		return "", "", "", 0, err
 	}
 
-
 	return address, pubKey, privateKey, balance, nil
 }
 
@@ -166,6 +165,4 @@ func (ws *WalletService) GetBalance(address string) (float64, error) {
 	return balanceValue, nil
 }
 
-
 // btcctl --wallet --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:8332 --notls help
-

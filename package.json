@@ -18,7 +18,7 @@
         "start:btcwallet": "node scripts/run-os-script.js startBtcwallet",
         
         "build:btcctl": "node scripts/run-os-script.js buildBtcctl",
-        "test:wallet": "cd application-layer && go mod init application-layer && go test ./wallet -v",
+        "test:wallet": "cd application-layer && go test ./wallet -v",
         
         "run:all": "concurrently \"npm run build:btcd\" \"npm run start:btcd\" \"npm run build:btcwallet\" \"npm run start:btcwallet\" \"npm run build:btcctl\" \"npm run test:wallet\""
     },

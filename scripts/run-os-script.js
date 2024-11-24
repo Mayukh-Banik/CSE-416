@@ -392,6 +392,74 @@ const scripts = {
                 process.exit(1);
             }
         }
+    },
+    testWallet: {
+        windows: () => {
+            console.log("Running wallet tests on Windows...");
+            const walletDir = path.resolve("application-layer");
+            console.log(`Changing directory to: ${walletDir}`);
+            try {
+                process.chdir(walletDir);
+                console.log(`Current directory: ${process.cwd()}`);
+            } catch (err) {
+                console.error(`Failed to change directory: ${err.message}`);
+                process.exit(1);
+            }
+
+            const command = "go test ./wallet -v -count=1";
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("Wallet tests ran successfully.");
+            } catch (err) {
+                console.error(`Failed to run wallet tests: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            console.log("Running wallet tests on macOS...");
+            const walletDir = path.resolve("application-layer");
+            console.log(`Changing directory to: ${walletDir}`);
+            try {
+                process.chdir(walletDir);
+                console.log(`Current directory: ${process.cwd()}`);
+            } catch (err) {
+                console.error(`Failed to change directory: ${err.message}`);
+                process.exit(1);
+            }
+
+            const command = "go test ./wallet -v -count=1";
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("Wallet tests ran successfully.");
+            } catch (err) {
+                console.error(`Failed to run wallet tests: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            console.log("Running wallet tests on Linux...");
+            const walletDir = path.resolve("application-layer");
+            console.log(`Changing directory to: ${walletDir}`);
+            try {
+                process.chdir(walletDir);
+                console.log(`Current directory: ${process.cwd()}`);
+            } catch (err) {
+                console.error(`Failed to change directory: ${err.message}`);
+                process.exit(1);
+            }
+
+            const command = "go test ./wallet -v -count=1";
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("Wallet tests ran successfully.");
+            } catch (err) {
+                console.error(`Failed to run wallet tests: ${err.message}`);
+                process.exit(1);
+            }
+        }
     }
 };
 
