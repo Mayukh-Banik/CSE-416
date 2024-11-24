@@ -89,6 +89,40 @@ func sendDecline(targetID string, fileHash string) {
 	log.Printf("Decline message sent to peer %s for file hash %s", targetID, fileHash)
 }
 
+// // send metadata before sending file content
+// func sendMetadata(stream network.Stream, fileHash string) error {
+// 	// Retrieve the file data from the DHT using the file hash
+// 	data, err := DHT.GetValue(GlobalCtx, "/orcanet/"+fileHash)
+// 	if err != nil {
+// 		return fmt.Errorf("sendMetadata: file hash not found in DHT: %w", err)
+// 	}
+
+// 	var metadata models.DHTMetadata
+
+// 	// unmarshal JSON data into the struct
+// 	err = json.Unmarshal(data, &metadata)
+// 	if err != nil {
+// 		return fmt.Errorf("sendMetadata: error decoding file metadata: %w", err)
+// 	}
+
+// 	metadataJSON, err := json.Marshal(metadata)
+// 	if err != nil {
+// 		return fmt.Errorf("sendMetadata: error encoding metadata to data: %w", err)
+// 	}
+
+// 	// newline signifies end of metadata
+// 	metadataJSON = append(metadataJSON, '\n')
+
+// 	// Write metadata to stream
+// 	_, err = stream.Write(metadataJSON)
+// 	if err != nil {
+// 		log.Fatalf("sendMetadata: failed to write metadata to stream: %s", err)
+// 	}
+
+// 	fmt.Println("metadata sent successfully :)")
+// 	return nil
+// }
+
 // send metadata before sending file content
 func sendMetadata(stream network.Stream, fileHash string) error {
 	// Retrieve the file data from the DHT using the file hash
@@ -97,13 +131,15 @@ func sendMetadata(stream network.Stream, fileHash string) error {
 		return fmt.Errorf("sendMetadata: file hash not found in DHT: %w", err)
 	}
 
-	var metadata models.DHTMetadata
+	var metadata models.FileMetadata
 
 	// unmarshal JSON data into the struct
 	err = json.Unmarshal(data, &metadata)
 	if err != nil {
 		return fmt.Errorf("sendMetadata: error decoding file metadata: %w", err)
 	}
+
+	metadata.Hash = fileHash
 
 	metadataJSON, err := json.Marshal(metadata)
 	if err != nil {
@@ -399,7 +435,8 @@ func receiveFile(node host.Host) {
 
 		FileMapMutex.Lock()
 
-		FileHashToPath[metadata.Hash] = filepath.Join(dir, metadata.Name) // add file and its path to the map
+		fmt.Println("file name with extension: ", metadata.NameWithExtension)
+		FileHashToPath[metadata.Hash] = filepath.Join(dir, metadata.NameWithExtension) // add file and its path to the map
 		FileMapMutex.Unlock()
 
 		ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider

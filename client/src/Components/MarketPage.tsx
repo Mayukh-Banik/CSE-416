@@ -22,14 +22,14 @@ const MarketplacePage: React.FC = () => {
   const [loadingRequest, setLoadingRequest] = useState(false)
   const [loadingSearch, setLoadingSearch] = useState(false)
 
-  const socket = new WebSocket("ws://localhost:8081/ws")
-  socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.status === "declined") {
-          alert(`File with hash ${message.fileHash} was declined.`);
-          // Update UI accordingly
-      }
-  };
+  // const socket = new WebSocket("ws://localhost:8081/ws")
+  // socket.onmessage = (event) => {
+  //     const message = JSON.parse(event.data);
+  //     if (message.status === "declined") {
+  //         alert(`File with hash ${message.fileHash} was declined.`);
+  //         // Update UI accordingly
+  //     }
+  // };
 
   useEffect(() => {
     handleRefresh();

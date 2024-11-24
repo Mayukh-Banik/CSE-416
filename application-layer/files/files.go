@@ -175,7 +175,7 @@ func PublishFile(requestBody models.FileMetadata) {
 		return
 	}
 
-	newPath := filepath.Join(currentDir, "../squidcoinFiles", requestBody.Name)
+	newPath := filepath.Join(currentDir, "../squidcoinFiles", requestBody.NameWithExtension)
 	dht_kad.FileMapMutex.Lock()
 	dht_kad.FileHashToPath[requestBody.Hash] = newPath
 	fmt.Println("fileHashToPath: ", dht_kad.FileHashToPath)

@@ -200,7 +200,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         IsPublished: true,
         Fee: fees[file.name] || 0,
         OriginalUploader: true,
-        Extension: fileExtension,
+        NameWithExtension: fileExtension,
       };
   
       // Save file locally using Electron API
@@ -208,6 +208,8 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         fileName: `${metadata.Name}.${fileExtension}`,
         fileData,
       });
+
+      metadata.NameWithExtension = `${metadata.Name}.${fileExtension}`
   
       if (!saveResponse.success) {
         throw new Error(`Failed to save file locally: ${file.name}`);
@@ -249,9 +251,8 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
 // have to fix deleting file
   const handleDeleteUploadedFile = async (selectedFile: FileMetadata) => {
     console.log("attempting to delete file ", selectedFile.Name)
-    let fullName = selectedFile.Name + "." + selectedFile.Extension
     try {
-      const response = await fetch(`http://localhost:8081/files/delete?hash=${selectedFile.Hash}&originalUploader=${selectedFile.OriginalUploader}&name=${fullName}`, {
+      const response = await fetch(`http://localhost:8081/files/delete?hash=${selectedFile.Hash}&originalUploader=${selectedFile.OriginalUploader}&name=${selectedFile.NameWithExtension}`, {
         method: "DELETE",
       });
 
