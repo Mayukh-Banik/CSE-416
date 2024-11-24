@@ -22,6 +22,15 @@ const MarketplacePage: React.FC = () => {
   const [loadingRequest, setLoadingRequest] = useState(false)
   const [loadingSearch, setLoadingSearch] = useState(false)
 
+  const socket = new WebSocket("ws://localhost:8081/ws")
+  socket.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.status === "declined") {
+          alert(`File with hash ${message.fileHash} was declined.`);
+          // Update UI accordingly
+      }
+  };
+
   const resetStates = async () => {
     setFileHash("");
     setProviders([]);
@@ -53,6 +62,7 @@ const MarketplacePage: React.FC = () => {
         Status: "pending",
         FileName: selectedFile?.Name || "" ,
         Size: selectedFile?.Size || 0,
+        TransactionID: "",
         // CreatedAt: Date.now().toLocaleString(),
       }
       console.log("Request data being sent:", request);

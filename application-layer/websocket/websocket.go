@@ -1,44 +1,71 @@
 package websocket
 
 import (
-	"fmt"
+	"log"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
 
-var WsConn *websocket.Conn                           // Declare this globally
-var WsConnections = make(map[string]*websocket.Conn) // A map of userID to WebSocket connection
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Adjust for production security
+	},
+}
 
-// WebSocket handler to establish a connection with the frontend
-func handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true // You can add more checks for security here
-		},
-	}
+// Thread-safe client management
+var (
+	clients = make(map[*websocket.Conn]bool) // Tracks active connections
+	mu      sync.Mutex                      // Protects the clients map
+)
 
-	// Upgrade the HTTP connection to a WebSocket
-	WsConn, err := upgrader.Upgrade(w, r, nil)
+// Handles new WebSocket connections
+func WsHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println("Error upgrading connection:", err)
+		log.Println("WebSocket Upgrade error:", err)
 		return
 	}
+	log.Println("New WebSocket connection established")
 
-	// Assume the frontend sends its user ID in the query string
-	nodeID := r.URL.Query().Get("nodeID")
-	WsConnections[nodeID] = WsConn
+	// Add the client to the clients map
+	mu.Lock()
+	clients[conn] = true
+	mu.Unlock()
 
-	// Optionally, listen for incoming messages (or just keep the connection open)
-	go func() {
+	// Continuously read messages (if needed)
+	go func(conn *websocket.Conn) {
+		defer func() {
+			// Remove the client on disconnect
+			mu.Lock()
+			delete(clients, conn)
+			mu.Unlock()
+			conn.Close()
+			log.Println("WebSocket connection closed")
+		}()
+
 		for {
-			_, _, err := WsConn.ReadMessage()
+			_, _, err := conn.ReadMessage()
 			if err != nil {
-				// Handle disconnection or error
-				delete(WsConnections, nodeID)
-				WsConn.Close()
+				log.Println("WebSocket read error:", err)
 				break
 			}
 		}
-	}()
+	}(conn)
+}
+
+// Sends messages to all connected clients
+func NotifyFrontend(declineMessage map[string]string) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	for client := range clients {
+		err := client.WriteJSON(declineMessage)
+		if err != nil {
+			log.Println("Error sending WebSocket message:", err)
+			client.Close()
+			delete(clients, client)
+		}
+	}
 }

@@ -3,11 +3,14 @@ package download
 import (
 	dht_kad "application-layer/dht"
 	"application-layer/models"
+	"application-layer/utils"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // api calls
@@ -21,7 +24,7 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	request.RequesterID = dht_kad.DHT.Host().ID().String()
-
+	request.TransactionID = uuid.New().String()
 	// Log the requester and provider IDs
 	fmt.Printf("Requesting file download: Requester: %v | Provider: %v\n", request.RequesterID, request.TargetID)
 
@@ -51,6 +54,8 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 	dht_kad.Mutex.Lock()
 	dht_kad.PendingRequests[request.FileHash] = request
 	dht_kad.Mutex.Unlock()
+
+	utils.AddOrUpdateTransaction(request)
 
 	// Send acknowledgment back to the requester
 	w.Header().Set("Content-Type", "application/json")

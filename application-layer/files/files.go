@@ -19,12 +19,13 @@ import (
 )
 
 var (
-	dirPath            = filepath.Join("..", "utils")
-	UploadedFilePath   = filepath.Join(dirPath, "files.json")
-	DownloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
-	FileCopyPath       = filepath.Join("..", "squidcoinFiles")
-	republishMutex     sync.Mutex
-	republished        = false
+	dirPath             = filepath.Join("..", "utils")
+	UploadedFilePath    = filepath.Join(dirPath, "files.json")
+	DownloadedFilePath  = filepath.Join(dirPath, "downloadedFiles.json")
+	transactionFilePath = filepath.Join(dirPath, "transactionFiles.json")
+	FileCopyPath        = filepath.Join("..", "squidcoinFiles")
+	republishMutex      sync.Mutex
+	republished         = false
 )
 
 // fetch all uploaded files from JSON file
@@ -456,4 +457,33 @@ func republishFiles(filePath string) {
 		PublishFile(file)
 	}
 
+}
+
+// transactions page
+func getTransactions(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("getting transaction history")
+	transactionFile, err := os.ReadFile(transactionFilePath)
+
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Println("transactionFiles.json could not be found")
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode([]models.Transaction{}) // Return empty array
+			return
+		}
+		http.Error(w, "Failed to read file", http.StatusInternalServerError)
+		return
+	}
+
+	var transactions []models.Transaction
+	if err := json.Unmarshal(transactionFile, &transactions); err != nil {
+		http.Error(w, "Failed to parse transaction files data", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(transactions); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }

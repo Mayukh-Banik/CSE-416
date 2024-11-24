@@ -331,6 +331,7 @@ func receiveDecline(node host.Host) {
 
 		if statusOK && fileHashOK && status == "declined" {
 			log.Printf("Received decline message for file with hash: %s", fileHash)
+			websocket.NotifyFrontend(declineMessage)
 			// Notify user on the frontend of the decline
 			// Update transaction details to DECLINED
 		} else {
@@ -515,22 +516,22 @@ func handleDownloadRequestOrResponse(w http.ResponseWriter, r *http.Request) {
 	Mutex.Unlock()
 }
 
-func NotifyFrontendOfPendingRequest(request models.Transaction) {
-	// Prepare acknowledgment message
-	acknowledgment := map[string]string{
-		"status":    request.Status,
-		"fileHash":  request.FileHash,
-		"requester": request.RequesterID,
-	}
-	acknowledgmentData, _ := json.Marshal(acknowledgment)
+// func NotifyFrontendOfPendingRequest(request models.Transaction) {
+// 	// Prepare acknowledgment message
+// 	acknowledgment := map[string]string{
+// 		"status":    request.Status,
+// 		"fileHash":  request.FileHash,
+// 		"requester": request.RequesterID,
+// 	}
+// 	acknowledgmentData, _ := json.Marshal(acknowledgment)
 
-	// Retrieve the WebSocket connection for the specific user
-	if wsConn, exists := websocket.WsConnections[request.TargetID]; exists {
-		// Send the notification over the WebSocket connection
-		if err := wsConn.WriteJSON(acknowledgmentData); err != nil {
-			fmt.Println("Error sending notification to frontend:", err)
-		}
-	} else {
-		fmt.Println("WebSocket connection not found for node:", request.TargetID)
-	}
-}
+// 	// Retrieve the WebSocket connection for the specific user
+// 	if wsConn, exists := websocket.WsConnections[request.TargetID]; exists {
+// 		// Send the notification over the WebSocket connection
+// 		if err := wsConn.WriteJSON(acknowledgmentData); err != nil {
+// 			fmt.Println("Error sending notification to frontend:", err)
+// 		}
+// 	} else {
+// 		fmt.Println("WebSocket connection not found for node:", request.TargetID)
+// 	}
+// }

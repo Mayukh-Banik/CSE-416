@@ -46,7 +46,7 @@ const GlobalTransactions : React.FC = () => {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const response = await fetch("http://localhost:8081/download/getAllTransactions")
+        const response = await fetch("http://localhost:8081/files/getTransactions")
         if (!response.ok) {
           throw new Error(`Error fetching all transactions: ${response.statusText}`);
         }

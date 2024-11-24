@@ -7,6 +7,7 @@ export interface Transaction {
     Status?: 'pending' | 'accepted' | 'declined' | 'completed';
     Fee?:  number;
     Size: number;
+    TransactionID: string;
 }
 
 export interface PendingRequest {

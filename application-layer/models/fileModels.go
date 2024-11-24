@@ -33,14 +33,15 @@ type Provider struct {
 }
 
 type Transaction struct {
-	Type        string `json:"type"`        // "request" or "response"
-	FileHash    string `json:"fileHash"`    // Unique identifier for the file
-	RequesterID string `json:"requesterID"` // ID of the requesting node
-	TargetID    string `json:"targetID"`    // ID of the target node
-	Status      string `json:"status"`      // "pending", "accepted", "declined"
-	Message     string `json:"message"`     // Additional info
-	CreatedAt   string `json:"CreatedAt"`
-	FileName    string `json:"fileName"`
+	Type          string `json:"Type"`        // "request" or "response"
+	FileHash      string `json:"FileHash"`    // Unique identifier for the file
+	RequesterID   string `json:"RequesterID"` // ID of the requesting node
+	TargetID      string `json:"TargetID"`    // ID of the target node
+	Status        string `json:"Status"`      // "pending", "accepted", "declined"
+	Message       string `json:"Message"`     // Additional info
+	CreatedAt     string `json:"CreatedAt"`
+	FileName      string `json:"FileName"`
+	TransactionID string `json:"TransactionID"`
 }
 
 type RefreshRequest struct {

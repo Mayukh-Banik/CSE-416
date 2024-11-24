@@ -4,6 +4,7 @@ import (
 	dht_kad "application-layer/dht"
 	"application-layer/download"
 	"application-layer/files"
+	"application-layer/websocket"
 	"fmt"
 	"log"
 	"net/http"
@@ -29,6 +30,7 @@ func main() {
 	// Combine both routers on the same port
 	http.Handle("/files/", c.Handler(fileRouter))        // File routes under /files
 	http.Handle("/download/", c.Handler(downloadRouter)) // Download routes under /download
+	http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
 
 	port := ":8081"
 	fmt.Printf("Starting server for file routes and DHT on port %s...\n", port)
