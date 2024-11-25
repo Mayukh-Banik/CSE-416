@@ -1,6 +1,0 @@
-install docker for your system
-
-run docker build -t client-app .
-run docker run -p 3000:3000 client-app
-
-connect to local host 3000
