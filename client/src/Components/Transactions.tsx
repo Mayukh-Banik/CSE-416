@@ -71,8 +71,8 @@ const GlobalTransactions : React.FC = () => {
         <TableRow>
           <TableCell>Date</TableCell>
           {/* <TableCell>Time</TableCell> */}
-          {/* <TableCell>File Name</TableCell> */}
           <TableCell>Transaction ID</TableCell>
+          <TableCell>File Name</TableCell>
           <TableCell>File Hash</TableCell>
           <TableCell>Sender</TableCell>
           <TableCell>Receiver</TableCell>
@@ -87,10 +87,10 @@ const GlobalTransactions : React.FC = () => {
             {/* <TableCell>{transaction.time}</TableCell> */}
             <TableCell>{transaction.CreatedAt}</TableCell>
             <TableCell>{transaction.TransactionID}</TableCell>
+            <TableCell>{transaction.FileName}</TableCell>
             <TableCell>
               <Button onClick={() => navigate(`/fileview/${transaction.FileHash}`)}>{transaction.FileHash}</Button>
             </TableCell>
-            {/* <TableCell>{transaction.FileHash}</TableCell> */}
             <TableCell>
               <Button onClick={() => navigate(`/account/${transaction.RequesterID}`)}>{transaction.RequesterID}</Button>
             </TableCell>

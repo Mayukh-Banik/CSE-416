@@ -100,6 +100,7 @@ func sendMetadata(stream network.Stream, fileHash string) error {
 		return fmt.Errorf("sendMetadata: error decoding file metadata: %w", err)
 	}
 
+	fmt.Println("sending metadata for file: ", metadata.NameWithExtension)
 	var fileMetadata = models.FileMetadata{
 		Name:              metadata.Name,
 		NameWithExtension: metadata.NameWithExtension,
@@ -206,7 +207,27 @@ func sendFile(host host.Host, request models.Transaction) {
 		fmt.Printf("sent %d bytes to requester %s\n", n, requesterID)
 	}
 }
+func sendSuccessConfirmation(transaction models.Transaction) {
+	// Send decline to the target peer
+	confirmationStream, err := CreateNewStream(DHT.Host(), transaction.TargetID, "/requestResponse/p2p")
+	if err != nil {
+		log.Printf("Error creating stream to target peer %s: %v", transaction.TargetID, err)
+		return
+	}
+	defer confirmationStream.Close()
 
+	transactionData, err := json.Marshal(transaction)
+	if err != nil {
+		fmt.Printf("error marshaling download request data: %v\n", err)
+		return
+	}
+
+	_, err = confirmationStream.Write(transactionData)
+	if err != nil {
+		log.Printf("Error writing to stream: %v", err)
+		return
+	}
+}
 func SendRefreshFilesRequest(nodeID string, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
@@ -353,23 +374,6 @@ func receiveDecline(node host.Host) {
 			fmt.Printf("error unmarshalling file request: %v", err)
 			return
 		}
-		// Unmarshal the JSON data
-		// var declineMessage map[string]string
-		// err = json.Unmarshal(data, &declineMessage)
-		// if err != nil {
-		// 	log.Printf("Error unmarshalling data: %v", err)
-		// 	return
-		// }
-
-		// // Process the decline message
-		// if statusOK && fileHashOK && status == "declined" {
-		// 	log.Printf("Received decline message for file with hash: %s", fileHash)
-		// 	websocket.NotifyFrontend(declineMessage)
-		// 	// Notify user on the frontend of the decline
-		// 	// Update transaction details to DECLINED
-		// } else {
-		// 	log.Println("Received invalid decline message")
-		// }
 		declineMessage.Status = "declined"
 		utils.AddOrUpdateTransaction(declineMessage)
 	})
@@ -414,7 +418,7 @@ func receiveFile(node host.Host) {
 			log.Fatalf("Failed to unmarshal metadata: %v", err)
 		}
 
-		fmt.Printf("Received metadata: FileName=%s\n", metadata.Name)
+		fmt.Printf("Received metadata: FileName=%s\n", metadata.NameWithExtension)
 
 		// check if squidcoinFiles directory exists
 		err = os.MkdirAll(dir, os.ModePerm)
@@ -424,6 +428,7 @@ func receiveFile(node host.Host) {
 
 		// open file for writing
 		outputPath := filepath.Join(dir, metadata.NameWithExtension)
+		fmt.Println("receiveFile: outputPath", outputPath)
 		file, err := os.Create(outputPath)
 		if err != nil {
 			log.Printf("error creating file %s: %v\n", outputPath, err)
@@ -467,6 +472,35 @@ func receiveFile(node host.Host) {
 		utils.AddOrUpdateTransaction(transaction)
 
 		ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
+
+		sendSuccessConfirmation(transaction)
+	})
+}
+
+func receiveSuccessConfirmation(node host.Host) {
+	node.SetStreamHandler("/requestResponse/p2p", func(s network.Stream) {
+		defer s.Close()
+		buf := bufio.NewReader(s)
+
+		// Read data until a newline character
+		data, err := io.ReadAll(buf)
+		if err != nil {
+			if err == io.EOF {
+				log.Printf("Stream closed by peer: %s", s.Conn().RemotePeer())
+			} else {
+				log.Printf("Error reading from stream: %v", err)
+			}
+			return
+		}
+		log.Printf("Raw data received: %s", data)
+
+		var successMessage models.Transaction
+		err = json.Unmarshal(data, &successMessage)
+		if err != nil {
+			fmt.Printf("error unmarshalling file request: %v", err)
+			return
+		}
+		utils.AddOrUpdateTransaction(successMessage)
 	})
 }
 
@@ -542,4 +576,5 @@ func setupStreams(node host.Host) {
 	receiveFile(node)
 	receiveRefreshRequest(node)
 	receiveRefreshResponse(node)
+	receiveSuccessConfirmation(node)
 }
