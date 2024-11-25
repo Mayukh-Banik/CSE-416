@@ -134,12 +134,13 @@ func PublishFile(requestBody models.FileMetadata) {
 	} else {
 		// If no existing metadata, initialize a new DHTMetadata
 		currentMetadata = models.DHTMetadata{
-			Name:        requestBody.Name,
-			Type:        requestBody.Type,
-			Size:        requestBody.Size,
-			Description: requestBody.Description,
-			CreatedAt:   requestBody.CreatedAt,
-			Reputation:  requestBody.Reputation,
+			Name:              requestBody.Name,
+			Type:              requestBody.Type,
+			Size:              requestBody.Size,
+			Description:       requestBody.Description,
+			CreatedAt:         requestBody.CreatedAt,
+			Reputation:        requestBody.Reputation,
+			NameWithExtension: requestBody.NameWithExtension,
 		}
 	}
 
@@ -178,7 +179,7 @@ func PublishFile(requestBody models.FileMetadata) {
 	newPath := filepath.Join(currentDir, "../squidcoinFiles", requestBody.NameWithExtension)
 	dht_kad.FileMapMutex.Lock()
 	dht_kad.FileHashToPath[requestBody.Hash] = newPath
-	fmt.Println("fileHashToPath: ", dht_kad.FileHashToPath)
+	fmt.Println("PublishFile: fileHashToPath: ", dht_kad.FileHashToPath)
 	dht_kad.FileMapMutex.Unlock()
 }
 

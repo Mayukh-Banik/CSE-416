@@ -131,7 +131,7 @@ func sendMetadata(stream network.Stream, fileHash string) error {
 		return fmt.Errorf("sendMetadata: file hash not found in DHT: %w", err)
 	}
 
-	var metadata models.FileMetadata
+	var metadata models.DHTMetadata
 
 	// unmarshal JSON data into the struct
 	err = json.Unmarshal(data, &metadata)
@@ -139,23 +139,32 @@ func sendMetadata(stream network.Stream, fileHash string) error {
 		return fmt.Errorf("sendMetadata: error decoding file metadata: %w", err)
 	}
 
-	metadata.Hash = fileHash
+	var fileMetadata = models.FileMetadata{
+		Name:              metadata.Name,
+		NameWithExtension: metadata.NameWithExtension,
+		Type:              metadata.Type,
+		Size:              metadata.Size,
+		Description:       metadata.Description,
+		Hash:              fileHash,
+		OriginalUploader:  false,
+		IsPublished:       true, //automatically become provider when you download file
+	}
 
-	metadataJSON, err := json.Marshal(metadata)
+	fileMetadataJSON, err := json.Marshal(fileMetadata)
 	if err != nil {
 		return fmt.Errorf("sendMetadata: error encoding metadata to data: %w", err)
 	}
 
 	// newline signifies end of metadata
-	metadataJSON = append(metadataJSON, '\n')
+	fileMetadataJSON = append(fileMetadataJSON, '\n')
 
 	// Write metadata to stream
-	_, err = stream.Write(metadataJSON)
+	_, err = stream.Write(fileMetadataJSON)
 	if err != nil {
 		log.Fatalf("sendMetadata: failed to write metadata to stream: %s", err)
 	}
 
-	fmt.Println("metadata sent successfully :)")
+	fmt.Println("sendMetadata: metadata sent successfully: ", fileMetadataJSON)
 	return nil
 }
 
@@ -163,6 +172,7 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 	fmt.Printf("Sending file %s to requester %s...\n", fileHash, targetID)
 
 	filePath := FileHashToPath[fileHash]
+	fmt.Println("sendFile: filePath: ", filePath)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		fmt.Printf("error: file %s not found in %s\n", fileHash, filePath)
@@ -321,8 +331,9 @@ func receieveDownloadRequest(node host.Host) {
 			return
 		}
 		log.Printf("Received data: %s", data)
-		log.Println("files in FileHashToPath: ", FileHashToPath)
-
+		log.Println("receieveDownloadRequest: files in FileHashToPath: ", FileHashToPath)
+		fmt.Print("FILEHASHTOPATH", FileHashToPath)
+		fmt.Print("Request.FileHash", request.FileHash)
 		// send file to requester if it exists
 		if FileHashToPath[request.FileHash] != "" {
 			fmt.Println("receivedownloadrequest: sending file")
@@ -401,7 +412,7 @@ func receiveFile(node host.Host) {
 		fmt.Printf("Received metadata: FileName=%s\n", metadata.Name)
 
 		// open file for writing
-		outputPath := filepath.Join(dir, metadata.Name)
+		outputPath := filepath.Join(dir, metadata.NameWithExtension)
 		file, err := os.Create(outputPath)
 		if err != nil {
 			log.Printf("error creating file %s: %v\n", outputPath, err)
