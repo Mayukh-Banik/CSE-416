@@ -63,27 +63,21 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // prob gonna delete
-func handleGetPendingRequests(w http.ResponseWriter, r *http.Request) {
-	dht_kad.Mutex.Lock()
-	defer dht_kad.Mutex.Unlock()
+// func handleGetPendingRequests(w http.ResponseWriter, r *http.Request) {
+// 	dht_kad.Mutex.Lock()
+// 	defer dht_kad.Mutex.Unlock()
 
-	w.Header().Set("Content-Type", "application/json")
+// 	w.Header().Set("Content-Type", "application/json")
 
-	// Convert the map to a slice of transactions
-	var transactions []models.Transaction
-	for _, transaction := range dht_kad.PendingRequests {
-		transactions = append(transactions, transaction)
-	}
+// 	// Convert the map to a slice of transactions
+// 	var transactions []models.Transaction
+// 	for _, transaction := range dht_kad.PendingRequests {
+// 		transactions = append(transactions, transaction)
+// 	}
 
-	err := json.NewEncoder(w).Encode(transactions)
-	if err != nil {
-		http.Error(w, "Failed to encode pending requests", http.StatusInternalServerError)
-		return
-	}
-}
-
-// additional downloading stuff
-
-func updateDownloadJSON(metadata models.FileMetadata) {
-	panic("unimplemented")
-}
+// 	err := json.NewEncoder(w).Encode(transactions)
+// 	if err != nil {
+// 		http.Error(w, "Failed to encode pending requests", http.StatusInternalServerError)
+// 		return
+// 	}
+// }

@@ -3,14 +3,12 @@ package dht_kad
 import (
 	"application-layer/models"
 	"application-layer/utils"
-	"application-layer/websocket"
 	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -59,69 +57,32 @@ func SendDownloadRequest(requestMetadata models.Transaction) error {
 	return nil
 }
 
-func sendDecline(targetID string, fileHash string) {
-	declineMessage := map[string]string{
-		"status":   "declined",
-		"fileHash": fileHash,
-	}
-	declineData, err := json.Marshal(declineMessage)
+func sendDecline(transaction models.Transaction) {
+	transaction.Status = "declined"
+
+	transactionJson, err := json.Marshal(transaction)
 	if err != nil {
-		log.Printf("Error marshaling decline message: %v", err)
-		return
+		fmt.Errorf("sendDecline: error encoding metadata to data: %w", err)
 	}
 
 	// Send decline to the target peer
-	requestStream, err := CreateNewStream(DHT.Host(), targetID, "/requestResponse/p2p")
+	requestStream, err := CreateNewStream(DHT.Host(), transaction.RequesterID, "/requestResponse/p2p")
 	if err != nil {
-		log.Printf("Error creating stream to target peer %s: %v", targetID, err)
+		log.Printf("Error creating stream to target peer %s: %v", transaction.RequesterID, err)
 		return
 	}
 	defer requestStream.Close()
 
 	// Write data with a newline as a delimiter
-	declineData = append(declineData, '\n')
-	_, err = requestStream.Write(declineData)
+	transactionJson = append(transactionJson, '\n')
+	_, err = requestStream.Write(transactionJson)
 	if err != nil {
 		log.Printf("Error writing to stream: %v", err)
 		return
 	}
 
-	log.Printf("Decline message sent to peer %s for file hash %s", targetID, fileHash)
+	log.Printf("Decline message sent to peer %s for file hash %s", transaction.RequesterID, transaction.FileHash)
 }
-
-// // send metadata before sending file content
-// func sendMetadata(stream network.Stream, fileHash string) error {
-// 	// Retrieve the file data from the DHT using the file hash
-// 	data, err := DHT.GetValue(GlobalCtx, "/orcanet/"+fileHash)
-// 	if err != nil {
-// 		return fmt.Errorf("sendMetadata: file hash not found in DHT: %w", err)
-// 	}
-
-// 	var metadata models.DHTMetadata
-
-// 	// unmarshal JSON data into the struct
-// 	err = json.Unmarshal(data, &metadata)
-// 	if err != nil {
-// 		return fmt.Errorf("sendMetadata: error decoding file metadata: %w", err)
-// 	}
-
-// 	metadataJSON, err := json.Marshal(metadata)
-// 	if err != nil {
-// 		return fmt.Errorf("sendMetadata: error encoding metadata to data: %w", err)
-// 	}
-
-// 	// newline signifies end of metadata
-// 	metadataJSON = append(metadataJSON, '\n')
-
-// 	// Write metadata to stream
-// 	_, err = stream.Write(metadataJSON)
-// 	if err != nil {
-// 		log.Fatalf("sendMetadata: failed to write metadata to stream: %s", err)
-// 	}
-
-// 	fmt.Println("metadata sent successfully :)")
-// 	return nil
-// }
 
 // send metadata before sending file content
 func sendMetadata(stream network.Stream, fileHash string) error {
@@ -168,10 +129,14 @@ func sendMetadata(stream network.Stream, fileHash string) error {
 	return nil
 }
 
-func sendFile(host host.Host, targetID string, fileHash string, requesterID string, fileName string) {
-	fmt.Printf("Sending file %s to requester %s...\n", fileHash, targetID)
+// sendFile(node, request, PeerID)
 
-	filePath := FileHashToPath[fileHash]
+func sendFile(host host.Host, request models.Transaction) {
+	requesterID, fileHash := request.RequesterID, request.FileHash
+
+	fmt.Printf("Sending file %s to requester %s...\n", fileHash, requesterID)
+
+	filePath := FileHashToPath[request.FileHash]
 	fmt.Println("sendFile: filePath: ", filePath)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -179,17 +144,33 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 		return
 	}
 
-	fmt.Printf("sending file %s to requester %s \n", fileName, requesterID)
+	fmt.Printf("sending file %s to requester %s \n", request.FileName, requesterID)
 
 	// create stream to send the file
-	fileStream, err := CreateNewStream(host, targetID, "/sendFile/p2p")
+	fileStream, err := CreateNewStream(host, request.RequesterID, "/sendFile/p2p")
 	if err != nil {
 		fmt.Println("Error creating file stream:", err)
 		return
 	}
 	defer fileStream.Close()
 
-	// send metadata first
+	// sending transaction details before file metadata and content
+	transactionData, err := json.Marshal(request)
+	if err != nil {
+		fmt.Printf("error marshaling transaction data: %v\n", err)
+		return
+	}
+
+	transactionData = append(transactionData, '\n')
+
+	_, err = fileStream.Write(transactionData)
+	if err != nil {
+		fmt.Printf("error sending transaction data: %v\n", err)
+		return
+	}
+	fmt.Printf("Sent transaction data sent for %s\n", request.TransactionID)
+
+	// send metadata next
 	err = sendMetadata(fileStream, fileHash)
 	if err != nil {
 		fmt.Println("error sending file metadata")
@@ -334,13 +315,16 @@ func receieveDownloadRequest(node host.Host) {
 		log.Println("receieveDownloadRequest: files in FileHashToPath: ", FileHashToPath)
 		fmt.Print("FILEHASHTOPATH", FileHashToPath)
 		fmt.Print("Request.FileHash", request.FileHash)
+
+		utils.AddOrUpdateTransaction(request)
+
 		// send file to requester if it exists
 		if FileHashToPath[request.FileHash] != "" {
 			fmt.Println("receivedownloadrequest: sending file")
-			sendFile(node, request.RequesterID, request.FileHash, PeerID, request.FileName)
+			sendFile(node, request)
 		} else {
 			fmt.Println("receivedownloadrequest: decline")
-			sendDecline(request.RequesterID, request.FileHash)
+			sendDecline(request)
 		}
 
 	})
@@ -361,29 +345,33 @@ func receiveDecline(node host.Host) {
 			}
 			return
 		}
-
 		log.Printf("Raw data received: %s", data)
 
-		// Unmarshal the JSON data
-		var declineMessage map[string]string
+		var declineMessage models.Transaction
 		err = json.Unmarshal(data, &declineMessage)
 		if err != nil {
-			log.Printf("Error unmarshalling data: %v", err)
+			fmt.Printf("error unmarshalling file request: %v", err)
 			return
 		}
+		// Unmarshal the JSON data
+		// var declineMessage map[string]string
+		// err = json.Unmarshal(data, &declineMessage)
+		// if err != nil {
+		// 	log.Printf("Error unmarshalling data: %v", err)
+		// 	return
+		// }
 
-		// Process the decline message
-		status, statusOK := declineMessage["status"]
-		fileHash, fileHashOK := declineMessage["fileHash"]
-
-		if statusOK && fileHashOK && status == "declined" {
-			log.Printf("Received decline message for file with hash: %s", fileHash)
-			websocket.NotifyFrontend(declineMessage)
-			// Notify user on the frontend of the decline
-			// Update transaction details to DECLINED
-		} else {
-			log.Println("Received invalid decline message")
-		}
+		// // Process the decline message
+		// if statusOK && fileHashOK && status == "declined" {
+		// 	log.Printf("Received decline message for file with hash: %s", fileHash)
+		// 	websocket.NotifyFrontend(declineMessage)
+		// 	// Notify user on the frontend of the decline
+		// 	// Update transaction details to DECLINED
+		// } else {
+		// 	log.Println("Received invalid decline message")
+		// }
+		declineMessage.Status = "declined"
+		utils.AddOrUpdateTransaction(declineMessage)
 	})
 }
 
@@ -395,6 +383,23 @@ func receiveFile(node host.Host) {
 
 		// read metadata - use metadata struct later
 		buf := bufio.NewReader(s)
+
+		// read in transaction details first
+		transactionJSON, err := buf.ReadBytes('\n') // Read until newline
+		if err != nil {
+			log.Fatalf("Failed to read metadata: %v", err)
+		}
+
+		// Parse JSON metadata
+		var transaction models.Transaction
+
+		err = json.Unmarshal(transactionJSON, &transaction)
+		if err != nil {
+			log.Fatalf("Failed to unmarshal metadata: %v", err)
+		}
+
+		fmt.Printf("Received metadata: transactionID=%s\n", transaction.TransactionID)
+
 		// Read metadata
 		metadataJSON, err := buf.ReadBytes('\n') // Read until newline
 		if err != nil {
@@ -411,6 +416,12 @@ func receiveFile(node host.Host) {
 
 		fmt.Printf("Received metadata: FileName=%s\n", metadata.Name)
 
+		// check if squidcoinFiles directory exists
+		err = os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			log.Fatalf("Failed to create directory %s: %v", dir, err)
+		}
+
 		// open file for writing
 		outputPath := filepath.Join(dir, metadata.NameWithExtension)
 		file, err := os.Create(outputPath)
@@ -426,6 +437,7 @@ func receiveFile(node host.Host) {
 			if err != nil {
 				if err == io.EOF {
 					log.Printf("file %s received and saved to %s\n", metadata.Name, outputPath)
+
 					break
 				}
 				log.Printf("Ererrorror reading file chunk: %v\n", err)
@@ -449,6 +461,10 @@ func receiveFile(node host.Host) {
 		fmt.Println("file name with extension: ", metadata.NameWithExtension)
 		FileHashToPath[metadata.Hash] = filepath.Join(dir, metadata.NameWithExtension) // add file and its path to the map
 		FileMapMutex.Unlock()
+
+		transaction.Status = "complete"
+		fmt.Println("receiveFile: transaction", transaction)
+		utils.AddOrUpdateTransaction(transaction)
 
 		ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
 	})
@@ -527,59 +543,3 @@ func setupStreams(node host.Host) {
 	receiveRefreshRequest(node)
 	receiveRefreshResponse(node)
 }
-
-// OTHER - IGNORE WILL PROB DELETE
-func handleDownloadRequestOrResponse(w http.ResponseWriter, r *http.Request) {
-	var transaction models.Transaction
-	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		http.Error(w, "Invalid request data", http.StatusBadRequest)
-		return
-	}
-
-	// Check if the request exists in pendingRequests
-	Mutex.Lock()
-	existingTransaction, exists := PendingRequests[transaction.FileHash]
-	Mutex.Unlock()
-
-	if !exists {
-		http.Error(w, "Transaction not found", http.StatusNotFound)
-		return
-	}
-
-	// Handle based on the transaction status
-	switch transaction.Status {
-	case "accepted":
-		existingTransaction.Status = "accepted"
-		// Send file to requester
-		sendFile(DHT.Host(), existingTransaction.TargetID, existingTransaction.FileHash, existingTransaction.RequesterID, existingTransaction.FileName)
-	case "declined":
-		existingTransaction.Status = "declined"
-		// Notify decline
-		sendDecline(existingTransaction.TargetID, existingTransaction.FileHash)
-	}
-
-	// Update the transaction status in pendingRequests
-	Mutex.Lock()
-	PendingRequests[transaction.FileHash] = existingTransaction
-	Mutex.Unlock()
-}
-
-// func NotifyFrontendOfPendingRequest(request models.Transaction) {
-// 	// Prepare acknowledgment message
-// 	acknowledgment := map[string]string{
-// 		"status":    request.Status,
-// 		"fileHash":  request.FileHash,
-// 		"requester": request.RequesterID,
-// 	}
-// 	acknowledgmentData, _ := json.Marshal(acknowledgment)
-
-// 	// Retrieve the WebSocket connection for the specific user
-// 	if wsConn, exists := websocket.WsConnections[request.TargetID]; exists {
-// 		// Send the notification over the WebSocket connection
-// 		if err := wsConn.WriteJSON(acknowledgmentData); err != nil {
-// 			fmt.Println("Error sending notification to frontend:", err)
-// 		}
-// 	} else {
-// 		fmt.Println("WebSocket connection not found for node:", request.TargetID)
-// 	}
-// }
