@@ -1,0 +1,16 @@
+{
+    "name": "btcd-test-suite",
+    "version": "1.0.0",
+    "description": "Automated script for testing GenerateNewAddress in wallet service.",
+    "scripts": {
+      "build:btcd": "cd application-layer/btcd && go build -o btcd",
+      "start:btcd": " /Users/dianne/Library/Application Support/Btcd/data/mainnet/blocks_ffldb && cd application-layer/btcd && ./btcd --configfile=btcd.conf",
+      "build:btcwallet": "cd application-layer/btcwallet && go build -o btcwallet",
+      "start:btcwallet": "cd application-layer/btcwallet && ./btcwallet --configfile=btcwallet.conf",
+      "build:btcctl": "cd application-layer/btcd/cmd/btcctl && go build -o btcctl",
+      "test:wallet": "cd application-layer && go mod init application-layer && go test ./wallet -v",
+      "run:all": "npm run build:btcd && npm run start:btcd & npm run build:btcwallet && npm run start:btcwallet & npm run build:btcctl && npm run test:wallet"
+    },
+    "dependencies": {}
+  }
+  
