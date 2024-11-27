@@ -322,6 +322,7 @@ func getNodeId() {
 	}
 }
 
+// move to files package?
 func UpdateFileInDHT(currentInfo models.FileMetadata) error {
 	// Retrieve the current metadata for the file, if it exists
 	var currentMetadata models.DHTMetadata
@@ -339,7 +340,7 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) error {
 			Size:              currentInfo.Size,
 			Description:       currentInfo.Description,
 			CreatedAt:         currentInfo.CreatedAt,
-			Reputation:        currentInfo.Reputation,
+			Rating:        currentInfo.Rating,
 			NameWithExtension: currentInfo.NameWithExtension,
 		}
 	}

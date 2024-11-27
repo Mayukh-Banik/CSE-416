@@ -11,8 +11,8 @@ type FileMetadata struct {
 	IsPublished       bool   `json:"IsPublished"`
 	Fee               int64  `json:"Fee"`
 	CreatedAt         string `json:"CreatedAt"`
-	Reputation        int64  `json:"Reputation"`
 	OriginalUploader  bool   `json:"OriginalUploader"`
+	Rating            int64  `json:"Rating"` // 0 - not voted, -1 - downvote, 5 - upvote
 }
 
 type DHTMetadata struct {
@@ -22,7 +22,7 @@ type DHTMetadata struct {
 	Size              int64
 	Description       string
 	CreatedAt         string
-	Reputation        int64
+	Rating        int64
 	Providers         []Provider
 }
 

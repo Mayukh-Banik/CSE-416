@@ -10,7 +10,7 @@ export interface dhtFile{
   size: number;
   description: string;
   hash: string;
-  reputation?: number;
+  rating?: number;
   isPublished?: boolean;
   providers: Provider[];
 }
@@ -23,10 +23,9 @@ export interface FileMetadata {
   Description: string;
   Hash: string;
   CreatedAt?: string;
-  Reputation?: number;
   IsPublished?: boolean;
   Fee: number;
   OriginalUploader: boolean; // true is user acquire file by downloading, false if user themselves uploaded file
-  // Path: string;
   NameWithExtension?: string;
+  Rating?: number;
 }

@@ -34,9 +34,12 @@ const AccountViewPage: React.FC = () => {
       const fetchFiles = async () => {
         try {
           console.log("Getting local user's uploaded files");
-          const response = await fetch("http://localhost:8081/files/fetchAll");
-          if (!response.ok) throw new Error("Failed to load file data");
-  
+          let fileType = "uploaded"
+          const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
+            method: "GET",
+          });
+          if (!response.ok) throw new Error(`Failed to load ${fileType} file data`);
+    
           const data = await response.json();
           console.log("Fetched data", data);
   
@@ -143,7 +146,7 @@ const AccountViewPage: React.FC = () => {
                   <TableCell>{file.Name}</TableCell>
                   <TableCell>{file.Size}</TableCell>
                   <TableCell>{file.CreatedAt}</TableCell>
-                  <TableCell>{file.Reputation}</TableCell>
+                  <TableCell>{file.Rating}</TableCell>
                   <TableCell>
                     <Button
                       // onClick={() => handleUpvote(index)}
@@ -171,7 +174,7 @@ const AccountViewPage: React.FC = () => {
         </Table>
 
         {/* Downloaded files table */}
-        <Typography variant="h6" sx={{ mt: 3 }}>
+        {/* <Typography variant="h6" sx={{ mt: 3 }}>
           Downloaded Files
         </Typography>
         <Table component={Paper}>
@@ -183,14 +186,14 @@ const AccountViewPage: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* Empty table for now */}
             <TableRow>
               <TableCell colSpan={3} align="center">
                 No files downloaded
               </TableCell>
             </TableRow>
           </TableBody>
-        </Table>
+        </Table> */}
+
       </Box>
     </Box>
   );
