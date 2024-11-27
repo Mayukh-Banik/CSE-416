@@ -22,14 +22,14 @@ const MarketplacePage: React.FC = () => {
   const [loadingRequest, setLoadingRequest] = useState(false)
   const [loadingSearch, setLoadingSearch] = useState(false)
 
-  const socket = new WebSocket("ws://localhost:8081/ws")
-  socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.status === "declined") {
-          alert(`File with hash ${message.fileHash} was declined.`);
-          // Update UI accordingly
-      }
-  };
+  // const socket = new WebSocket("ws://localhost:8081/ws")
+  // socket.onmessage = (event) => {
+  //     const message = JSON.parse(event.data);
+  //     if (message.status === "declined") {
+  //         alert(`File with hash ${message.fileHash} was declined.`);
+  //         // Update UI accordingly
+  //     }
+  // };
 
   useEffect(() => {
     handleRefresh();
@@ -93,9 +93,10 @@ const MarketplacePage: React.FC = () => {
   };
 
   const handleRefresh = async () => {
-    resetStates()
-    console.log("Trying to refresh marketplace");
-  
+    resetStates();
+    setLoadingSearch(true);
+    console.log("Refreshing marketplace");
+
     try {
       const response = await fetch(`http://localhost:8081/files/refresh`, {
         method: "GET",
@@ -103,18 +104,21 @@ const MarketplacePage: React.FC = () => {
           "Content-Type": "application/json",
         },
       });
-  
-      // Log raw response text before attempting to parse
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to fetch marketplace files.");
+      }
 
       const data = await response.json();
-      // console.log("Raw response data:", rawData);
-  
-      // Now attempt to parse the response
-      // const data = JSON.parse(rawData); // Use JSON.parse() after inspecting the raw response
-      console.log("Data received is: ", data);
-      setSearchResults(data)
+      console.log("Data received:", data);
+      setSearchResults(data);
+      setNotification({ open: true, message: "Marketplace refreshed successfully.", severity: "success" });
     } catch (error) {
-      console.error("Error getting adjacent nodes:", error);
+      console.error("Error refreshing marketplace:", error);
+      setNotification({ open: true, message: "Failed to refresh marketplace.", severity: "error" });
+    } finally {
+      setLoadingSearch(false);
     }
   };
   
@@ -220,6 +224,9 @@ const MarketplacePage: React.FC = () => {
         >
         Refresh
       </Button>
+
+      {/* {loadingSearch && <LinearProgress sx={{ marginBottom: 2 }} />} */}
+
       {/* <Button variant="contained" onClick={() => handleDownloadByHash()}>
         Download by Hash
       </Button> */}

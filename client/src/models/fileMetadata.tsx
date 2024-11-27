@@ -28,5 +28,5 @@ export interface FileMetadata {
   Fee: number;
   OriginalUploader: boolean; // true is user acquire file by downloading, false if user themselves uploaded file
   // Path: string;
-  Extension?: string;
+  NameWithExtension?: string;
 }
