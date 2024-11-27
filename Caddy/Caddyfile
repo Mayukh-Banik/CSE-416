@@ -1,3 +1,0 @@
-:5000 {
-    reverse_proxy app_client_server:3000
-}
