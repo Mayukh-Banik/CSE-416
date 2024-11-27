@@ -122,18 +122,6 @@ const MarketplacePage: React.FC = () => {
     }
   };
   
-
-  // const handleDownloadByHash = async () => {
-  //   console.log("HI");
-  //   const hash = prompt("Enter the file hash");
-  //   console.log('you entered:', hash)
-  //   if (hash == null || hash.length==0) return;
-  //   setFileHash(hash);
-  //   getFileByHash(hash);
-  //   setOpen(true);
-  // }
-
-  
   // only works for complete file hashes
   const handleSearchRequest = async (searchTerm: string) => {
     await resetStates();
@@ -253,7 +241,7 @@ const MarketplacePage: React.FC = () => {
             <TableRow>
               <TableCell>File Name</TableCell>
               <TableCell>File Size (KB)</TableCell>
-              <TableCell>Reputation</TableCell>
+              <TableCell>Rating</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell></TableCell>
             </TableRow>

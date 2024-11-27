@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -123,52 +122,11 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 func PublishFile(requestBody models.FileMetadata) {
 	fmt.Println("publishing new file")
 
-	// Retrieve the current metadata for the file, if it exists
-	var currentMetadata models.DHTMetadata
-	existingData, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+requestBody.Hash)
-	if err == nil { // If data exists, unmarshal it
-		err = json.Unmarshal(existingData, &currentMetadata)
-		if err != nil {
-			log.Fatal("Failed to unmarshal existing DHTMetadata:", err)
-		}
-	} else {
-		// If no existing metadata, initialize a new DHTMetadata
-		currentMetadata = models.DHTMetadata{
-			Name:              requestBody.Name,
-			Type:              requestBody.Type,
-			Size:              requestBody.Size,
-			Description:       requestBody.Description,
-			CreatedAt:         requestBody.CreatedAt,
-			Reputation:        requestBody.Reputation,
-			NameWithExtension: requestBody.NameWithExtension,
-		}
-	}
-
-	// Add the new provider to the list of current providers
-	provider := models.Provider{
-		PeerID:   dht_kad.PeerID,
-		PeerAddr: dht_kad.DHT.Host().Addrs()[0].String(),
-		IsActive: requestBody.IsPublished,
-		Fee:      requestBody.Fee,
-	}
-
-	currentMetadata.Providers = append(currentMetadata.Providers, provider)
-
-	// Marshal the updated metadata
-	dhtMetadataBytes, err := json.Marshal(currentMetadata)
+	err := dht_kad.UpdateFileInDHT(requestBody)
 	if err != nil {
-		log.Fatal("Failed to marshal updated DHTMetadata:", err)
+		fmt.Printf("unable to update file in the dht %w\n", err)
+		return
 	}
-
-	// Store the updated metadata in the DHT
-	err = dht_kad.DHT.PutValue(dht_kad.GlobalCtx, "/orcanet/"+requestBody.Hash, dhtMetadataBytes)
-	if err != nil {
-		log.Fatal("failed to register updated file to dht")
-	}
-	fmt.Println("successfully updated file to dht with new provider", requestBody.Hash)
-
-	// Begin providing ourselves as a provider for that file
-	dht_kad.ProvideKey(dht_kad.GlobalCtx, dht_kad.DHT, requestBody.Hash)
 
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -386,7 +344,7 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	// dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
-	<-time.After(3 * time.Second)
+	// <-time.After(3 * time.Second)
 
 	fmt.Println("getAdjacentNodeFilesMetadata: received everyone's uploaded files: ", dht_kad.RefreshResponse)
 	// Set response headers

@@ -1,10 +1,12 @@
 package dht_kad
 
 import (
+	"application-layer/models"
 	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -318,4 +320,58 @@ func getNodeId() {
 		fmt.Println("Your SBUID is:", Node_id)
 		break // Exit the loop on valid input
 	}
+}
+
+func UpdateFileInDHT(currentInfo models.FileMetadata) error {
+	// Retrieve the current metadata for the file, if it exists
+	var currentMetadata models.DHTMetadata
+	existingData, err := DHT.GetValue(GlobalCtx, "/orcanet/"+currentInfo.Hash)
+	if err == nil { // If data exists, unmarshal it
+		err = json.Unmarshal(existingData, &currentMetadata)
+		if err != nil {
+			log.Fatal("Failed to unmarshal existing DHTMetadata:", err)
+		}
+	} else {
+		// If no existing metadata, initialize a new DHTMetadata
+		currentMetadata = models.DHTMetadata{
+			Name:              currentInfo.Name,
+			Type:              currentInfo.Type,
+			Size:              currentInfo.Size,
+			Description:       currentInfo.Description,
+			CreatedAt:         currentInfo.CreatedAt,
+			Reputation:        currentInfo.Reputation,
+			NameWithExtension: currentInfo.NameWithExtension,
+		}
+	}
+
+	// Add the new provider to the list of current providers
+	provider := models.Provider{
+		PeerID:   PeerID,
+		PeerAddr: DHT.Host().Addrs()[0].String(),
+		IsActive: currentInfo.IsPublished,
+		Fee:      currentInfo.Fee,
+	}
+
+	currentMetadata.Providers = append(currentMetadata.Providers, provider)
+
+	// Marshal the updated metadata
+	dhtMetadataBytes, err := json.Marshal(currentMetadata)
+	if err != nil {
+		fmt.Errorf("failed to marshal updated DHTMetadata: %w\n", err)
+	}
+
+	// Begin providing ourselves as a provider for that file
+	err = ProvideKey(GlobalCtx, DHT, currentInfo.Hash)
+	if err != nil {
+		fmt.Errorf("failed to register updated file to dht: %w\n", err)
+	}
+
+	// Store the updated metadata in the DHT
+	err = DHT.PutValue(GlobalCtx, "/orcanet/"+currentInfo.Hash, dhtMetadataBytes)
+	if err != nil {
+		fmt.Errorf("failed to updated file in dht: %w\n", err)
+	}
+	fmt.Println("successfully updated file to dht with new provider", currentInfo.Hash)
+
+	return nil
 }
