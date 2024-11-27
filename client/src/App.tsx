@@ -21,8 +21,11 @@ import MarketPage from "./Components/MarketPage";
 import FileViewPage from "./Components/FileViewPage";
 import AccountViewPage from "./Components/AccountViewPage";
 import ProxyPage from "./Components/ProxyPage";
-import GlobalTransactions from "./Components/GlobalTransactions";
+// import GlobalTransactions from "./Components/GlobalTransactions";
+import GlobalTransactions from "./Components/Transactions";
+
 import SearchPage from "./Components/SearchPage";
+import { FileMetadata } from "./models/fileMetadata";
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
@@ -62,7 +65,8 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated }) => {
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
-
+  const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([])
+  const [initialFetch, setInitialFetch] = useState(false);
   const lightTheme = createTheme({
     palette: {
       mode: "light",
@@ -102,13 +106,18 @@ const App: React.FC = () => {
       <CssBaseline /> {/* This resets CSS to a consistent baseline */}
       <Router>
         <Routes>
-          <Route path="/" element={<SignupPage />} />
+          <Route path="/" element={<MarketPage />} />   
           <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           {/* <Route path="/signup" element={<SignupPage />} /> */}
           <Route path="/market" element={<MarketPage />} />
-          <Route path="/files" element={<FilesPage />} />
+          <Route path="/files" element={<FilesPage 
+              uploadedFiles={uploadedFiles} 
+              setUploadedFiles={setUploadedFiles} 
+              initialFetch={initialFetch} 
+              setInitialFetch={setInitialFetch} 
+            />} />
           <Route path="/global-transactions" element={<GlobalTransactions />} />
           <Route
             path="/settings"

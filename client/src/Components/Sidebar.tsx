@@ -102,7 +102,7 @@ const Sidebar: React.FC = () => {
           }}
         >
           <ListItemIcon><FileCopyIcon /></ListItemIcon>
-          <ListItemText primary="View/Upload Files" sx={{ display: { xs: 'none', sm: 'block' } }} />
+          <ListItemText primary="Files" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
         <ListItem
@@ -134,7 +134,7 @@ const Sidebar: React.FC = () => {
           }}
         >
           <ListItemIcon><PublicIcon /></ListItemIcon>
-          <ListItemText primary="Global Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
+          <ListItemText primary="Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
         <ListItem
@@ -146,7 +146,7 @@ const Sidebar: React.FC = () => {
           }}
         >
           <ListItemIcon><SecurityIcon /></ListItemIcon>
-          <ListItemText primary="Proxy" />
+          <ListItemText primary="Proxy" sx={{ display: { xs: 'none', sm: 'block' } }}/>
         </ListItem>
 
         <ListItem
