@@ -352,7 +352,21 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) error {
 		Fee:      currentInfo.Fee,
 	}
 
-	currentMetadata.Providers = append(currentMetadata.Providers, provider)
+	// Check if the provider already exists in the metadata
+	providerUpdated := false
+	for i, existingProvider := range currentMetadata.Providers {
+		if existingProvider.PeerID == PeerID {
+			// Update IsActive field
+			currentMetadata.Providers[i].IsActive = provider.IsActive
+			providerUpdated = true
+			break
+		}
+	}
+
+	// If provider is not found, append the new provider
+	if !providerUpdated {
+		currentMetadata.Providers = append(currentMetadata.Providers, provider)
+	}
 
 	// Marshal the updated metadata
 	dhtMetadataBytes, err := json.Marshal(currentMetadata)

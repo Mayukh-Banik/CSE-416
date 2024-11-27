@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -216,7 +217,7 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// VERY BUGGY
-	err := deleteFileContent(name)
+	err := deleteFileContent(name) // currently using file name but we should switch to hash
 	if err != nil {
 		http.Error(w, fmt.Sprint("failed to delete file from squidcoinFiles", err), http.StatusInternalServerError)
 		return
@@ -334,17 +335,7 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	sendWG.Wait()
 	responseWG.Wait()
 
-	// // create stream to every adjacent node
-	// for _, peer := range peers {
-	// 	if peer != "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN" &&
-	// 		peer != "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE" &&
-	// 		peer != dht_kad.PeerID { // cannot connect to relay node, bootstrap node, or self
-	// 		dht_kad.SendRefreshFilesRequest(peer)
-	// 	}
-	// }
-
-	// dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
-	// <-time.After(3 * time.Second)
+	<-time.After(3 * time.Second)
 
 	fmt.Println("getAdjacentNodeFilesMetadata: received everyone's uploaded files: ", dht_kad.RefreshResponse)
 	// Set response headers
@@ -353,17 +344,10 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("getAdjacentNodeFilesMetadata: back to frontend...")
 
 	// Encode response
-	/**
-	if err := json.NewEncoder(w).Encode(peers); err != nil {
-		http.Error(w, "Failed to encode adjacent nodes", http.StatusInternalServerError)
-	}
-	*/
-
 	if err := json.NewEncoder(w).Encode(dht_kad.RefreshResponse); err != nil {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
 	fmt.Println("getAdjacentNodeFilesMetadata: back to frontend...")
-
 }
 
 func nodeSupportRefreshStreams(peerID peer.ID) bool {
