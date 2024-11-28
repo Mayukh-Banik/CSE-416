@@ -119,49 +119,6 @@ const SignUpPage: React.FC = () => {
           </Typography>
         )}
 
-        {/* Add the Connect Button */}
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={handleOpenDialog} // Open dialog on click
-          sx={{
-            mb: 2,
-            width: "100%",
-            padding: "10px 0",
-            fontSize: "1.2rem",
-            borderRadius: "8px",
-          }}
-        >
-          Connect
-        </Button>
-
-        <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
-          <DialogTitle>Connect?</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              You are about to connect to the following server:
-            </DialogContentText>
-            <TextField
-              fullWidth
-              value="cse416squidcoin.xyz"
-              InputProps={{
-                readOnly: true,
-              }}
-              variant="outlined"
-              margin="dense"
-              sx={{ marginTop: "1rem" }}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog} color="primary">
-              Cancel
-            </Button>
-            <Button onClick={handleCloseDialog} color="primary">
-              Connect
-            </Button>
-          </DialogActions>
-        </Dialog>
-
         {!isSubmitted ? (
           <Button
             variant="contained"
