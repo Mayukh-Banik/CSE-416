@@ -37,4 +37,3 @@ func TestSignUp(t *testing.T) {
 	t.Logf("User created successfully: %+v", user)
 	t.Logf("Private Key: %s", privateKey)
 }
-

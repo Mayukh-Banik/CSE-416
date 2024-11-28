@@ -11,8 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-var jwtKey = []byte("your_secret_key")
-
 type UserService struct {
 	Users  map[string]*models.User // In-memory user store
 	Challenges map[string]*models.Challenge // In-memory challenge store
