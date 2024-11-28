@@ -8,4 +8,4 @@ electron/
 node_modules/
 private_key.pem
 
-
+/.vscode/launch.json

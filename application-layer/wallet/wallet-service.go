@@ -3,8 +3,13 @@ package wallet
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
 	"os/exec"
+	"runtime"
 	"strings"
+
+	"path/filepath"
 )
 
 type WalletServiceInterface interface {
@@ -12,13 +17,74 @@ type WalletServiceInterface interface {
 	GetPublicKey(address string) (string, error)
 	UnlockWallet(passphrase string, duration int) error
 	DumpPrivKey(address string) (string, error)
-	GenerateNewAddressWithPubKeyAndPrivKey(passphrase string) (string, string, string, error)
+	GenerateNewAddressWithPubKeyAndPrivKey(passphrase string) (string, string, string, float64, error)
+}
+
+// WalletService defines wallet-related operations and configurations
+type WalletService struct {
+	BtcctlPath string
+	RpcUser    string
+	RpcPass    string
+	RpcServer  string
 }
 
 // NewWalletService initializes WalletService with provided RPC credentials
 func NewWalletService(rpcUser, rpcPass string) *WalletService {
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Printf("Failed to get current working directory: %v", err)
+	} else {
+		log.Printf("Current working directory: %s", cwd)
+	}
+
+	var btcctlPath string
+
+	// 운영 체제에 따라 btcctl 경로 설정
+	switch runtime.GOOS {
+	case "windows":
+		// btcctlPath = `E:\.code-workspace\CSE-416\application-layer\btcd\cmd\btcctl\btcctl.exe` // 절대 경로로 변경
+		btcctlPath = `./btcd/cmd/btcctl/btcctl.exe`
+	default: // macOS 및 Linux
+		btcctlPath = `./btcd/cmd/btcctl/btcctl`
+	}
+
+	// 상대 경로가 실제로 존재하는지 확인
+	if _, err := os.Stat(btcctlPath); os.IsNotExist(err) {
+		log.Printf("btcctl.exe does not exist at path: %s", btcctlPath)
+	} else if err != nil {
+		log.Printf("Error checking btcctl.exe path: %v", err)
+	} else {
+		log.Printf("btcctl.exe exists at path: %s", btcctlPath)
+	}
+
+	// 상대 경로를 절대 경로로 변환
+	absPath, err := filepath.Abs(btcctlPath)
+	if err != nil {
+		log.Printf("Failed to get absolute path for btcctlPath '%s': %v", btcctlPath, err)
+	} else {
+		log.Printf("Absolute btcctlPath: %s", absPath)
+	}
+
+	// 운영 체제에 따라 경로 구분자 조정 (Windows에서는 필요 시)
+	switch runtime.GOOS {
+	case "windows":
+		absPath = filepath.FromSlash(absPath)
+	default:
+		// macOS 및 Linux는 별도 처리 필요 없음
+	}
+
+	// btcctlPath가 실제로 존재하는지 다시 확인
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		log.Printf("btcctl.exe does not exist at absolute path: %s", absPath)
+	} else if err != nil {
+		log.Printf("Error checking btcctl.exe at absolute path: %v", err)
+	} else {
+		log.Printf("btcctl.exe exists at absolute path: %s", absPath)
+	}
+
 	return &WalletService{
-		BtcctlPath: `../btcd/cmd/btcctl/btcctl.exe`,
+		BtcctlPath: btcctlPath,
 		RpcUser:    rpcUser,
 		RpcPass:    rpcPass,
 		RpcServer:  "127.0.0.1:8332",
@@ -27,10 +93,11 @@ func NewWalletService(rpcUser, rpcPass string) *WalletService {
 
 // GenerateNewAddress generates a new wallet address using btcctl
 func (ws *WalletService) GenerateNewAddress() (string, error) {
-	cmd := exec.Command(`../btcd/cmd/btcctl/btcctl`, "--wallet", "--rpcuser="+ws.RpcUser, "--rpcpass="+ws.RpcPass, "--rpcserver="+ws.RpcServer, "--notls", "getnewaddress")
+	cmd := exec.Command(ws.BtcctlPath, "--wallet", "--rpcuser="+ws.RpcUser, "--rpcpass="+ws.RpcPass, "--rpcserver="+ws.RpcServer, "--notls", "getnewaddress")
 	output, err := cmd.CombinedOutput()
-	fmt.Printf("@@ Command Output for GenerateNewAddress: %s\n", output) // Debug: Print the output of the command
+	log.Printf("Command Output for GenerateNewAddress: %s\n", output) // 디버그 로그
 	if err != nil {
+		log.Printf("Command execution failed: %v\nOutput: %s", err, output)
 		return "", fmt.Errorf("failed to generate new address: %v", err)
 	}
 	address := strings.TrimSpace(string(output))
@@ -115,33 +182,40 @@ func (ws *WalletService) DumpPrivKey(address string) (string, error) {
 
 // GenerateNewAddressWithPubKeyAndPrivKey generates a new address, retrieves its public key, and retrieves the private key
 func (ws *WalletService) GenerateNewAddressWithPubKeyAndPrivKey(passphrase string) (string, string, string, float64, error) {
+	log.Println("Generating new address with passphrase:", passphrase)
+
 	address, err := ws.GenerateNewAddress()
 	if err != nil {
 		return "", "", "", 0, err
 	}
+	log.Println("Generated Address:", address)
 
 	pubKey, err := ws.GetPublicKey(address)
 	if err != nil {
 		return "", "", "", 0, err
 	}
+	log.Println("Retrieved Public Key:", pubKey)
 
 	// Unlock the wallet before dumping the private key
 	err = ws.UnlockWallet(passphrase, 600) // Unlock for 10 minutes (600 seconds)
 	if err != nil {
 		return "", "", "", 0, err
 	}
+	log.Println("Wallet unlocked successfully")
 
 	// Retrieve the private key for the generated address
 	privateKey, err := ws.DumpPrivKey(address)
 	if err != nil {
 		return "", "", "", 0, err
 	}
+	log.Println("Retrieved Private Key:", privateKey)
 
 	// Retrieve the balance for the address
 	balance, err := ws.GetBalance(address)
 	if err != nil {
 		return "", "", "", 0, err
 	}
+	log.Println("Retrieved Balance:", balance)
 
 	return address, pubKey, privateKey, balance, nil
 }

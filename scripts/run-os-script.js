@@ -406,7 +406,7 @@ const scripts = {
                 process.exit(1);
             }
 
-            const command = "go test ./wallet -v -count=1";
+            const command = "go test  -v -count=1";
             console.log(`Executing: ${command}`);
             try {
                 execSync(command, { stdio: "inherit" });
@@ -428,7 +428,7 @@ const scripts = {
                 process.exit(1);
             }
 
-            const command = "go test ./wallet -v -count=1";
+            const command = "go test  -v -count=1";
             console.log(`Executing: ${command}`);
             try {
                 execSync(command, { stdio: "inherit" });
@@ -450,7 +450,7 @@ const scripts = {
                 process.exit(1);
             }
 
-            const command = "go test ./wallet -v -count=1";
+            const command = "go test  -v -count=1";
             console.log(`Executing: ${command}`);
             try {
                 execSync(command, { stdio: "inherit" });
