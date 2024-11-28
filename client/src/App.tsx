@@ -26,6 +26,7 @@ import GlobalTransactions from "./Components/Transactions";
 
 import SearchPage from "./Components/SearchPage";
 import { FileMetadata } from "./models/fileMetadata";
+import SignUpPage from "./Components/SignUpPage";
 
 const isUserLoggedIn = true; // should add the actual login state logic here.
 
@@ -146,7 +147,7 @@ const App: React.FC = () => {
       <CssBaseline /> {/* This resets CSS to a consistent baseline */}
       <Router>
         <Routes>
-          <Route path="/" element={<MarketPage />} />   
+          <Route path="/" element={<SignUpPage />} />   
           <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
