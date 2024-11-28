@@ -2,18 +2,45 @@
 package main
 
 import (
+	"application-layer/controllers"
 	dht_kad "application-layer/dht"
 	"application-layer/download"
 	"application-layer/files"
+	"application-layer/routes"
+	"application-layer/wallet"
 	"application-layer/websocket"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 )
 
 func main() {
+
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	rpcUser := os.Getenv("RPC_USER")
+	rpcPass := os.Getenv("RPC_PASS")
+	if rpcUser == "" || rpcPass == "" {
+		log.Fatal("RPC_USER and RPC_PASS environment variables are required")
+	}
+
+	// initialization
+	walletService := wallet.NewWalletService(rpcUser, rpcPass)
+	userService := wallet.NewUserService()
+	walletController := controllers.NewWalletController(walletService)
+	authController := controllers.NewAuthController(userService, walletService)
+
+	// 라우트 설정
+	mux := http.NewServeMux()
+	routes.RegisterRoutes(mux, authController, walletController)
+
 	fmt.Println("Main server started")
 
 	fileRouter := files.InitFileRoutes()
@@ -33,7 +60,8 @@ func main() {
 	http.Handle("/download/", c.Handler(downloadRouter)) // Download routes under /download
 	http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
 
-	port := ":8081"
+	port := ":8080"
+	handler := c.Handler(mux)
 	fmt.Printf("Starting server for file routes and DHT on port %s...\n", port)
-	log.Fatal(http.ListenAndServe(port, nil))
+	log.Fatal(http.ListenAndServe(port, handler))
 }
