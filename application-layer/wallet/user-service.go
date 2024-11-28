@@ -17,13 +17,7 @@ type UserService struct {
 	Mutex     sync.Mutex                    // Mutex for concurrent access
 }
 
-// WalletService defines wallet-related operations and configurations
-type WalletService struct {
-	BtcctlPath string
-	RpcUser    string
-	RpcPass    string
-	RpcServer  string
-}
+
 
 type Claims struct {
 	UUID string `json:"uuid"`

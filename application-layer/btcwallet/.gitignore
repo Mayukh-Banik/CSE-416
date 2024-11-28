@@ -4,3 +4,5 @@ vendor
 coverage.txt
 *.swp
 .vscode
+btcwallet.exe
+btcwallet.exe~

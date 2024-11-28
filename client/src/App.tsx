@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Typography,
@@ -32,7 +32,7 @@ const isUserLoggedIn = true; // should add the actual login state logic here.
 // Fake data for your wallet (temporary data)
 const walletAddress = "0x1234567890abcdef";
 const balance = 100;
-const transactions= [
+const transactions = [
   {
     id: "tx001",
     sender: "0xsender001",
@@ -65,6 +65,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated }) => {
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([])
   const [initialFetch, setInitialFetch] = useState(false);
   const lightTheme = createTheme({
@@ -73,8 +74,8 @@ const App: React.FC = () => {
       background: {
         default: "#f4f4f4", //white
       },
-      primary:{ //blue background
-        main:'#1876d2'
+      primary: { //blue background
+        main: '#1876d2'
       },
       secondary: {
         main: "#121212", // text color
@@ -101,6 +102,45 @@ const App: React.FC = () => {
     setDarkMode((prevMode) => !prevMode);
   };
 
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        console.log("Checking authentication status...");
+
+        const response = await fetch("http://localhost:8080/api/auth/status", {
+          method: 'POST',
+          credentials: 'include', // 쿠키 포함 요청
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log("Response status:", response.status);
+
+        if (!response.ok) {
+          throw new Error(`Server responded with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Authentication response data:", data);
+
+        // 서버의 응답 구조에 맞게 인증 상태를 설정
+        setIsAuthenticated(data.status === "valid");
+
+        if (data.status === "valid") {
+          console.log("User is authenticated.");
+        } else {
+          console.log("User is not authenticated.");
+        }
+      } catch (error) {
+        console.error("Error checking auth status:", error);
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
+  
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline /> {/* This resets CSS to a consistent baseline */}
