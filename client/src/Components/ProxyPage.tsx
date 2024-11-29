@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import Sidebar from "./Sidebar";
 import useProxyHostsStyles from '../Stylesheets/ProxyPageStyles';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Box, TextField } from '@mui/material';
@@ -19,8 +19,40 @@ interface ProxyHost {
 
 
 const ProxyHosts: React.FC = () => {
+  const [data, setData] = useState<string>('');
+  const [input, setInput] = useState<string>('');
   const styles = useProxyHostsStyles();
   const theme = useTheme();
+  const fetchData = async () => {
+    try {
+      const response = await fetch('http://localhost:8081/proxy-data');
+      if (!response.ok) {
+        throw new Error('Failed to fetch data');
+      }
+      const result = await response.json();
+      setData(result.message);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+  const sendData = async () => {
+    try {
+      const response = await fetch('http://localhost:8081/proxy-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to send data');
+      }
+      alert('Data sent successfully!');
+    } catch (error) {
+      console.error('Error sending data:', error);
+    }
+  };
+  useEffect(() => {
+    fetchData();
+  }, []);
   
   const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([
     {
