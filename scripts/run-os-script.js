@@ -3,6 +3,109 @@ const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
 
+// Retrieve the network type from environment variables (default: testnet)
+const network = process.env.NETWORK || 'testnet';
+const isTestnet = network === 'testnet';
+
+// Port settings
+const btcdRpcPort = isTestnet ? '18334' : '8334';
+const btcwalletRpcPort = isTestnet ? '18332' : '8332';
+
+// Path to `btcwallet.conf` file
+const walletDir = path.resolve("application-layer", "btcwallet");
+const configFilePath = path.join(walletDir, "btcwallet.conf");
+
+// Generate the content for `btcwallet.conf`
+const configContent = `
+username=user
+password=password
+${isTestnet ? 'testnet=1' : ''}
+rpclisten=127.0.0.1:${btcwalletRpcPort}
+btcdusername=user
+btcdpassword=password
+rpcconnect=127.0.0.1:${btcdRpcPort}
+noservertls=1
+noclienttls=1
+`;
+
+// Helper function to get mining address
+function getMiningAddress(index) {
+    const receivedAddressesPath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
+    if (!fs.existsSync(receivedAddressesPath)) {
+        console.error(`received_addresses.json not found at: ${receivedAddressesPath}`);
+        process.exit(1);
+    }
+
+    let addresses;
+    try {
+        const data = fs.readFileSync(receivedAddressesPath, 'utf-8');
+        addresses = JSON.parse(data);
+    } catch (err) {
+        console.error(`Failed to read or parse received_addresses.json: ${err.message}`);
+        process.exit(1);
+    }
+
+    if (!Array.isArray(addresses) || addresses.length === 0) {
+        console.error("No addresses found in received_addresses.json.");
+        process.exit(1);
+    }
+
+    let selectedAddress;
+
+    if (index !== undefined) {
+        if (isNaN(index) || index < 0 || index >= addresses.length) {
+            console.error(`Invalid index provided. Must be between 0 and ${addresses.length - 1}.`);
+            process.exit(1);
+        }
+        selectedAddress = addresses[index].address;
+    } else {
+        // Select the address with the highest amount
+        selectedAddress = addresses.reduce((prev, current) => {
+            return (prev.amount > current.amount) ? prev : current;
+        }).address;
+    }
+
+    return selectedAddress;
+}
+
+// Helper function to display addresses with indices
+function displayMiningAddressIndex() {
+    const receivedAddressesPath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
+    if (!fs.existsSync(receivedAddressesPath)) {
+        console.error(`received_addresses.json not found at: ${receivedAddressesPath}`);
+        process.exit(1);
+    }
+
+    let addresses;
+    try {
+        const data = fs.readFileSync(receivedAddressesPath, 'utf-8');
+        addresses = JSON.parse(data);
+    } catch (err) {
+        console.error(`Failed to read or parse received_addresses.json: ${err.message}`);
+        process.exit(1);
+    }
+
+    if (!Array.isArray(addresses) || addresses.length === 0) {
+        console.error("No addresses found in received_addresses.json.");
+        process.exit(1);
+    }
+
+    console.log("Received Addresses:");
+    console.log("Index | Address                                  | Amount      | Confirmations");
+    console.log("--------------------------------------------------------------------------------");
+
+    addresses.forEach((addr, index) => {
+        const amount = addr.amount !== undefined ? addr.amount.toFixed(8) : '0.00000000';
+        const confirmations = addr.confirmations !== undefined ? addr.confirmations : '0';
+        console.log(`${index.toString().padEnd(5)} | ${addr.address.padEnd(40)} | ${amount.padEnd(10)} | ${confirmations}`);
+    });
+};
+
+// Create or overwrite the configuration file
+fs.writeFileSync(configFilePath, configContent.trim());
+console.log(`Generated btcwallet.conf for ${network} at: ${configFilePath}`);
+
+// Define various scripts for building and managing btcd, btcwallet, and btcctl
 const scripts = {
     buildBtcd: {
         windows: () => {
@@ -460,16 +563,600 @@ const scripts = {
                 process.exit(1);
             }
         }
+    },
+
+    startBtcdTestnet: {
+        windows: () => {
+            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdExe = path.join(btcdDir, "btcd.exe");
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --notls --rpclisten=127.0.0.1:18334`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCD started in testnet mode successfully.");
+            } catch (err) {
+                console.error(`Failed to start btcd.exe: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdExe = path.join(btcdDir, "btcd");
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --notls`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCD started in testnet mode successfully.");
+            } catch (err) {
+                console.error(`Failed to start btcd: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdExe = path.join(btcdDir, "btcd");
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --notls`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCD started in testnet mode successfully.");
+            } catch (err) {
+                console.error(`Failed to start btcd: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+
+    createBtcwalletTestnet: {
+        windows: () => {
+            const walletDir = path.resolve("application-layer", "btcwallet");
+            const walletExe = path.join(walletDir, "btcwallet.exe");
+            const configFile = path.join(walletDir, "btcwallet.conf");
+            const command = `"${walletExe}" --testnet --configfile="${configFile}" --noservertls --create`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCWallet created successfully.");
+            } catch (err) {
+                console.error(`Failed to create btcwallet.exe: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            const walletDir = path.resolve("application-layer", "btcwallet");
+            const walletExe = path.join(walletDir, "btcwallet");
+            const configFile = path.join(walletDir, "btcwallet.conf");
+            const command = `"${walletExe}" --testnet --configfile="${configFile}" --noservertls --create`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCWallet created successfully.");
+            } catch (err) {
+                console.error(`Failed to create btcwallet: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            const walletDir = path.resolve("application-layer", "btcwallet");
+            const walletExe = path.join(walletDir, "btcwallet");
+            const configFile = path.join(walletDir, "btcwallet.conf");
+            const command = `"${walletExe}" --testnet --configfile="${configFile}" --noservertls --create`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCWallet created successfully.");
+            } catch (err) {
+                console.error(`Failed to create btcwallet: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+
+    startBtcwalletTestnet: {
+        windows: () => {
+            const walletExe = path.join(walletDir, "btcwallet.exe");
+            const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCWallet started successfully in testnet mode with specified RPC port.");
+            } catch (err) {
+                console.error(`Failed to start btcwallet.exe: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            const walletExe = path.join(walletDir, "btcwallet");
+            const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCWallet started successfully in testnet mode with specified RPC port.");
+            } catch (err) {
+                console.error(`Failed to start btcwallet: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            const walletExe = path.join(walletDir, "btcwallet");
+            const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCWallet started successfully in testnet mode with specified RPC port.");
+            } catch (err) {
+                console.error(`Failed to start btcwallet: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+
+    generateNewAddress: {
+        windows: () => {
+            console.log("Generating new address on Windows...");
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl.exe");
+            const rpcUser = process.env.BTCD_RPCUSER || 'user';
+            const rpcPass = process.env.BTCD_RPCPASS || 'password';
+            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getnewaddress`;
+            console.log(`Executing: ${command}`);
+            try {
+                const address = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`Generated Address: ${address}`);
+            } catch (err) {
+                console.error(`Failed to generate new address: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            console.log("Generating new address on macOS...");
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl");
+            const rpcUser = process.env.BTCD_RPCUSER || 'user';
+            const rpcPass = process.env.BTCD_RPCPASS || 'password';
+            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getnewaddress`;
+            console.log(`Executing: ${command}`);
+            try {
+                const address = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`Generated Address: ${address}`);
+            } catch (err) {
+                console.error(`Failed to generate new address: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            console.log("Generating new address on Linux...");
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl");
+            const rpcUser = process.env.BTCD_RPCUSER || 'user';
+            const rpcPass = process.env.BTCD_RPCPASS || 'password';
+            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getnewaddress`;
+            console.log(`Executing: ${command}`);
+            try {
+                const address = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`Generated Address: ${address}`);
+            } catch (err) {
+                console.error(`Failed to generate new address: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+    startBtcdWithMiningaddrTestnet: {
+        windows: (index) => {
+            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdExe = path.join(btcdDir, "btcd.exe");
+            const configFile = path.join(btcdDir, "btcd.conf");
+
+            const miningAddress = getMiningAddress(index);
+
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress} --notls --configfile="${configFile}"`;
+            console.log(`Executing: ${command}`);
+            console.log(`[miningaddr] = ${miningAddress}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCD started in testnet mode successfully with the specified mining address.");
+            } catch (err) {
+                console.error(`Failed to start btcd.exe: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: (index) => {
+            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdExe = path.join(btcdDir, "btcd");
+            const configFile = path.join(btcdDir, "btcd.conf");
+
+            const miningAddress = getMiningAddress(index);
+
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress} --notls --configfile="${configFile}"`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCD started in testnet mode successfully with the specified mining address.");
+            } catch (err) {
+                console.error(`Failed to start btcd: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: (index) => {
+            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdExe = path.join(btcdDir, "btcd");
+            const configFile = path.join(btcdDir, "btcd.conf");
+
+            const miningAddress = getMiningAddress(index);
+
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress} --notls --configfile="${configFile}"`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCD started in testnet mode successfully with the specified mining address.");
+            } catch (err) {
+                console.error(`Failed to start btcd: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+
+    startMining: {
+        windows: (blocksToGenerate) => {
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl.exe");
+            const rpcUser = process.env.BTCD_RPCUSER || 'user';
+            const rpcPass = process.env.BTCD_RPCPASS || 'password';
+            const blocks = blocksToGenerate ? parseInt(blocksToGenerate, 10) : 1000000; // Default: 1,000,000
+
+            // Block generation limit (e.g., maximum 1,000,000)
+            const maxBlocks = 1000000;
+            if (blocks > maxBlocks) {
+                console.error(`Cannot generate more than ${maxBlocks} blocks.`);
+                process.exit(1);
+            }
+
+            const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls generate ${blocks}`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: "utf-8" });
+                console.log(`Successfully generated ${blocks} blocks.`);
+                // Save log to a file
+                const logPath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "generate_log.txt");
+                fs.appendFileSync(logPath, `${new Date().toISOString()} - ${output.trim()}\n`);
+                console.log(`Block generation log saved to: ${logPath}`);
+            } catch (err) {
+                console.error(`Failed to execute btcctl generate: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: (blocksToGenerate) => {
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl");
+            const rpcUser = process.env.BTCD_RPCUSER || 'user';
+            const rpcPass = process.env.BTCD_RPCPASS || 'password';
+            const blocks = blocksToGenerate ? parseInt(blocksToGenerate, 10) : 1000000; // Default: 1,000,000
+
+            // Block generation limit (e.g., maximum 1,000,000)
+            const maxBlocks = 1000000;
+            if (blocks > maxBlocks) {
+                console.error(`Cannot generate more than ${maxBlocks} blocks.`);
+                process.exit(1);
+            }
+
+            const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls generate ${blocks}`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: "utf-8" });
+                console.log(`Successfully generated ${blocks} blocks.`);
+                // Save log to a file
+                const logPath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "generate_log.txt");
+                fs.appendFileSync(logPath, `${new Date().toISOString()} - ${output.trim()}\n`);
+                console.log(`Block generation log saved to: ${logPath}`);
+            } catch (err) {
+                console.error(`Failed to execute btcctl generate: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: (blocksToGenerate) => {
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl");
+            const rpcUser = process.env.BTCD_RPCUSER || 'user';
+            const rpcPass = process.env.BTCD_RPCPASS || 'password';
+            const blocks = blocksToGenerate ? parseInt(blocksToGenerate, 10) : 1000000; // Default: 1,000,000
+
+            // Block generation limit (e.g., maximum 1,000,000)
+            const maxBlocks = 1000000;
+            if (blocks > maxBlocks) {
+                console.error(`Cannot generate more than ${maxBlocks} blocks.`);
+                process.exit(1);
+            }
+
+            const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls generate ${blocks}`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: "utf-8" });
+                console.log(`Successfully generated ${blocks} blocks.`);
+                // Save log to a file
+                const logPath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "generate_log.txt");
+                fs.appendFileSync(logPath, `${new Date().toISOString()} - ${output.trim()}\n`);
+                console.log(`Block generation log saved to: ${logPath}`);
+            } catch (err) {
+                console.error(`Failed to execute btcctl generate: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+
+    getReceivedByAddress: {
+        windows: () => {
+            console.log("Listing received addresses on Windows...");
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl.exe");
+            const rpcUser = process.env.BTCD_RPCUSER || 'user';
+            const rpcPass = process.env.BTCD_RPCPASS || 'password';
+            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls listreceivedbyaddress 0 true`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`Received Addresses:\n${output}`);
+
+                // Attempt to parse JSON
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(output);
+                } catch (parseError) {
+                    console.error(`Failed to parse listreceivedbyaddress output as JSON: ${parseError.message}`);
+                    jsonData = { rawOutput: output };
+                }
+
+                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
+                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+                console.log(`Received addresses saved to: ${outputFilePath}`);
+            } catch (err) {
+                console.error(`Failed to list received addresses: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            console.log("Listing received addresses on macOS...");
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl");
+            const rpcUser = process.env.BTCD_RPCUSER || 'user';
+            const rpcPass = process.env.BTCD_RPCPASS || 'password';
+            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls listreceivedbyaddress 0 true`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`Received Addresses:\n${output}`);
+
+                // Attempt to parse JSON
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(output);
+                } catch (parseError) {
+                    console.error(`Failed to parse listreceivedbyaddress output as JSON: ${parseError.message}`);
+                    jsonData = { rawOutput: output };
+                }
+
+                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
+                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+                console.log(`Received addresses saved to: ${outputFilePath}`);
+            } catch (err) {
+                console.error(`Failed to list received addresses: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            console.log("Listing received addresses on Linux...");
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl");
+            const rpcUser = process.env.BTCD_RPCUSER || 'user';
+            const rpcPass = process.env.BTCD_RPCPASS || 'password';
+            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls listreceivedbyaddress 0 true`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`Received Addresses:\n${output}`);
+
+                // Attempt to parse JSON
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(output);
+                } catch (parseError) {
+                    console.error(`Failed to parse listreceivedbyaddress output as JSON: ${parseError.message}`);
+                    jsonData = { rawOutput: output };
+                }
+
+                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
+                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+                console.log(`Received addresses saved to: ${outputFilePath}`);
+            } catch (err) {
+                console.error(`Failed to list received addresses: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+    getGenerate: {
+        windows: () => {
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl.exe");
+            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getgenerate`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`GetGenerate Output:\n${output}`);
+
+                // Attempt to parse JSON
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(output);
+                } catch (parseError) {
+                    console.error(`Failed to parse getgenerate output as JSON: ${parseError.message}`);
+                    jsonData = { rawOutput: output };
+                }
+
+                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getgenerate_output.json");
+                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+                console.log(`Output saved to: ${outputFilePath}`);
+            } catch (err) {
+                console.error(`Failed to execute btcctl getgenerate: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl");
+            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getgenerate`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`GetGenerate Output:\n${output}`);
+
+                // Attempt to parse JSON
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(output);
+                } catch (parseError) {
+                    console.error(`Failed to parse getgenerate output as JSON: ${parseError.message}`);
+                    jsonData = { rawOutput: output };
+                }
+
+                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getgenerate_output.json");
+                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+                console.log(`Output saved to: ${outputFilePath}`);
+            } catch (err) {
+                console.error(`Failed to execute btcctl getgenerate: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl");
+            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getgenerate`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`GetGenerate Output:\n${output}`);
+
+                // Attempt to parse JSON
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(output);
+                } catch (parseError) {
+                    console.error(`Failed to parse getgenerate output as JSON: ${parseError.message}`);
+                    jsonData = { rawOutput: output };
+                }
+
+                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getgenerate_output.json");
+                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+                console.log(`Output saved to: ${outputFilePath}`);
+            } catch (err) {
+                console.error(`Failed to execute btcctl getgenerate: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+    getMiningInfo: {
+        windows: () => {
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl.exe");
+            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getmininginfo`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`GetMiningInfo Output:\n${output}`);
+
+                // Attempt to parse JSON
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(output);
+                } catch (parseError) {
+                    console.error(`Failed to parse getmininginfo output as JSON: ${parseError.message}`);
+                    jsonData = { rawOutput: output };
+                }
+
+                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getmininginfo_output.json");
+                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+                console.log(`Output saved to: ${outputFilePath}`);
+            } catch (err) {
+                console.error(`Failed to execute btcctl getmininginfo: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl");
+            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getmininginfo`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`GetMiningInfo Output:\n${output}`);
+
+                // Attempt to parse JSON
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(output);
+                } catch (parseError) {
+                    console.error(`Failed to parse getmininginfo output as JSON: ${parseError.message}`);
+                    jsonData = { rawOutput: output };
+                }
+
+                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getmininginfo_output.json");
+                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+                console.log(`Output saved to: ${outputFilePath}`);
+            } catch (err) {
+                console.error(`Failed to execute btcctl getmininginfo: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlExe = path.join(ctlDir, "btcctl");
+            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getmininginfo`;
+            console.log(`Executing: ${command}`);
+            try {
+                const output = execSync(command, { encoding: 'utf-8' }).trim();
+                console.log(`GetMiningInfo Output:\n${output}`);
+
+                // Attempt to parse JSON
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(output);
+                } catch (parseError) {
+                    console.error(`Failed to parse getmininginfo output as JSON: ${parseError.message}`);
+                    jsonData = { rawOutput: output };
+                }
+
+                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getmininginfo_output.json");
+                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+                console.log(`Output saved to: ${outputFilePath}`);
+            } catch (err) {
+                console.error(`Failed to execute btcctl getmininginfo: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+    // New Script: getMiningAddressIndex
+    getMiningAddressIndex: {
+        windows: () => {
+            displayMiningAddressIndex();
+        },
+        macos: () => {
+            displayMiningAddressIndex();
+        },
+        linux: () => {
+            displayMiningAddressIndex();
+        }
     }
 };
 
-
+// Retrieve the script name from command-line arguments
 const scriptName = process.argv[2];
 if (!scriptName || !scripts[scriptName]) {
     console.error("Invalid script name! Available scripts:", Object.keys(scripts).join(", "));
     process.exit(1);
 }
 
+// Retrieve additional arguments for the script
+const scriptArgs = process.argv.slice(3);
+
+// Determine the operating system type
 const platform = os.platform();
 let osType = "";
 if (platform === "win32") osType = "windows";
@@ -480,6 +1167,7 @@ else {
     process.exit(1);
 }
 
+// Retrieve the appropriate script function based on the OS type
 const scriptFunction = scripts[scriptName][osType];
 if (!scriptFunction) {
     console.error(`No script found for '${scriptName}' on '${osType}'`);
@@ -487,8 +1175,8 @@ if (!scriptFunction) {
 }
 
 try {
-    console.log(`Running script '${scriptName}' on '${osType}'`);
-    scriptFunction();
+    console.log(`Running script '${scriptName}' on '${osType}' with arguments: ${scriptArgs.join(" ")}`);
+    scriptFunction(...scriptArgs); // Pass arguments to the function
 } catch (err) {
     console.error(`Error executing script '${scriptName}': ${err.message}`);
     process.exit(1);
