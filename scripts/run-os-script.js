@@ -28,6 +28,137 @@ noservertls=1
 noclienttls=1
 `;
 
+function generateNewAddress() {
+    const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+    const ctlExe = path.join(ctlDir, os.platform() === "win32" ? "btcctl.exe" : "btcctl");
+    const rpcUser = process.env.BTCD_RPCUSER || 'user';
+    const rpcPass = process.env.BTCD_RPCPASS || 'password';
+    const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getnewaddress`;
+
+    console.log(`Executing: ${command}`);
+    try {
+        const address = execSync(command, { encoding: 'utf-8' }).trim();
+        console.log(`Generated Address: ${address}`);
+        
+        // Call other helpers to refresh related data
+        console.log("Refreshing related data...");
+        const receivedAddresses = getReceivedAddresses();
+        console.log("Updated received addresses:", receivedAddresses);
+
+        const generateStatus = getGenerateStatus();
+        console.log("Updated generate status:", generateStatus);
+
+        const miningInfo = getMiningInfo();
+        console.log("Updated mining info:", miningInfo);
+
+        displayMiningAddressIndex();
+        console.log("Updated mining address index displayed.");
+
+        console.log("Data refresh completed successfully.");
+    } catch (err) {
+        console.error(`Failed to generate new address: ${err.message}`);
+        throw err; // Ensure proper error handling
+    }
+}
+
+
+function getReceivedAddresses() {
+    const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+    const ctlExe = path.join(ctlDir, os.platform() === "win32" ? "btcctl.exe" : "btcctl");
+    const rpcUser = process.env.BTCD_RPCUSER || 'user';
+    const rpcPass = process.env.BTCD_RPCPASS || 'password';
+    const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls listreceivedbyaddress 0 true`;
+
+    console.log(`Executing: ${command}`);
+
+    try {
+        const output = execSync(command, { encoding: 'utf-8' }).trim();
+        console.log(`Received Addresses:\n${output}`);
+
+        // Attempt to parse JSON
+        let jsonData;
+        try {
+            jsonData = JSON.parse(output);
+        } catch (parseError) {
+            console.error(`Failed to parse listreceivedbyaddress output as JSON: ${parseError.message}`);
+            jsonData = { rawOutput: output };
+        }
+        // Save the results as a JSON file
+        const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
+        fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+        console.log(`Received addresses saved to: ${outputFilePath}`);
+
+        return jsonData; // Returns the parsed data
+    } catch (err) {
+        console.error(`Failed to list received addresses: ${err.message}`);
+        throw err; 
+    }
+}
+
+function getGenerateStatus() {
+    const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+    const ctlExe = path.join(ctlDir, os.platform() === "win32" ? "btcctl.exe" : "btcctl");
+    const rpcUser = process.env.BTCD_RPCUSER || 'user';
+    const rpcPass = process.env.BTCD_RPCPASS || 'password';
+    const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getgenerate`;
+
+    console.log(`Executing: ${command}`);
+
+    try {
+        const output = execSync(command, { encoding: 'utf-8' }).trim();
+        console.log(`GetGenerate Output:\n${output}`);
+
+        let jsonData;
+        try {
+            jsonData = JSON.parse(output);
+        } catch (parseError) {
+            console.error(`Failed to parse getgenerate output as JSON: ${parseError.message}`);
+            jsonData = { rawOutput: output };
+        }
+
+        const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getgenerate_output.json");
+        fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+        console.log(`Output saved to: ${outputFilePath}`);
+
+        return jsonData; 
+    } catch (err) {
+        console.error(`Failed to execute btcctl getgenerate: ${err.message}`);
+        throw err; 
+    }
+}
+
+function getMiningInfo() {
+    const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+    const ctlExe = path.join(ctlDir, os.platform() === "win32" ? "btcctl.exe" : "btcctl");
+    const rpcUser = process.env.BTCD_RPCUSER || 'user';
+    const rpcPass = process.env.BTCD_RPCPASS || 'password';
+    const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getmininginfo`;
+
+    console.log(`Executing: ${command}`);
+
+    try {
+        const output = execSync(command, { encoding: 'utf-8' }).trim();
+        console.log(`GetMiningInfo Output:\n${output}`);
+
+        let jsonData;
+        try {
+            jsonData = JSON.parse(output);
+        } catch (parseError) {
+            console.error(`Failed to parse getmininginfo output as JSON: ${parseError.message}`);
+            jsonData = { rawOutput: output };
+        }
+
+        const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getmininginfo_output.json");
+        fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
+        console.log(`Output saved to: ${outputFilePath}`);
+
+        return jsonData;
+    } catch (err) {
+        console.error(`Failed to execute btcctl getmininginfo: ${err.message}`);
+        throw err; 
+    }
+}
+
 // Helper function to get mining address
 function getMiningAddress(index) {
     const receivedAddressesPath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
@@ -100,6 +231,82 @@ function displayMiningAddressIndex() {
         console.log(`${index.toString().padEnd(5)} | ${addr.address.padEnd(40)} | ${amount.padEnd(10)} | ${confirmations}`);
     });
 };
+
+// Helper function to delete an address by index
+function deleteAddressByIndex(index) {
+    const receivedAddressesPath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
+    if (!fs.existsSync(receivedAddressesPath)) {
+        console.error(`received_addresses.json not found at: ${receivedAddressesPath}`);
+        process.exit(1);
+    }
+
+    let addresses;
+    try {
+        const data = fs.readFileSync(receivedAddressesPath, 'utf-8');
+        addresses = JSON.parse(data);
+    } catch (err) {
+        console.error(`Failed to read or parse received_addresses.json: ${err.message}`);
+        process.exit(1);
+    }
+
+    if (!Array.isArray(addresses) || addresses.length === 0) {
+        console.error("No addresses found in received_addresses.json.");
+        process.exit(1);
+    }
+
+    // Validate the provided index
+    if (isNaN(index) || index < 0 || index >= addresses.length) {
+        console.error(`Invalid index provided. Must be between 0 and ${addresses.length - 1}.`);
+        process.exit(1);
+    }
+
+    // Delete the address at the specified index
+    const deletedAddress = addresses.splice(index, 1)[0];
+
+    // Save the updated list back to the file
+    try {
+        fs.writeFileSync(receivedAddressesPath, JSON.stringify(addresses, null, 2));
+        console.log(`Successfully deleted address at index ${index}:`);
+        console.log(deletedAddress);
+        console.log(`Updated list saved to ${receivedAddressesPath}`);
+    } catch (err) {
+        console.error(`Failed to save updated addresses to file: ${err.message}`);
+        process.exit(1);
+    }
+
+    // Refresh data using helper functions
+    console.log("Refreshing data...");
+
+    try {
+        // Refresh received addresses
+        console.log("Refreshing received addresses...");
+        const refreshedAddresses = getReceivedAddresses();
+        console.log("Updated received addresses:");
+        console.log(refreshedAddresses);
+
+        // Refresh generate status
+        console.log("Refreshing generate status...");
+        const generateStatus = getGenerateStatus();
+        console.log("Updated generate status:");
+        console.log(generateStatus);
+
+        // Refresh mining info
+        console.log("Refreshing mining info...");
+        const miningInfo = getMiningInfo();
+        console.log("Updated mining info:");
+        console.log(miningInfo);
+
+        // Refresh mining address index
+        console.log("Refreshing mining address index...");
+        displayMiningAddressIndex();
+
+        console.log("Data refreshed successfully.");
+    } catch (err) {
+        console.error(`Error during data refresh: ${err.message}`);
+        process.exit(1);
+    }
+}
+
 
 // Create or overwrite the configuration file
 fs.writeFileSync(configFilePath, configContent.trim());
@@ -693,52 +900,28 @@ const scripts = {
 
     generateNewAddress: {
         windows: () => {
-            console.log("Generating new address on Windows...");
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl.exe");
-            const rpcUser = process.env.BTCD_RPCUSER || 'user';
-            const rpcPass = process.env.BTCD_RPCPASS || 'password';
-            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getnewaddress`;
-            console.log(`Executing: ${command}`);
             try {
-                const address = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`Generated Address: ${address}`);
+                generateNewAddress();
             } catch (err) {
-                console.error(`Failed to generate new address: ${err.message}`);
-                process.exit(1);
+                console.error(`Error during address generation and data refresh: ${err.message}`);
             }
+            
         },
         macos: () => {
-            console.log("Generating new address on macOS...");
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl");
-            const rpcUser = process.env.BTCD_RPCUSER || 'user';
-            const rpcPass = process.env.BTCD_RPCPASS || 'password';
-            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getnewaddress`;
-            console.log(`Executing: ${command}`);
             try {
-                const address = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`Generated Address: ${address}`);
+                generateNewAddress();
             } catch (err) {
-                console.error(`Failed to generate new address: ${err.message}`);
-                process.exit(1);
+                console.error(`Error during address generation and data refresh: ${err.message}`);
             }
+            
         },
         linux: () => {
-            console.log("Generating new address on Linux...");
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl");
-            const rpcUser = process.env.BTCD_RPCUSER || 'user';
-            const rpcPass = process.env.BTCD_RPCPASS || 'password';
-            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getnewaddress`;
-            console.log(`Executing: ${command}`);
             try {
-                const address = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`Generated Address: ${address}`);
+                generateNewAddress();
             } catch (err) {
-                console.error(`Failed to generate new address: ${err.message}`);
-                process.exit(1);
+                console.error(`Error during address generation and data refresh: ${err.message}`);
             }
+            
         }
     },
     startBtcdWithMiningaddrTestnet: {
@@ -885,254 +1068,103 @@ const scripts = {
 
     getReceivedByAddress: {
         windows: () => {
-            console.log("Listing received addresses on Windows...");
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl.exe");
-            const rpcUser = process.env.BTCD_RPCUSER || 'user';
-            const rpcPass = process.env.BTCD_RPCPASS || 'password';
-            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls listreceivedbyaddress 0 true`;
-            console.log(`Executing: ${command}`);
             try {
-                const output = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`Received Addresses:\n${output}`);
-
-                // Attempt to parse JSON
-                let jsonData;
-                try {
-                    jsonData = JSON.parse(output);
-                } catch (parseError) {
-                    console.error(`Failed to parse listreceivedbyaddress output as JSON: ${parseError.message}`);
-                    jsonData = { rawOutput: output };
-                }
-
-                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
-                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
-                console.log(`Received addresses saved to: ${outputFilePath}`);
+                const addresses = getReceivedAddresses();
+                console.log("Successfully retrieved received addresses:");
+                console.log(addresses);
             } catch (err) {
-                console.error(`Failed to list received addresses: ${err.message}`);
+                console.error(`Error retrieving addresses: ${err.message}`);
                 process.exit(1);
             }
         },
         macos: () => {
-            console.log("Listing received addresses on macOS...");
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl");
-            const rpcUser = process.env.BTCD_RPCUSER || 'user';
-            const rpcPass = process.env.BTCD_RPCPASS || 'password';
-            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls listreceivedbyaddress 0 true`;
-            console.log(`Executing: ${command}`);
             try {
-                const output = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`Received Addresses:\n${output}`);
-
-                // Attempt to parse JSON
-                let jsonData;
-                try {
-                    jsonData = JSON.parse(output);
-                } catch (parseError) {
-                    console.error(`Failed to parse listreceivedbyaddress output as JSON: ${parseError.message}`);
-                    jsonData = { rawOutput: output };
-                }
-
-                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
-                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
-                console.log(`Received addresses saved to: ${outputFilePath}`);
+                const addresses = getReceivedAddresses();
+                console.log("Successfully retrieved received addresses:");
+                console.log(addresses);
             } catch (err) {
-                console.error(`Failed to list received addresses: ${err.message}`);
+                console.error(`Error retrieving addresses: ${err.message}`);
                 process.exit(1);
             }
         },
         linux: () => {
-            console.log("Listing received addresses on Linux...");
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl");
-            const rpcUser = process.env.BTCD_RPCUSER || 'user';
-            const rpcPass = process.env.BTCD_RPCPASS || 'password';
-            const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls listreceivedbyaddress 0 true`;
-            console.log(`Executing: ${command}`);
             try {
-                const output = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`Received Addresses:\n${output}`);
-
-                // Attempt to parse JSON
-                let jsonData;
-                try {
-                    jsonData = JSON.parse(output);
-                } catch (parseError) {
-                    console.error(`Failed to parse listreceivedbyaddress output as JSON: ${parseError.message}`);
-                    jsonData = { rawOutput: output };
-                }
-
-                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
-                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
-                console.log(`Received addresses saved to: ${outputFilePath}`);
+                const addresses = getReceivedAddresses();
+                console.log("Successfully retrieved received addresses:");
+                console.log(addresses);
             } catch (err) {
-                console.error(`Failed to list received addresses: ${err.message}`);
+                console.error(`Error retrieving addresses: ${err.message}`);
                 process.exit(1);
             }
         }
     },
+    
     getGenerate: {
         windows: () => {
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl.exe");
-            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getgenerate`;
-            console.log(`Executing: ${command}`);
             try {
-                const output = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`GetGenerate Output:\n${output}`);
-
-                // Attempt to parse JSON
-                let jsonData;
-                try {
-                    jsonData = JSON.parse(output);
-                } catch (parseError) {
-                    console.error(`Failed to parse getgenerate output as JSON: ${parseError.message}`);
-                    jsonData = { rawOutput: output };
-                }
-
-                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getgenerate_output.json");
-                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
-                console.log(`Output saved to: ${outputFilePath}`);
+                const generateStatus = getGenerateStatus();
+                console.log("Successfully retrieved generate status:");
+                console.log(generateStatus);
             } catch (err) {
-                console.error(`Failed to execute btcctl getgenerate: ${err.message}`);
+                console.error(`Error retrieving generate status: ${err.message}`);
                 process.exit(1);
             }
         },
         macos: () => {
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl");
-            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getgenerate`;
-            console.log(`Executing: ${command}`);
             try {
-                const output = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`GetGenerate Output:\n${output}`);
-
-                // Attempt to parse JSON
-                let jsonData;
-                try {
-                    jsonData = JSON.parse(output);
-                } catch (parseError) {
-                    console.error(`Failed to parse getgenerate output as JSON: ${parseError.message}`);
-                    jsonData = { rawOutput: output };
-                }
-
-                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getgenerate_output.json");
-                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
-                console.log(`Output saved to: ${outputFilePath}`);
+                const generateStatus = getGenerateStatus();
+                console.log("Successfully retrieved generate status:");
+                console.log(generateStatus);
             } catch (err) {
-                console.error(`Failed to execute btcctl getgenerate: ${err.message}`);
+                console.error(`Error retrieving generate status: ${err.message}`);
                 process.exit(1);
             }
         },
         linux: () => {
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl");
-            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getgenerate`;
-            console.log(`Executing: ${command}`);
             try {
-                const output = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`GetGenerate Output:\n${output}`);
-
-                // Attempt to parse JSON
-                let jsonData;
-                try {
-                    jsonData = JSON.parse(output);
-                } catch (parseError) {
-                    console.error(`Failed to parse getgenerate output as JSON: ${parseError.message}`);
-                    jsonData = { rawOutput: output };
-                }
-
-                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getgenerate_output.json");
-                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
-                console.log(`Output saved to: ${outputFilePath}`);
+                const generateStatus = getGenerateStatus();
+                console.log("Successfully retrieved generate status:");
+                console.log(generateStatus);
             } catch (err) {
-                console.error(`Failed to execute btcctl getgenerate: ${err.message}`);
+                console.error(`Error retrieving generate status: ${err.message}`);
                 process.exit(1);
             }
         }
     },
+    
     getMiningInfo: {
         windows: () => {
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl.exe");
-            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getmininginfo`;
-            console.log(`Executing: ${command}`);
             try {
-                const output = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`GetMiningInfo Output:\n${output}`);
-
-                // Attempt to parse JSON
-                let jsonData;
-                try {
-                    jsonData = JSON.parse(output);
-                } catch (parseError) {
-                    console.error(`Failed to parse getmininginfo output as JSON: ${parseError.message}`);
-                    jsonData = { rawOutput: output };
-                }
-
-                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getmininginfo_output.json");
-                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
-                console.log(`Output saved to: ${outputFilePath}`);
+                const miningInfo = getMiningInfo();
+                console.log("Successfully retrieved mining info:");
+                console.log(miningInfo);
             } catch (err) {
-                console.error(`Failed to execute btcctl getmininginfo: ${err.message}`);
+                console.error(`Error retrieving mining info: ${err.message}`);
                 process.exit(1);
             }
         },
         macos: () => {
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl");
-            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getmininginfo`;
-            console.log(`Executing: ${command}`);
             try {
-                const output = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`GetMiningInfo Output:\n${output}`);
-
-                // Attempt to parse JSON
-                let jsonData;
-                try {
-                    jsonData = JSON.parse(output);
-                } catch (parseError) {
-                    console.error(`Failed to parse getmininginfo output as JSON: ${parseError.message}`);
-                    jsonData = { rawOutput: output };
-                }
-
-                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getmininginfo_output.json");
-                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
-                console.log(`Output saved to: ${outputFilePath}`);
+                const miningInfo = getMiningInfo();
+                console.log("Successfully retrieved mining info:");
+                console.log(miningInfo);
             } catch (err) {
-                console.error(`Failed to execute btcctl getmininginfo: ${err.message}`);
+                console.error(`Error retrieving mining info: ${err.message}`);
                 process.exit(1);
             }
         },
         linux: () => {
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
-            const ctlExe = path.join(ctlDir, "btcctl");
-            const command = `"${ctlExe}" --rpcuser=user --rpcpass=password --rpcserver=127.0.0.1:18332 --notls getmininginfo`;
-            console.log(`Executing: ${command}`);
             try {
-                const output = execSync(command, { encoding: 'utf-8' }).trim();
-                console.log(`GetMiningInfo Output:\n${output}`);
-
-                // Attempt to parse JSON
-                let jsonData;
-                try {
-                    jsonData = JSON.parse(output);
-                } catch (parseError) {
-                    console.error(`Failed to parse getmininginfo output as JSON: ${parseError.message}`);
-                    jsonData = { rawOutput: output };
-                }
-
-                const outputFilePath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "getmininginfo_output.json");
-                fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
-                console.log(`Output saved to: ${outputFilePath}`);
+                const miningInfo = getMiningInfo();
+                console.log("Successfully retrieved mining info:");
+                console.log(miningInfo);
             } catch (err) {
-                console.error(`Failed to execute btcctl getmininginfo: ${err.message}`);
+                console.error(`Error retrieving mining info: ${err.message}`);
                 process.exit(1);
             }
         }
     },
-    // New Script: getMiningAddressIndex
+    
     getMiningAddressIndex: {
         windows: () => {
             displayMiningAddressIndex();
@@ -1142,6 +1174,17 @@ const scripts = {
         },
         linux: () => {
             displayMiningAddressIndex();
+        }
+    },
+    deleteAddressByIndex: {
+        windows: (index) => {
+            deleteAddressByIndex(parseInt(index, 10));
+        },
+        macos: (index) => {
+            deleteAddressByIndex(parseInt(index, 10));
+        },
+        linux: (index) => {
+            deleteAddressByIndex(parseInt(index, 10));
         }
     }
 };

@@ -90,7 +90,7 @@ Before starting mining, you should select the address that will receive the mine
 3. **Start BTCD with a Mining Address**  
    Use the default (highest amount) address or provide an index as an argument to select a specific address:  
    ```bash
-   npm run start:btcdWithMiningaddr:testnet [index]
+   npm run start:btcdWithMiningaddressIndex:testnet [index]
    ```
    Replace `[index]` with the desired address index (e.g., `3`). If no index is provided, the script will default to the address with the highest amount.
 
@@ -130,6 +130,10 @@ npm run start:mining [number_of_blocks]
   3. **Check Mining Info:**  
      ```bash
      npm run get:mininginfo
+     ```
+  4. **delete Mining Address(need repair):**   
+     ```bash
+     npm run delete:addressByIndex [index]
      ```
 
 ---
