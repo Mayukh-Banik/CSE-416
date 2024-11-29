@@ -30,8 +30,8 @@ import {
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
 import { FileMetadata } from "../models/fileMetadata";
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import ThumbDownIcon from '@mui/icons-material/ThumbDown';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 
 declare global {
   interface Window {
@@ -370,6 +370,11 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     }
   }
 
+  /*
+  will modularize later 
+  its a mess rn ...
+  */
+ 
   return (
       <Box
         sx={{
@@ -570,6 +575,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 {/* Table Header */}
                 <TableHead>
                   <TableRow>
+                    <TableCell></TableCell>
                     <TableCell>Name</TableCell>
                     <TableCell>Hash</TableCell>
                     <TableCell>Size</TableCell>
@@ -582,6 +588,15 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 <TableBody>
                   {downloadedFiles.map((file, index) => (
                     <TableRow key={index}>
+                      <TableCell>
+                        <IconButton color="success" onClick={() => handleVote(file.Hash, 'upvote')}>
+                          <ArrowUpwardIcon />
+                        </IconButton>
+                        <IconButton color="error" onClick={() => handleVote(file.Hash, 'downvote')}>
+                          <ArrowDownwardIcon />
+                        </IconButton>
+                      </TableCell>
+
                       <TableCell>{file.Name}</TableCell>
                       <TableCell
                         sx={{
@@ -615,26 +630,6 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                           >
                             <DeleteIcon />
                           </IconButton>
-                          {/* Upvote Button */}
-                        <Tooltip title="Upvote" arrow>
-                          <IconButton
-                            color="success"
-                            aria-label="upvote"
-                            onClick={() => handleVote(file.Hash, 'upvote')}
-                          >
-                            <ThumbUpIcon />
-                          </IconButton>
-                        </Tooltip>
-                        {/* Downvote Button */}
-                        <Tooltip title="Downvote" arrow>
-                          <IconButton
-                            color="error"
-                            aria-label="downvote"
-                            onClick={() => handleVote(file.Hash, 'downvote')}
-                          >
-                            <ThumbDownIcon />
-                          </IconButton>
-                        </Tooltip>
                         </Box>
                       </TableCell>
                     </TableRow>
