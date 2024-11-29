@@ -122,7 +122,7 @@ npm run start:mining [number_of_blocks]
      npm run get:receivedaddresses
      ```
 
-  2. **Check Block Generation Status:**  
+  2. **Check Block Generation Status: Indicates `true` if currently mining**  
      ```bash
      npm run get:generate
      ```
