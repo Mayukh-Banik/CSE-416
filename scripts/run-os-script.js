@@ -28,6 +28,13 @@ noservertls=1
 noclienttls=1
 `;
 
+// Path to `env` file
+// const envDir = path.resolve("application-layer", "env");
+// const envConfigFilePath = path.join(envDir, "btcwallet.conf");
+
+
+
+
 function generateNewAddress() {
     const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
     const ctlExe = path.join(ctlDir, os.platform() === "win32" ? "btcctl.exe" : "btcctl");
