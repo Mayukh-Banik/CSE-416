@@ -29,7 +29,7 @@ func TestHandleSignUp(t *testing.T) {
 	}
 	t.Logf("Loaded WALLET_PASSPHRASE: %s", passphrase)
 
-	walletService := wallet.NewWalletService("user", passphrase)
+	walletService := wallet.NewWalletService("user", "password")
 	userService := wallet.NewUserService()
 	authController := &controllers.AuthController{
 		UserService:   userService,

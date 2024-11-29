@@ -11,6 +11,9 @@ const isTestnet = network === 'testnet';
 const btcdRpcPort = isTestnet ? '18334' : '8334';
 const btcwalletRpcPort = isTestnet ? '18332' : '8332';
 
+// Define the RPC server address and port
+const rpcServer = '130.245.173.221:8333';
+
 // Path to `btcwallet.conf` file
 const walletDir = path.resolve("application-layer", "btcwallet");
 const configFilePath = path.join(walletDir, "btcwallet.conf");
@@ -20,10 +23,10 @@ const configContent = `
 username=user
 password=password
 ${isTestnet ? 'testnet=1' : ''}
-rpclisten=127.0.0.1:${btcwalletRpcPort}
+rpclisten=${rpcServer}
 btcdusername=user
 btcdpassword=password
-rpcconnect=127.0.0.1:${btcdRpcPort}
+rpcconnect=${rpcServer}
 noservertls=1
 noclienttls=1
 `;
@@ -40,7 +43,7 @@ function generateNewAddress() {
     const ctlExe = path.join(ctlDir, os.platform() === "win32" ? "btcctl.exe" : "btcctl");
     const rpcUser = process.env.BTCD_RPCUSER || 'user';
     const rpcPass = process.env.BTCD_RPCPASS || 'password';
-    const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getnewaddress`;
+    const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=${rpcServer}  getnewaddress`;
 
     console.log(`Executing: ${command}`);
     try {
@@ -74,7 +77,7 @@ function getReceivedAddresses() {
     const ctlExe = path.join(ctlDir, os.platform() === "win32" ? "btcctl.exe" : "btcctl");
     const rpcUser = process.env.BTCD_RPCUSER || 'user';
     const rpcPass = process.env.BTCD_RPCPASS || 'password';
-    const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls listreceivedbyaddress 0 true`;
+    const command = `"${ctlExe}" --wallet --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=${rpcServer}  listreceivedbyaddress 0 true`;
 
     console.log(`Executing: ${command}`);
 
@@ -107,7 +110,7 @@ function getGenerateStatus() {
     const ctlExe = path.join(ctlDir, os.platform() === "win32" ? "btcctl.exe" : "btcctl");
     const rpcUser = process.env.BTCD_RPCUSER || 'user';
     const rpcPass = process.env.BTCD_RPCPASS || 'password';
-    const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getgenerate`;
+    const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=${rpcServer}  getgenerate`;
 
     console.log(`Executing: ${command}`);
 
@@ -139,7 +142,7 @@ function getMiningInfo() {
     const ctlExe = path.join(ctlDir, os.platform() === "win32" ? "btcctl.exe" : "btcctl");
     const rpcUser = process.env.BTCD_RPCUSER || 'user';
     const rpcPass = process.env.BTCD_RPCPASS || 'password';
-    const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls getmininginfo`;
+    const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=${rpcServer}  getmininginfo`;
 
     console.log(`Executing: ${command}`);
 
@@ -783,7 +786,7 @@ const scripts = {
         windows: () => {
             const btcdDir = path.resolve("application-layer", "btcd");
             const btcdExe = path.join(btcdDir, "btcd.exe");
-            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --notls --rpclisten=127.0.0.1:18334`;
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --rpclisten=${rpcServer}`;
             console.log(`Executing: ${command}`);
             try {
                 execSync(command, { stdio: "inherit" });
@@ -796,7 +799,7 @@ const scripts = {
         macos: () => {
             const btcdDir = path.resolve("application-layer", "btcd");
             const btcdExe = path.join(btcdDir, "btcd");
-            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --notls`;
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password `;
             console.log(`Executing: ${command}`);
             try {
                 execSync(command, { stdio: "inherit" });
@@ -809,7 +812,7 @@ const scripts = {
         linux: () => {
             const btcdDir = path.resolve("application-layer", "btcd");
             const btcdExe = path.join(btcdDir, "btcd");
-            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --notls`;
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password `;
             console.log(`Executing: ${command}`);
             try {
                 execSync(command, { stdio: "inherit" });
@@ -869,7 +872,7 @@ const scripts = {
     startBtcwalletTestnet: {
         windows: () => {
             const walletExe = path.join(walletDir, "btcwallet.exe");
-            const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
+            const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten==${rpcServer}`;
             console.log(`Executing: ${command}`);
             try {
                 execSync(command, { stdio: "inherit" });
@@ -881,7 +884,7 @@ const scripts = {
         },
         macos: () => {
             const walletExe = path.join(walletDir, "btcwallet");
-            const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
+            const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten==${rpcServer}`;
             console.log(`Executing: ${command}`);
             try {
                 execSync(command, { stdio: "inherit" });
@@ -893,7 +896,7 @@ const scripts = {
         },
         linux: () => {
             const walletExe = path.join(walletDir, "btcwallet");
-            const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
+            const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten==${rpcServer}`;
             console.log(`Executing: ${command}`);
             try {
                 execSync(command, { stdio: "inherit" });
@@ -939,7 +942,7 @@ const scripts = {
 
             const miningAddress = getMiningAddress(index);
 
-            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress} --notls --configfile="${configFile}"`;
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress}  --configfile="${configFile}"`;
             console.log(`Executing: ${command}`);
             console.log(`[miningaddr] = ${miningAddress}`);
             try {
@@ -957,7 +960,7 @@ const scripts = {
 
             const miningAddress = getMiningAddress(index);
 
-            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress} --notls --configfile="${configFile}"`;
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress}  --configfile="${configFile}"`;
             console.log(`Executing: ${command}`);
             console.log(`[miningaddr] = ${miningAddress}`);
             try {
@@ -975,7 +978,7 @@ const scripts = {
 
             const miningAddress = getMiningAddress(index);
 
-            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress} --notls --configfile="${configFile}"`;
+            const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress}  --configfile="${configFile}"`;
             console.log(`Executing: ${command}`);
             console.log(`[miningaddr] = ${miningAddress}`);
             try {
@@ -1003,7 +1006,7 @@ const scripts = {
                 process.exit(1);
             }
 
-            const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls generate ${blocks}`;
+            const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=${rpcServer}  generate ${blocks}`;
             console.log(`Executing: ${command}`);
             try {
                 const output = execSync(command, { encoding: "utf-8" });
@@ -1031,7 +1034,7 @@ const scripts = {
                 process.exit(1);
             }
 
-            const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls generate ${blocks}`;
+            const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=${rpcServer}  generate ${blocks}`;
             console.log(`Executing: ${command}`);
             try {
                 const output = execSync(command, { encoding: "utf-8" });
@@ -1059,7 +1062,7 @@ const scripts = {
                 process.exit(1);
             }
 
-            const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=127.0.0.1:18332 --notls generate ${blocks}`;
+            const command = `"${ctlExe}" --rpcuser=${rpcUser} --rpcpass=${rpcPass} --rpcserver=${rpcServer}  generate ${blocks}`;
             console.log(`Executing: ${command}`);
             try {
                 const output = execSync(command, { encoding: "utf-8" });
