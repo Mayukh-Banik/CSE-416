@@ -959,6 +959,7 @@ const scripts = {
 
             const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress} --notls --configfile="${configFile}"`;
             console.log(`Executing: ${command}`);
+            console.log(`[miningaddr] = ${miningAddress}`);
             try {
                 execSync(command, { stdio: "inherit" });
                 console.log("BTCD started in testnet mode successfully with the specified mining address.");
@@ -976,6 +977,7 @@ const scripts = {
 
             const command = `"${btcdExe}" --testnet --rpcuser=user --rpcpass=password --miningaddr=${miningAddress} --notls --configfile="${configFile}"`;
             console.log(`Executing: ${command}`);
+            console.log(`[miningaddr] = ${miningAddress}`);
             try {
                 execSync(command, { stdio: "inherit" });
                 console.log("BTCD started in testnet mode successfully with the specified mining address.");
