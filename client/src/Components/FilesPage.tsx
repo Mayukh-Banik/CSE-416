@@ -30,7 +30,8 @@ import {
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
 import { FileMetadata } from "../models/fileMetadata";
-//import { FileMetadata } from '../../local_server/models/file';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 
 declare global {
   interface Window {
@@ -349,6 +350,25 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
   }
 
+  const handleVote = async (fileHash: string, voteType: string ) => {
+    try {
+      const response = await fetch(`http://localhost:8081/files/vote?fileHash=${fileHash}&voteType=${voteType}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to rate file")
+      }
+      const data = await response.json();
+      console.log('file rated successfully', data);
+
+      setNotification({ open: true, message: "Successfully rated file.", severity: "success" });
+    } catch (error) {
+      console.error("error: ", error);
+      setNotification({ open: true, message: "Unable to rate file.", severity: "error" });
+    }
+  }
 
   return (
       <Box
@@ -595,6 +615,26 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                           >
                             <DeleteIcon />
                           </IconButton>
+                          {/* Upvote Button */}
+                        <Tooltip title="Upvote" arrow>
+                          <IconButton
+                            color="success"
+                            aria-label="upvote"
+                            onClick={() => handleVote(file.Hash, 'upvote')}
+                          >
+                            <ThumbUpIcon />
+                          </IconButton>
+                        </Tooltip>
+                        {/* Downvote Button */}
+                        <Tooltip title="Downvote" arrow>
+                          <IconButton
+                            color="error"
+                            aria-label="downvote"
+                            onClick={() => handleVote(file.Hash, 'downvote')}
+                          >
+                            <ThumbDownIcon />
+                          </IconButton>
+                        </Tooltip>
                         </Box>
                       </TableCell>
                     </TableRow>

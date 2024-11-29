@@ -76,71 +76,71 @@ func setupDHT(ctx context.Context, h host.Host) *dht.IpfsDHT {
 	return kadDHT
 }
 
-func createNode() (host.Host, *dht.IpfsDHT, error) {
-	ctx := context.Background()
-	seed := []byte(Node_id)
-	customAddr, err := multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/0")
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse multiaddr: %w", err)
-	}
-	privKey, err := generatePrivateKeyFromSeed(seed)
-	if err != nil {
-		log.Fatal(err)
-	}
-	relayAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)
-	if err != nil {
-		log.Fatalf("Failed to create relay multiaddr: %v", err)
-	}
+// func createNode() (host.Host, *dht.IpfsDHT, error) {
+// 	ctx := context.Background()
+// 	seed := []byte(Node_id)
+// 	customAddr, err := multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/0")
+// 	if err != nil {
+// 		return nil, nil, fmt.Errorf("failed to parse multiaddr: %w", err)
+// 	}
+// 	privKey, err := generatePrivateKeyFromSeed(seed)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	relayAddr, err := multiaddr.NewMultiaddr(Relay_node_addr)
+// 	if err != nil {
+// 		log.Fatalf("Failed to create relay multiaddr: %v", err)
+// 	}
 
-	// Convert the relay multiaddress to AddrInfo
-	relayInfo, err := peer.AddrInfoFromP2pAddr(relayAddr)
-	if err != nil {
-		log.Fatalf("Failed to create AddrInfo from relay multiaddr: %v", err)
-	}
+// 	// Convert the relay multiaddress to AddrInfo
+// 	relayInfo, err := peer.AddrInfoFromP2pAddr(relayAddr)
+// 	if err != nil {
+// 		log.Fatalf("Failed to create AddrInfo from relay multiaddr: %v", err)
+// 	}
 
-	node, err := libp2p.New(
-		libp2p.ListenAddrs(customAddr),
-		libp2p.Identity(privKey),
-		libp2p.NATPortMap(),
-		libp2p.EnableNATService(),
-		libp2p.EnableAutoRelayWithStaticRelays([]peer.AddrInfo{*relayInfo}),
-		libp2p.EnableRelayService(),
-		libp2p.EnableHolePunching(),
-	)
+// 	node, err := libp2p.New(
+// 		libp2p.ListenAddrs(customAddr),
+// 		libp2p.Identity(privKey),
+// 		libp2p.NATPortMap(),
+// 		libp2p.EnableNATService(),
+// 		libp2p.EnableAutoRelayWithStaticRelays([]peer.AddrInfo{*relayInfo}),
+// 		libp2p.EnableRelayService(),
+// 		libp2p.EnableHolePunching(),
+// 	)
 
-	if err != nil {
-		return nil, nil, err
-	}
-	_, err = relay.New(node)
-	if err != nil {
-		log.Printf("Failed to instantiate the relay: %v", err)
-	}
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	_, err = relay.New(node)
+// 	if err != nil {
+// 		log.Printf("Failed to instantiate the relay: %v", err)
+// 	}
 
-	dhtRouting, err := dht.New(ctx, node, dht.Mode(dht.ModeClient))
-	if err != nil {
-		return nil, nil, err
-	}
-	namespacedValidator := record.NamespacedValidator{
-		"orcanet": &CustomValidator{}, // Add a custom validator for the "orcanet" namespace
-	}
+// 	dhtRouting, err := dht.New(ctx, node, dht.Mode(dht.ModeClient))
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	namespacedValidator := record.NamespacedValidator{
+// 		"orcanet": &CustomValidator{}, // Add a custom validator for the "orcanet" namespace
+// 	}
 
-	dhtRouting.Validator = namespacedValidator // Configure the DHT to use the custom validator
+// 	dhtRouting.Validator = namespacedValidator // Configure the DHT to use the custom validator
 
-	err = dhtRouting.Bootstrap(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	fmt.Println("DHT bootstrap complete.")
+// 	err = dhtRouting.Bootstrap(ctx)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	fmt.Println("DHT bootstrap complete.")
 
-	// Set up notifications for new connections
-	node.Network().Notify(&network.NotifyBundle{
-		ConnectedF: func(n network.Network, conn network.Conn) {
-			fmt.Printf("Notification: New peer connected %s\n", conn.RemotePeer().String())
-		},
-	})
+// 	// Set up notifications for new connections
+// 	node.Network().Notify(&network.NotifyBundle{
+// 		ConnectedF: func(n network.Network, conn network.Conn) {
+// 			fmt.Printf("Notification: New peer connected %s\n", conn.RemotePeer().String())
+// 		},
+// 	})
 
-	return node, dhtRouting, nil
-}
+// 	return node, dhtRouting, nil
+// }
 
 func handleInput(ctx context.Context, dht *dht.IpfsDHT) {
 	reader := bufio.NewReader(os.Stdin)
@@ -340,33 +340,30 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) error {
 			Size:              currentInfo.Size,
 			Description:       currentInfo.Description,
 			CreatedAt:         currentInfo.CreatedAt,
-			Rating:        currentInfo.Rating,
 			NameWithExtension: currentInfo.NameWithExtension,
+			Rating:            0,
 		}
 	}
 
+	currentMetadata.Providers = make(map[string]models.Provider)
 	// Add the new provider to the list of current providers
 	provider := models.Provider{
-		PeerID:   PeerID,
 		PeerAddr: DHT.Host().Addrs()[0].String(),
 		IsActive: currentInfo.IsPublished,
 		Fee:      currentInfo.Fee,
+		// leave Rating empty -> no vote
+		// this will be updated when handling upvoting/downvoting
 	}
 
-	// Check if the provider already exists in the metadata
-	providerUpdated := false
-	for i, existingProvider := range currentMetadata.Providers {
-		if existingProvider.PeerID == PeerID {
-			// Update IsActive field
-			currentMetadata.Providers[i].IsActive = provider.IsActive
-			providerUpdated = true
-			break
-		}
-	}
-
-	// If provider is not found, append the new provider
-	if !providerUpdated {
-		currentMetadata.Providers = append(currentMetadata.Providers, provider)
+	// Check if the provider already exists in the metadata by PeerID
+	if existingProvider, exists := currentMetadata.Providers[PeerID]; exists {
+		// Update the IsActive field
+		existingProvider.IsActive = provider.IsActive
+		// Update the provider in the map
+		currentMetadata.Providers[PeerID] = existingProvider
+	} else {
+		// If provider does not exist, add the new provider
+		currentMetadata.Providers[PeerID] = provider
 	}
 
 	// Marshal the updated metadata
@@ -389,4 +386,105 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) error {
 	fmt.Println("successfully updated file to dht with new provider", currentInfo.Hash)
 
 	return nil
+}
+
+//////////////////////////////////////////
+// for testing - TA changed bootstrap stuff
+//////////////////////////////////////////
+
+var (
+	globalCtx      context.Context
+	relay_addr     = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
+	bootstrap_seed = "BOOTSTRAP1"
+)
+
+func createNode() (host.Host, *dht.IpfsDHT, error) {
+	ctx := context.Background()
+	globalCtx = ctx
+
+	customAddr, err := multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/61000")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse multiaddr: %w", err)
+	}
+
+	seed := []byte(bootstrap_seed)
+	privKey, err := generatePrivateKeyFromSeed(seed)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	node, err := libp2p.New(
+		libp2p.ListenAddrs(customAddr),
+		libp2p.Identity(privKey),
+		libp2p.NATPortMap(),
+		libp2p.EnableNATService(),
+		// libp2p.EnableAutoRelay(),
+		// libp2p.StaticRelays(staticRelays),
+	)
+
+	if err != nil {
+		return nil, nil, err
+	}
+	_, err = relay.New(node)
+	if err != nil {
+		log.Printf("Failed to instantiate the relay: %v", err)
+	}
+
+	dhtRouting, err := dht.New(ctx, node, dht.Mode(dht.ModeServer))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = dhtRouting.Bootstrap(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	namespacedValidator := record.NamespacedValidator{
+		"orcanet": &CustomValidator{}, // Add a custom validator for the "orcanet" namespace
+	}
+	// Configure the DHT to use the custom validator
+	dhtRouting.Validator = namespacedValidator
+
+	// Set up notifications for new connections
+	node.Network().Notify(&network.NotifyBundle{
+		ConnectedF: func(n network.Network, conn network.Conn) {
+			go exchangePeers(node, conn.RemotePeer())
+			// fmt.Printf("New peer connected: %s\n", conn.RemotePeer().String())
+			// fmt.Println("peers in network", node.Network().Peers())
+		},
+	})
+
+	return node, dhtRouting, nil
+}
+
+func exchangePeers(node host.Host, newPeer peer.ID) {
+	knownPeers := node.Network().Peers()
+	var peerInfos []string
+	data := map[string]interface{}{
+		"known_peers": []map[string]string{},
+	}
+	var temp map[string]string
+	relay_info, _ := peer.AddrInfoFromString(relay_addr)
+	for _, peer := range knownPeers {
+		if peer != newPeer && peer != node.ID() && peer != relay_info.ID {
+			temp = make(map[string]string)
+			temp["peer_id"] = peer.String()
+			peerInfos = append(peerInfos, peer.String())
+			data["known_peers"] = append(data["known_peers"].([]map[string]string), temp)
+		}
+	}
+
+	s, err := node.NewStream(network.WithAllowLimitedConn(globalCtx, "/orcanet/p2p"), newPeer, "/orcanet/p2p")
+	if err != nil {
+		//log.Printf("Failed to open stream to %s: %s", newPeer, err)
+		return
+	}
+	defer s.Close()
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		log.Fatalf("Error marshaling map to JSON: %s", err)
+	}
+	s.Write([]byte(jsonData))
+
+	fmt.Printf("Shared %d peers with %s\n", len(peerInfos), newPeer.String())
 }
