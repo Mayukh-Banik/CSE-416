@@ -19,13 +19,14 @@ import (
 )
 
 var (
-	dirPath             = filepath.Join("..", "utils")
-	UploadedFilePath    = filepath.Join(dirPath, "files.json")
-	DownloadedFilePath  = filepath.Join(dirPath, "downloadedFiles.json")
-	transactionFilePath = filepath.Join(dirPath, "transactionFiles.json")
-	FileCopyPath        = filepath.Join("..", "squidcoinFiles")
-	republishMutex      sync.Mutex
-	republished         = false
+	dirPath               = filepath.Join("..", "utils")
+	UploadedFilePath      = filepath.Join(dirPath, "files.json")
+	DownloadedFilePath    = filepath.Join(dirPath, "downloadedFiles.json")
+	transactionFilePath   = filepath.Join(dirPath, "transactionFiles.json")
+	FileCopyPath          = filepath.Join("..", "squidcoinFiles")
+	republishMutex        sync.Mutex
+	republishedUploaded   = false
+	republishedDownloaded = false
 )
 
 // fetch all uploaded files from JSON file
@@ -63,14 +64,17 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 
 	republishMutex.Lock()
 	defer republishMutex.Unlock()
-	fmt.Println("republished bool: ", republished)
-	if !republished {
+	fmt.Printf("republishedUploaded: %v | republishedDownloaded: %v\n ", republishedUploaded, republishedDownloaded)
+	if !republishedUploaded || !republishedDownloaded {
 		if fileType == "uploaded" {
+			fmt.Println("republishing uploaded files")
 			republishFiles(UploadedFilePath)
+			republishedUploaded = true
 		} else {
+			fmt.Println("republishing downloaded files")
 			republishFiles(DownloadedFilePath)
+			republishedDownloaded = true
 		}
-		republished = true
 	}
 
 	fmt.Println("fileHashToPath:", dht_kad.FileHashToPath)
@@ -84,6 +88,7 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 
 // add new file or update existing file
 func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("uploadFileHandler")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -91,6 +96,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	var requestBody models.FileMetadata
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		fmt.Println("invalid request body", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}

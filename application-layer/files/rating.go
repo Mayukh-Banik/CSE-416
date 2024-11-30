@@ -15,8 +15,10 @@ import (
 
 // Handle voting for both upvotes and downvotes
 func handleVote(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("in handleVote")
 	fileHash := r.URL.Query().Get("fileHash")
 	voteType := r.URL.Query().Get("voteType")
+	fmt.Printf("file hash: %v | vote type: %v\n", fileHash, voteType)
 
 	if fileHash == "" || voteType == "" {
 		http.Error(w, "File hash or vote type not provided", http.StatusBadRequest)
@@ -24,6 +26,7 @@ func handleVote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := votingHelper(fileHash, voteType); err != nil {
+		fmt.Printf("handleVote: %v", err)
 		http.Error(w, fmt.Sprintf("Voting failed: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -34,8 +37,10 @@ func handleVote(w http.ResponseWriter, r *http.Request) {
 
 func votingHelper(fileHash, voteType string) error {
 	// Retrieve metadata from DHT
+	fmt.Println("in voting helper")
 	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash)
 	if err != nil {
+		fmt.Println("error retrieving file data from dht")
 		return fmt.Errorf("failed to retrieve file data: %v", err)
 	}
 
@@ -44,19 +49,24 @@ func votingHelper(fileHash, voteType string) error {
 		return fmt.Errorf("failed to decode metadata: %v", err)
 	}
 
+	fmt.Printf("votingHelper: file metadata from dht: %v\n", metadata)
+
 	// Validate vote type
 	if voteType != "upvote" && voteType != "downvote" {
+		fmt.Println("votingHelper: vote type:", voteType)
 		return fmt.Errorf("invalid vote type: %s", voteType)
 	}
 
 	// Check if the user is a provider
 	provider, exists := metadata.Providers[dht_kad.PeerID]
 	if !exists {
+		fmt.Println("user is not a provider")
 		return fmt.Errorf("user is not a provider and cannot vote")
 	}
 
 	// Ensure the user hasn't already voted
 	if provider.Rating != "" {
+		fmt.Println("user has already voted")
 		return fmt.Errorf("user has already voted")
 	}
 
