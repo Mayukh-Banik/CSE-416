@@ -84,7 +84,7 @@ const App: React.FC = () => {
 
   const darkTheme = createTheme({
     palette: {
-      mode: "dark",
+      mode: 'dark',
       background: {
         default: "#202d45", //darker gray
       },
@@ -103,7 +103,7 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
-      <CssBaseline /> {/* This resets CSS to a consistent baseline */}
+      <CssBaseline />
       <Router>
         <Routes>
           <Route path="/" element={<MarketPage />} />   

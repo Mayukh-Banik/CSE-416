@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import Sidebar from "./Sidebar";
 import useProxyHostsStyles from '../Stylesheets/ProxyPageStyles';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Box, TextField } from '@mui/material';
@@ -6,10 +6,9 @@ import { useTheme } from '@mui/material/styles';
 
 interface ProxyHost {
   name: string;
-  access: string;
   location: string;
   logs: string[];
-  statistics: {
+  Statistics: {
     uptime: string;
   };
   bandwidth: string;
@@ -19,65 +18,73 @@ interface ProxyHost {
 
 
 const ProxyHosts: React.FC = () => {
-  const styles = useProxyHostsStyles();
-  const theme = useTheme();
-  
-  const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([
-    {
-      name:'p1',
-      access: 'Public',
-      location: 'New York, USA',
-      logs: ['Log entry 1', 'Log entry 2'],
-      statistics: { uptime: '99.9%' },
-      bandwidth: '100 Mbps',
-      isEnabled: false,
-      price: 'Free',
-    },
-    {
-      name:'p2',
-      access: 'Public',
-      location: 'London, UK',
-      logs: ['Log entry 1', 'Log entry 2'],
-      statistics: { uptime: '98.7%' },
-      bandwidth: '200 Mbps',
-      isEnabled: false,
-      price: 'Free',
-    },
-    {
-      name:'private1',
-      access: 'Private',
-      location: 'Berlin, Germany',
-      logs: ['Log entry 1', 'Log entry 2'],
-      statistics: { uptime: '95.5%' },
-      bandwidth: '150 Mbps',
-      isEnabled: false,
-      price: '20 SQD',
-    },
-  ]);
-
-  //dummy ip address, tentative to change
-  const [currentIP, setCurrentIP] = useState<string>('192.168.0.1');
+  const [data, setData] = useState<ProxyHost[]>([]); // Corrected to ProxyHost array
+  const [input, setInput] = useState<string>('');
+  const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([]); // State to store proxy hosts
+  const [currentIP, setCurrentIP] = useState<string>('');
   const [connectedProxy, setConnectedProxy] = useState<ProxyHost | null>(null);
-
-  // Dummy history
-  const [proxyHistory, setProxyHistory] = useState<{ name: string, location: string; timestamp: string }[]>([
-    { name:'p1',location: 'New York, USA', timestamp: '2024-10-15 10:00:00' },
-    { name:'priavte1',location: 'London, UK', timestamp: '2024-10-14 14:30:00' },
-  ]);
-
+  const [proxyHistory, setProxyHistory] = useState<{ name: string; location: string; timestamp: string }[]>([]);
   const [showHistoryOnly, setShowHistoryOnly] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
-
   const [newProxy, setNewProxy] = useState<ProxyHost>({
-    name:'',
-    access:'',
+    name: '',
     location: '',
     logs: [],
-    statistics: { uptime: '' },
+    Statistics: { uptime: '' },
     bandwidth: '',
     isEnabled: false,
     price: '',
   });
+  const styles = useProxyHostsStyles();
+  const theme = useTheme();
+  
+  const fetchData = async () => {
+    try {
+      const response = await fetch(`http://localhost:8081/proxy-data/`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch data');
+      }
+      const result = await response.json();
+      console.log(result)
+      setProxyHosts(result ||[]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+  const sendData = async () => {
+    try {
+      const response = await fetch('http://localhost:8081/proxy-data/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProxy),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to add proxy');
+      }
+  
+      const result = await response.json();
+      console.log('Proxy added successfully:', result);
+    } catch (error) {
+      console.error('Error adding proxy:', error);
+      alert('There was an error adding the proxy. Please try again.');
+    }
+  };
+  
+  useEffect(() => {
+    // Fetch public IP using an API like ipify or ipinfo
+    const fetchIP = async () => {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        setCurrentIP(data.ip); // Update the state with the user's public IP
+      } catch (error) {
+        console.error("Error fetching IP:", error);
+      }
+    }; 
+    fetchIP()
+    fetchData();
+  }, []);
 
   const handleConnect = (host: ProxyHost) => {
     const updatedHosts = proxyHosts.map(h => ({
@@ -95,25 +102,26 @@ const ProxyHosts: React.FC = () => {
     alert(`Connected to ${host.location}`);
   };
 
-  const handleAddProxy = () => {
-    if (newProxy.location.trim() === '' || newProxy.price.trim() === '' || newProxy.statistics.uptime === '' || newProxy.bandwidth.trim() === '') {
+  const handleAddProxy = async () => {
+    if (newProxy.location.trim() === '' || newProxy.price.trim() === '' || newProxy.Statistics.uptime === '' || newProxy.bandwidth.trim() === '') {
       alert('Please fill in all fields.');
       return;
     }
+    await sendData();
 
     setProxyHosts([...proxyHosts, { ...newProxy, logs: [], isEnabled: false }]);
 
     // Reset new proxy fields
     setNewProxy({
       name:'',
-      access: '',
       location: '',
       logs: [],
-      statistics: { uptime: '' },
+      Statistics: { uptime: '' },
       bandwidth: '',
       isEnabled: false,
       price: '',
     });
+    
 
     // Hide the form after adding
     setShowForm(false);
@@ -218,6 +226,12 @@ const ProxyHosts: React.FC = () => {
                 <Box sx={{ marginTop: 1 }} className={styles.form}>
                   <Typography variant="h6">Fill in your proxy details</Typography>
                   <Box sx={{ display: 'flex', gap: 2 }}>
+                  <TextField
+                      label="Name"
+                      variant="outlined"
+                      value={newProxy.name}
+                      onChange={(e) => setNewProxy({ ...newProxy, name: e.target.value })}
+                    />
                     <TextField
                       label="Location"
                       variant="outlined"
@@ -235,8 +249,8 @@ const ProxyHosts: React.FC = () => {
                     <TextField
                       label="Uptime (%)"
                       variant="outlined"
-                      value={newProxy.statistics.uptime}
-                      onChange={(e) => setNewProxy({ ...newProxy, statistics: { ...newProxy.statistics, uptime: e.target.value } })}
+                      value={newProxy.Statistics.uptime}
+                      onChange={(e) => setNewProxy({ ...newProxy, Statistics: { ...newProxy.Statistics, uptime: e.target.value } })}
                     />
                     <TextField
                       label="Bandwidth"
@@ -254,7 +268,6 @@ const ProxyHosts: React.FC = () => {
                   <TableHead>
                     <TableRow>
                     <TableCell>Name</TableCell>
-                      <TableCell>Access</TableCell>
                       <TableCell>Location</TableCell>
                       <TableCell>Price</TableCell>
                       <TableCell>Uptime</TableCell>
@@ -267,10 +280,9 @@ const ProxyHosts: React.FC = () => {
                     {proxyHosts.map((host, index) => (
                       <TableRow key={index}>
                         <TableCell>{host.name}</TableCell>
-                        <TableCell>{host.access}</TableCell>
                         <TableCell>{host.location}</TableCell>
                         <TableCell>{host.price}</TableCell>
-                        <TableCell>{host.statistics.uptime}</TableCell>
+                        <TableCell>{host.Statistics && host.Statistics.uptime ? host.Statistics.uptime : 'N/A'}</TableCell>
                         <TableCell>{host.bandwidth}</TableCell>
                         <TableCell>
                           <Button variant="text" onClick={() => alert(host.logs.join('\n'))}>
