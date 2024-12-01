@@ -24,8 +24,8 @@ func StartDHTService() {
 	ConnectToPeer(node, Relay_node_addr) // connect to relay node
 	makeReservation(node)                // make reservation on relay node
 	go refreshReservation(node, 5*time.Minute)
-	// ConnectToPeer(node, Bootstrap_node_addr) // connect to bootstrap node
-	// go handlePeerExchange(node)
+	ConnectToPeer(node, Bootstrap_node_addr) // connect to bootstrap node
+	go handlePeerExchange(node)
 
 	// ReceiveDataFromPeer(node) //listen on stream /senddata/p2p
 	setupStreams(node)
