@@ -1,15 +1,29 @@
 FROM node:lts-slim
 
-WORKDIR /client
+# Install necessary dependencies for Electron
+RUN apt-get update && apt-get install -y \
+    libgtk-3-0 \
+    libx11-xcb1 \
+    libxcb-dri3-0 \
+    libxss1 \
+    libnss3 \
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json .
+# Set the working directory
+WORKDIR /app
 
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
 RUN npm install
-RUN npm install buffer
-RUN npm install ethers bip39 @ethersproject/random @ethersproject/bytes qrcode.react
 
+# Copy the rest of the application
 COPY . .
 
+# Expose the port your app uses for HTTP traffic
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Command to run your Electron app
+CMD ["npm", "run", "run-build"]

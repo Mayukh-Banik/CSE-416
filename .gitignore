@@ -6,4 +6,17 @@
 ipfs-server-data
 electron/
 node_modules/
+private_key.pem
 
+
+/utils
+utils/files.json
+
+/squidcoinFiles
+squidcoinFiles/
+
+/utils
+utils/files.json
+
+/squidcoinFiles
+squidcoinFiles/

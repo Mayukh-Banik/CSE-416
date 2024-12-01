@@ -30,7 +30,8 @@ This will apply to the docker image as well as on the host machine.
 6. For server run:
    ```
    sudo docker compose up --build --detach
-   sudo docker exec ipfs_server cp swarm.key Shared 
+   sudo docker exec ipfs_server cp swarm.key Shared
+   npm run dev
    ```
 
 ### Notes
@@ -42,22 +43,10 @@ Database folder will be populated with a lot of stuff, can be ignored for now, n
 ### Electron Desktop Installation Instructions
 
 Follow these steps to set up the Electron desktop application:
-
-1. Navigate to the client directory, install dependencies, and build the React app:
-    ```
+```
     cd client
     npm install
-    npm install electron
-    npm run build
-    ```
-    This will install all necessary client dependencies and create a `build` folder with the `index.html` file inside it.
-
-2. Go back to the root directory, install additional dependencies, and launch the Electron app:
-    ```
-    cd ..
-    npm install
-    npm run build
-    npm run electron
-    ```
+    npm run run-build
+```
 
 

@@ -1,314 +1,237 @@
-
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Box,CssBaseline,Drawer,IconButton,List,ListItem,ListItemText
-  , ListItemIcon,Toolbar,Typography,Button,Collapse,TextField
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import {
+  Box, CssBaseline, Drawer, List, ListItem, ListItemText,
+  ListItemIcon, Toolbar, Typography, TextField, Divider
 } from '@mui/material';
 import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
-import HomeIcon from '@mui/icons-material/Home';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 import SettingsIcon from '@mui/icons-material/Settings';
-import MenuIcon from '@mui/icons-material/Menu';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import SupportAgentIcon from '@mui/icons-material/SupportAgent';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { FileCopy } from '@mui/icons-material';
 import { styled, useTheme } from '@mui/material/styles';
-import Divider from '@mui/material/Divider';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import ReceiptIcon from '@mui/icons-material/Receipt';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SecurityIcon from '@mui/icons-material/Security';
-import { grey } from '@mui/material/colors';
+import StoreIcon from '@mui/icons-material/Store';
+import PublicIcon from '@mui/icons-material/Public';
+
 const drawerWidth = 275;
+const collapsedDrawerWidth = 80; // Width when collapsed
 
-
-const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
-  open?: boolean;
-}>(({ theme }) => ({
+const Main = styled('main')(({ theme }) => ({
   flexGrow: 1,
   padding: theme.spacing(3),
-  transition: theme.transitions.create('margin', {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
+  transition: theme.transitions.create(['margin'], {
+    easing: theme.transitions.easing.easeInOut,
+    duration: theme.transitions.duration.standard,
   }),
-  marginLeft: `-${drawerWidth}px`,
-  variants: [
-    {
-      props: ({ open }) => open,
-      style: {
-        transition: theme.transitions.create('margin', {
-          easing: theme.transitions.easing.easeOut,
-          duration: theme.transitions.duration.enteringScreen,
-        }),
-        marginLeft: 0,
-      },
-    },
-  ],
+  marginLeft: `${drawerWidth}px`, // Default expanded
+  [theme.breakpoints.down('sm')]: {
+    marginLeft: `${collapsedDrawerWidth}px`, // Collapsed on small screens
+  },
 }));
 
 interface AppBarProps extends MuiAppBarProps {
   open?: boolean;
 }
 
-const AppBar = styled(MuiAppBar, {
-  shouldForwardProp: (prop) => prop !== 'open',
-})<AppBarProps>(({ theme }) => ({
+const AppBar = styled(MuiAppBar)<AppBarProps>(({ theme }) => ({
   transition: theme.transitions.create(['margin', 'width'], {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
+    easing: theme.transitions.easing.easeInOut,
+    duration: theme.transitions.duration.standard,
   }),
-  variants: [
-    {
-      props: ({ open }) => open,
-      style: {
-        width: `calc(100% - ${drawerWidth}px)`,
-        marginLeft: `${drawerWidth}px`,
-        transition: theme.transitions.create(['margin', 'width'], {
-          easing: theme.transitions.easing.easeOut,
-          duration: theme.transitions.duration.enteringScreen,
-        }),
-      },
-    },
-  ],
+  width: `calc(100% - ${drawerWidth}px)`, // Default expanded
+  marginLeft: `${drawerWidth}px`,
+  [theme.breakpoints.down('sm')]: {
+    width: `calc(100% - ${collapsedDrawerWidth}px)`, // Adjust width when collapsed
+    marginLeft: `${collapsedDrawerWidth}px`,
+  },
 }));
 
 const DrawerHeader = styled('div')(({ theme }) => ({
-  
   display: 'flex',
   alignItems: 'center',
   padding: theme.spacing(0, 1),
-  // necessary for content to be below app bar
   ...theme.mixins.toolbar,
-  justifyContent: 'flex-end',
+  justifyContent: 'center', // Center the content when collapsed
 }));
 
-const Sidebar: React.FC = () => 
-{
+const Sidebar: React.FC = () => {
   const theme = useTheme();
-  const [open,setOpen]= React.useState(false);
-  const [dashboardOpen,setDashBoardOpen] = React.useState(false);
-  
+  const navigate = useNavigate();
+  const location = useLocation(); // To track the current route
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const toggleDrawer = (newOpen:boolean) =>
-  {
-    setOpen(newOpen);
+  const handleSearchKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter') {
+        navigate(`/search-page?q=${searchQuery}`); // Include search query in the URL
+    }
   };
 
-  const toggleDashboard = () =>
-  {
-    setDashBoardOpen(!dashboardOpen);
-  }
+  const isActive = (path: string) => location.pathname === path; // Check if the current route matches the path
+
+  const handleFiles = async () => navigate('/files');
+  const handleWallet = async () => navigate('/wallet');
+  const handleMining = async () => navigate('/mining');
+  const handleAccount = async () => navigate('/account/1');
+  const handleSettings = async () => navigate('/settings');
+  const handleMarket = async () => navigate('/market');
+  const handleProxy = async () => navigate('/proxy');
+  const handleGlobalTransactions = async () => navigate('/global-transactions');
 
   const drawer = (
     <div>
       <List>
-        {/*
-        Not sure if this is the intended logic 
-        */}
-       <ListItem component = {Button} onClick={()=>toggleDashboard()}>
-          <ListItemIcon><DashboardIcon /></ListItemIcon>
-          <ListItemText primary={
-      <Typography style={{ textTransform: 'none' }}>
-        Dashboard
-      </Typography>
-    }  />
-          {dashboardOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />} {/* Icon to indicate collapse/expand */}
+        <ListItem
+          onClick={handleMarket}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/market') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <ListItemIcon><StoreIcon /></ListItemIcon>
+          <ListItemText primary="Market" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
-        <Collapse in = {dashboardOpen} timeout = "auto" unmountOnExit>
-          <List component = "div" disablePadding>
-            <ListItem component = {Link} to = "/overview" sx={{ pl: 4 }} >
-              <ListItemIcon></ListItemIcon>
-              <ListItemText primary = "Overview"></ListItemText>
-            </ListItem>
-
-            <ListItem component = {Link} to = "/notifications" sx={{ pl: 4 }} >
-              <ListItemIcon></ListItemIcon>
-              <ListItemText primary = "Notifications"></ListItemText>
-            </ListItem>
-
-            <ListItem component = {Link} to = "/trade-history" sx={{ pl: 4 }} >
-              <ListItemIcon></ListItemIcon>
-              <ListItemText primary = "Trade History"></ListItemText>
-            </ListItem>
-          </List>
-        </Collapse>
-
-
-        {/*
-        Might need to implement file drop down functionality here too 
-        */}
-
-        <ListItem component = {Link} to = "/files">
-          <ListItemIcon><FileCopyIcon/></ListItemIcon>
-          <ListItemText primary = "Files"></ListItemText>
+        <ListItem
+          onClick={handleFiles}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/files') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <ListItemIcon><FileCopyIcon /></ListItemIcon>
+          <ListItemText primary="Files" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
-        <ListItem component = {Link} to = "/wallet">
-          <ListItemIcon><AccountBalanceWalletIcon/></ListItemIcon>
-          <ListItemText primary = "Wallet"></ListItemText>
-        </ListItem>
-
-        <ListItem component = {Link} to = "/mining">
+        <ListItem
+          onClick={handleMining}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/mining') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
           <ListItemIcon>
-            <img 
-              src={`${process.env.PUBLIC_URL}/pickaxe.png`} 
-              alt="Pickaxe Icon" 
-              style={{ width: '24px', height: '24px', filter: 'invert'}} 
+            <img
+              src={`${process.env.PUBLIC_URL}/pickaxe.png`}
+              alt="Pickaxe Icon"
+              style={{ width: '24px', height: '24px', filter: 'invert' }}
             />
           </ListItemIcon>
-          <ListItemText primary = "Mining"></ListItemText>
+          <ListItemText primary="Mining" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
-        <ListItem component = {Link} to = "/account">
-          <ListItemIcon><AccountCircleIcon/></ListItemIcon>
-          <ListItemText primary = "Account"></ListItemText>
-        </ListItem>
-        <ListItem component={Link} to="/proxy">
-          <ListItemIcon>
-            <SecurityIcon />
-          </ListItemIcon>
-          <ListItemText primary="Proxy" />
+        
+
+        <ListItem
+          onClick={handleGlobalTransactions}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/global-transactions') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <ListItemIcon><PublicIcon /></ListItemIcon>
+          <ListItemText primary="Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
+        <ListItem
+          onClick={handleProxy}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/proxy') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <ListItemIcon><SecurityIcon /></ListItemIcon>
+          <ListItemText primary="Proxy" sx={{ display: { xs: 'none', sm: 'block' } }}/>
+        </ListItem>
 
-        <ListItem component = {Link} to = "/settings">
-          <ListItemIcon><SettingsIcon/></ListItemIcon>
-          <ListItemText primary = "Settings"></ListItemText>
+        <ListItem
+          onClick={handleAccount}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/account/1') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <ListItemIcon><AccountCircleIcon /></ListItemIcon>
+          <ListItemText primary="Account" sx={{ display: { xs: 'none', sm: 'block' } }} />
+        </ListItem>
+
+        <ListItem
+          onClick={handleSettings}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/settings') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <ListItemIcon><SettingsIcon /></ListItemIcon>
+          <ListItemText primary="Settings" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
         <Divider />
-
       </List>
-      </div>
-  )
-
+    </div>
+  );
 
   return (
-    <Box sx = {{display:'flex'}}>
-      <CssBaseline/>
-      <AppBar position = "fixed" open = {open} sx = {{backgroundColor: 'white'}} >
+    <Box sx={{ display: 'flex' }}>
+      <CssBaseline />
+      <AppBar position="fixed" sx={{ backgroundColor: 'primary.main' }}>
         <Toolbar>
-          <IconButton
-            color = "inherit"
-            aria-label = "open-drawer"
-            onClick = {()=>toggleDrawer(true)}
-            edge = "start"
-            sx={[
-              {
-                mr: 2,
-              },
-              open && { display: 'none' },
-            ]}
-            >
-              <MenuIcon />
-            </IconButton>
-
-          <Toolbar>
-          <Box sx={{ flexGrow: 1 }} /> {/* Pushes the search bar to the right */}
+          <Box sx={{ flexGrow: 1 }} />
           <TextField
             variant="outlined"
             placeholder="Search…"
             size="small"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)} // Update search query state
+            onKeyPress={handleSearchKeyPress} // Handle Enter key press
             sx={{
               width: '250px',
               ml: 4,
               '& .MuiOutlinedInput-root': {
                 borderRadius: '4px',
                 borderColor: 'grey',
-
-                '& fieldset':
-                {
-                  borderColor:'grey',
-                },
-
-                '&:hover fieldset':{
-                  borderColor:'darkgrey'
-                }
+                backgroundColor: 'background.default',
+                color: 'secondary.main',
+                '& fieldset': { borderColor: 'white' },
+                '&:hover fieldset': { borderColor: 'darkgrey' }
               },
             }}
           />
         </Toolbar>
-
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: '', padding: 2 }}>
-
-          <IconButton color = "inherit" sx = {{ml:2}}>
-            <DarkModeIcon/>
-          </IconButton>
-
-          <IconButton color = "inherit" component = {Link} to = "/notifications">
-            <NotificationsIcon/>
-          </IconButton>
-          
-          <Button 
-            color = "inherit"
-            sx = {{
-              border: '2px solid #808080',
-              borderRadius: '4px',
-              padding: '6px 12px',
-              ml: 2,
-              // textDecoration: 'none',
-              // color: 'black',
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/login" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              Log in
-            </Typography>
-          </Button>
-                
-          <Button 
-            color = "inherit"
-            sx = {{
-              border: '2px solid #808080',
-              borderRadius: '4px',
-              padding: '6px 12px',
-              ml: 2,
-              
-            }}>
-            <Typography variant = "h6" component = {Link} to = "/register" 
-              style={{ 
-                textTransform: 'none',
-                textDecoration: 'none',
-                color: 'black', }}>
-              Sign up
-            </Typography>
-          </Button>
-          </Box>
-        </Toolbar>
-        <Divider/>
-        
       </AppBar>
 
-      <Drawer 
+      <Drawer
         sx={{
-          // width: drawerWidth,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
+            backgroundColor: 'background.default',
+            color: 'secondary.main',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.easeInOut,
+              duration: theme.transitions.duration.standard,
+            }),
+            [theme.breakpoints.down('sm')]: {
+              width: collapsedDrawerWidth, // Collapse sidebar on small screens
+            },
           },
         }}
-        variant = "persistent"
-        anchor = "left"
-        open = {open}
+        variant="permanent"
+        anchor="left"
       >
         <DrawerHeader>
-          <img src="/squidcoin.png" alt="Squid Icon" width="30" />
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1}}>
+          <img src={`${process.env.PUBLIC_URL}/squidcoin.png`} alt="Squid Icon" width="30" />
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, margin: 1, display: { xs: 'none', sm: 'block' }}}>
             Squid Coin
           </Typography>
-          <IconButton onClick ={()=>toggleDrawer(false)}>
-            {theme.direction === 'ltr'? <ChevronLeftIcon />:<ChevronRightIcon />}
-          </IconButton>
         </DrawerHeader>
         <Divider />
         {drawer}
@@ -316,6 +239,5 @@ const Sidebar: React.FC = () =>
     </Box>
   );
 }
-
 
 export default Sidebar;
