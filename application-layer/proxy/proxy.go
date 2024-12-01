@@ -1,4 +1,4 @@
-package proxy
+package proxyService
 
 import (
 	"bufio"
@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -33,6 +34,98 @@ var (
 	Peer_Addresses  []ma.Multiaddr
 	isHost          = true
 )
+
+type Proxy struct {
+	Name       string   `json:"name"`
+	Location   string   `json:"location"`
+	Logs       []string `json:"logs"`
+	Statistics struct {
+		Uptime string `json:"uptime"`
+	}
+	Bandwidth string `json:"bandwidth"`
+	Address   string `json:"address"`
+	PeerID    string `json:"peer_id"`
+	IsEnabled bool   `json:"isEnabled"`
+
+	Price string `json:"price"`
+}
+
+const proxyFilePath = "../utils/proxy_data.json"
+
+func saveProxyToFile(proxy Proxy) error {
+	dir := filepath.Dir(proxyFilePath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("could not create directory: %v", err)
+		}
+	}
+
+	// Open file for reading and writing
+	file, err := os.OpenFile(proxyFilePath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("could not open file: %v", err)
+	}
+	defer file.Close()
+
+	// Read existing proxies from the file
+	var proxies []Proxy
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&proxies); err != nil && err.Error() != "EOF" {
+		return fmt.Errorf("could not decode existing proxy data: %v", err)
+	}
+
+	if proxies == nil {
+		proxies = []Proxy{} // Initialize an empty slice if no proxies exist
+	}
+
+	// Check if the proxy already exists based on PeerID (or another unique identifier)
+	for _, existingProxy := range proxies {
+		if existingProxy.PeerID == proxy.PeerID {
+			fmt.Println("Proxy already exists in file. Skipping append.")
+			return nil // Skip if the proxy already exists
+		}
+	}
+
+	// Append the new proxy
+	proxies = append(proxies, proxy)
+
+	// Rewind the file to the beginning and overwrite it with the updated data
+	file.Seek(0, 0)
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ") // Optional: for better readability
+	if err := encoder.Encode(proxies); err != nil {
+		return fmt.Errorf("could not encode proxy data: %v", err)
+	}
+
+	fmt.Println("Proxy saved successfully.")
+	return nil
+}
+
+func loadProxyFromFile() (Proxy, error) {
+	var proxy Proxy
+	file, err := os.Open(proxyFilePath)
+	if err != nil {
+		return proxy, fmt.Errorf("could not open file: %v", err)
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&proxy); err != nil {
+		return proxy, fmt.Errorf("could not decode data: %v", err)
+	}
+	return proxy, nil
+}
+func addProxy(address string, peerID string) {
+	proxy := Proxy{Address: address, PeerID: peerID}
+	fmt.Print("attempting to add proxy", proxy)
+	err := saveProxyToFile(proxy)
+
+	if err != nil {
+		fmt.Println("Error saving proxy:", err)
+	} else {
+		fmt.Println("Proxy saved successfully.")
+	}
+}
 
 /*
 Makes private key from a seed, right now the program uses command line args
@@ -285,18 +378,17 @@ func handlePeerExchange(node host.Host) {
 }
 
 func pollPeerAddresses(node host.Host) {
+	if isHost {
+		fmt.Println("In host part")
+		httpHostToClient(node)
+	}
 	for {
 		if len(Peer_Addresses) > 0 {
 			fmt.Println("Peer addresses are not empty, setting up proxy.")
 			fmt.Println(Peer_Addresses)
 
 			// Hosting
-			if isHost {
-				fmt.Println("In host part")
-				httpHostToClient(node)
-				// handleP2PHTTPTempStream(node)
-				// node.SetStreamHandler("/p2p-http-temp", handleP2PHTTPTempStream)
-			} else {
+			if !(isHost) {
 				fmt.Println("In Client part")
 
 				// Start an HTTP server on port 9900
@@ -312,53 +404,95 @@ func pollPeerAddresses(node host.Host) {
 					log.Fatalf("Failed to start HTTP server: %s", err)
 				}
 			}
-
-			// Wait here instead of continuing to loop
-			select {}
 		}
 		time.Sleep(5 * time.Second)
 	}
 }
+
+// Retrieveing proxies data, and adding yourself as host
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "Get":
-		// Respond with some data
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Data fetched successfully"}`))
-	case "POST":
-		// Handle posted data
-		var requestData map[string]interface{}
-		err := json.NewDecoder(r.Body).Decode(&requestData)
+	// Create a new node
+	node, err := createNode()
+	if err != nil {
+		log.Fatalf("Failed to create node: %s", err)
+	}
+	fmt.Println("This node's addresses", node.Addrs())
+
+	globalCtx = context.Background()
+
+	// Log the node's details
+	fmt.Println("Node multiaddresses:", node.Addrs())
+	fmt.Println("Node Peer ID:", node.ID())
+
+	if r.Method == "POST" {
+		isHost = true
+		// Save the proxy information (address and peer ID) to file
+		var newProxy Proxy
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&newProxy)
+		newProxy.Address = node.Addrs()[0].String() // Use the first address
+		newProxy.PeerID = node.ID().String()
+		err = saveProxyToFile(newProxy)
 		if err != nil {
-			http.Error(w, "Invalid request payload", http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf("Failed to save proxy: %v", err), http.StatusInternalServerError)
 			return
 		}
-		fmt.Printf("Received data: %v\n", requestData)
-		w.Write([]byte(`{"message": "Data received successfully"}`))
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		fmt.Println("Proxy saved successfully.")
+	}
+
+	// Poll for peer addresses (optional)
+	go pollPeerAddresses(node)
+	if r.Method == "GET" {
+		// Open the file that stores the proxy data
+		file, err := os.Open(proxyFilePath)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Could not open file: %v", err), http.StatusInternalServerError)
+			return
+		}
+		defer file.Close()
+
+		// Initialize a slice to hold the proxy data
+		var proxies []Proxy
+
+		// Decode the JSON data from the file into the proxies slice
+		decoder := json.NewDecoder(file)
+		err = decoder.Decode(&proxies)
+		if err != nil && err.Error() != "EOF" {
+			http.Error(w, fmt.Sprintf("Could not decode proxy data: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		// Set the content type to JSON
+		w.Header().Set("Content-Type", "application/json")
+
+		// Marshal the proxy data into JSON and send it as the response
+		jsonResponse, err := json.Marshal(proxies)
+		if err != nil {
+			http.Error(w, "Failed to generate response", http.StatusInternalServerError)
+			return
+		}
+
+		// Write the JSON response
+		w.Write(jsonResponse)
 	}
 }
 
 func main() {
-	fmt.Println("getAdjacentNodeFilesMetadata: back to frontend...")
 
-	http.HandleFunc("/proxy-data", handleProxyData)
-
-	switch len(os.Args) {
-	case 1:
-		fmt.Println("Error: Missing required arguments.")
-		os.Exit(1)
-	case 2:
-		node_id = os.Args[1]
-	case 3:
-		node_id = os.Args[1]
-		peer_id = os.Args[2]
-		isHost = false
-	default:
-		fmt.Println("Error: Too many arguments provided.")
-		os.Exit(1)
-	}
+	// switch len(os.Args) {
+	// case 1:
+	// 	fmt.Println("Error: Missing required arguments.")
+	// 	os.Exit(1)
+	// case 2:
+	// 	node_id = os.Args[1]
+	// case 3:
+	// 	node_id = os.Args[1]
+	// 	peer_id = os.Args[2]
+	// 	isHost = false
+	// default:
+	// 	fmt.Println("Error: Too many arguments provided.")
+	// 	os.Exit(1)
+	// }
 
 	node, err := createNode()
 	if err != nil {
