@@ -32,7 +32,7 @@ func ConnectToPeer(node host.Host, peerAddr string) {
 		log.Printf("Failed to get AddrInfo from address: %s", err)
 		return
 	}
-	if peerAddr != relay_addr {
+	if peerAddr != Relay_node_addr {
 		node.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 	}
 	err = node.Connect(context.Background(), *info)

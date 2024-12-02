@@ -50,3 +50,6 @@ Follow these steps to set up the Electron desktop application:
 ```
 
 
+### notes for joyce
+set up bootstrap node locally
+copy multiaddr and peerid and use that as bootstrap addr in application-layer/dht
