@@ -69,6 +69,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const [names, setNames] = useState<{ [key: string]: string }>({}); // Track names of to be uploaded files
   const theme = useTheme();
   const [loading, setLoading] = useState(false); // Loading state for file upload
+  const [ratings, setRatings] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
     const fetchAllFiles = async() => {
@@ -99,6 +100,19 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       console.error("Error fetching uploaded files:", error);
     }
   };
+
+  useEffect(() => {
+    downloadedFiles.forEach(file => {
+      if (!ratings[file.Hash]) {
+        getRating(file.Hash).then(ratingData => {
+          if (ratingData && ratingData.rating !== undefined) {
+            setRatings(prev => ({ ...prev, [file.Hash]: ratingData.rating }));
+          }
+        });
+      }
+    });
+  }, [downloadedFiles]);
+  
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -369,6 +383,19 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       setNotification({ open: true, message: "Unable to rate file.", severity: "error" });
     }
   }
+  
+  const getRating = async (fileHash: string) => {
+    console.log("getting rating for file: ", fileHash);
+    try {
+      const response = await fetch((`http://localhost:8081/files/getRating?fileHash=${fileHash}`), {
+        method: "GET",
+      });
+      if (!response.ok) throw new Error(`Failed to get rating for ${fileHash}`);
+      return response.json()
+    } catch (error) {
+      console.error('error: failed to get file rating: ', error);
+    }
+  }
 
   /*
   will modularize later 
@@ -575,7 +602,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 {/* Table Header */}
                 <TableHead>
                   <TableRow>
-                    <TableCell></TableCell>
+                    <TableCell>Rating</TableCell>
                     <TableCell>Name</TableCell>
                     <TableCell>Hash</TableCell>
                     <TableCell>Size</TableCell>
@@ -589,14 +616,27 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                   {downloadedFiles.map((file, index) => (
                     <TableRow key={index}>
                       <TableCell>
-                        <IconButton color="success" onClick={() => handleVote(file.Hash, 'upvote')}>
-                          <ArrowUpwardIcon />
-                        </IconButton>
-                        <IconButton color="error" onClick={() => handleVote(file.Hash, 'downvote')}>
-                          <ArrowDownwardIcon />
-                        </IconButton>
-                      </TableCell>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <IconButton color="success" onClick={() => handleVote(file.Hash, 'upvote')}>
+                            <ArrowUpwardIcon />
+                          </IconButton>
 
+                          <Typography variant="body2" sx={{ marginY: 0.5 }}>
+                            {ratings[file.Hash] !== undefined ? ratings[file.Hash] : '0'}
+                          </Typography>
+
+                          <IconButton color="error" onClick={() => handleVote(file.Hash, 'downvote')}>
+                            <ArrowDownwardIcon />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
                       <TableCell>{file.Name}</TableCell>
                       <TableCell
                         sx={{
