@@ -5,7 +5,10 @@ import (
 )
 
 func TestGenerateNewAddress(t *testing.T) {
-	ws := NewWalletService("user", "password") // No parameters needed as it loads from .env
+	ws, err := NewWalletService("user", "password") // No parameters needed as it loads from .env
+	if err != nil {
+		t.Fatalf("NewWalletService error got %v", err)
+	}
 	// address, err := ws.GenerateNewAddress()    // Match the return values
 	address, pubKey, err := ws.GenerateNewAddressWithPubKey()
 	if err != nil {

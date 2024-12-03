@@ -1195,7 +1195,90 @@ const scripts = {
         linux: (index) => {
             deleteAddressByIndex(parseInt(index, 10));
         }
+    },
+    startBtcdMainnet: {
+        windows: () => {
+            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdExe = path.join(btcdDir, "btcd.exe");
+            const configFile = path.join(btcdDir, "btcd.conf");
+            const command = `"${btcdExe}" --rpcuser=user --rpcpass=password --notls --configfile="${configFile}"`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCD started successfully on Mainnet.");
+            } catch (err) {
+                console.error(`Failed to start btcd.exe on Mainnet: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdExe = path.join(btcdDir, "btcd");
+            const configFile = path.join(btcdDir, "btcd.conf");
+            const command = `"${btcdExe}" --rpcuser=user --rpcpass=password --notls --configfile="${configFile}"`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCD started successfully on Mainnet.");
+            } catch (err) {
+                console.error(`Failed to start btcd on Mainnet: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdExe = path.join(btcdDir, "btcd");
+            const configFile = path.join(btcdDir, "btcd.conf");
+            const command = `"${btcdExe}" --rpcuser=user --rpcpass=password --notls --configfile="${configFile}"`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCD started successfully on Mainnet.");
+            } catch (err) {
+                console.error(`Failed to start btcd on Mainnet: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+    startBtcwalletMainnet: {
+        windows: () => {
+            const walletExe = path.join(walletDir, "btcwallet.exe");
+            const command = `"${walletExe}" --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCWallet started successfully on Mainnet.");
+            } catch (err) {
+                console.error(`Failed to start btcwallet.exe on Mainnet: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            const walletExe = path.join(walletDir, "btcwallet");
+            const command = `"${walletExe}" --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCWallet started successfully on Mainnet.");
+            } catch (err) {
+                console.error(`Failed to start btcwallet on Mainnet: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            const walletExe = path.join(walletDir, "btcwallet");
+            const command = `"${walletExe}" --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
+            console.log(`Executing: ${command}`);
+            try {
+                execSync(command, { stdio: "inherit" });
+                console.log("BTCWallet started successfully on Mainnet.");
+            } catch (err) {
+                console.error(`Failed to start btcwallet on Mainnet: ${err.message}`);
+                process.exit(1);
+            }
+        }
     }
+
 };
 
 // Retrieve the script name from command-line arguments

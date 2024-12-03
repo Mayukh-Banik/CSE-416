@@ -39,6 +39,10 @@
         "start:btcwallet": "node scripts/run-os-script.js startBtcwallet",
         "test:wallet": "node scripts/run-os-script.js testWallet",
 
+        "start:btcd:mainnet": "node scripts/run-os-script.js startBtcdMainnet",
+        "start:btcwallet:mainnet": "node scripts/run-os-script.js startBtcwalletMainnet",
+
+
         "test:controller": "cd application-layer && go test ./controllers -v",
         "test": "npm run test:wallet && npm run test:controller",
         "run:all": "concurrently \"npm run build:btcd\" \"npm run start:btcd\" \"npm run build:btcwallet\" \"npm run start:btcwallet\" \"npm run build:btcctl\" \"npm run test:wallet\""
