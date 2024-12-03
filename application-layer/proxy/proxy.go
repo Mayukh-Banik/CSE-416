@@ -46,8 +46,8 @@ type Proxy struct {
 	Address   string `json:"address"`
 	PeerID    string `json:"peer_id"`
 	IsEnabled bool   `json:"isEnabled"`
-
-	Price string `json:"price"`
+	IsHost    bool   `json:"isHost"`
+	Price     string `json:"price"`
 }
 
 const proxyFilePath = "../utils/proxy_data.json"

@@ -14,6 +14,7 @@ interface ProxyHost {
   bandwidth: string;
   isEnabled: boolean;
   price: string;
+  isHost: boolean;
 }
 
 
@@ -34,6 +35,7 @@ const ProxyHosts: React.FC = () => {
     bandwidth: '',
     isEnabled: false,
     price: '',
+    isHost: false
   });
   const styles = useProxyHostsStyles();
   const theme = useTheme();
@@ -120,6 +122,7 @@ const ProxyHosts: React.FC = () => {
       bandwidth: '',
       isEnabled: false,
       price: '',
+      isHost:false,
     });
     
 
