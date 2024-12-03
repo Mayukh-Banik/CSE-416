@@ -22,7 +22,7 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request data", http.StatusBadRequest)
 		return
 	}
-
+	fmt.Println("handling download request for", request.FileHash)
 	request.RequesterID = dht_kad.DHT.Host().ID().String()
 	request.TransactionID = uuid.New().String()
 	// Log the requester and provider IDs
@@ -61,23 +61,3 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "request sent"})
 }
-
-// prob gonna delete
-// func handleGetPendingRequests(w http.ResponseWriter, r *http.Request) {
-// 	dht_kad.Mutex.Lock()
-// 	defer dht_kad.Mutex.Unlock()
-
-// 	w.Header().Set("Content-Type", "application/json")
-
-// 	// Convert the map to a slice of transactions
-// 	var transactions []models.Transaction
-// 	for _, transaction := range dht_kad.PendingRequests {
-// 		transactions = append(transactions, transaction)
-// 	}
-
-// 	err := json.NewEncoder(w).Encode(transactions)
-// 	if err != nil {
-// 		http.Error(w, "Failed to encode pending requests", http.StatusInternalServerError)
-// 		return
-// 	}
-// }

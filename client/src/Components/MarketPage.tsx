@@ -22,6 +22,7 @@ const MarketplacePage: React.FC = () => {
   const [loadingRequest, setLoadingRequest] = useState(false);
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [refresh, setRefresh] = useState(false);
+  const [ratings, setRatings] = useState<{ [key: string]: number }>({}); // Store ratings by file hash
 
   // const socket = new WebSocket("ws://localhost:8081/ws")
   // socket.onmessage = (event) => {
@@ -35,6 +36,24 @@ const MarketplacePage: React.FC = () => {
   useEffect(() => {
     handleRefresh();
   }, []);
+
+  useEffect(() => {
+    const fetchRatings = async () => {
+      const updatedRatings: { [key: string]: number } = { ...ratings };
+      console.log('search results: ', searchResults)
+      for (const file of searchResults) {
+        console.log("getting rating of file: ", file)
+        if (file.Rating != null) {
+          ratings[file.Hash] = file.Rating
+        }
+      }
+      setRatings(updatedRatings); // Batch update once all ratings are fetched
+      console.log("all file ratings: ", ratings)
+    };
+  
+    if (searchResults != null) fetchRatings();
+  }, [searchResults]); // Runs when search results change
+  
 
   const resetStates = async () => {
     setFileHash("");
@@ -50,9 +69,11 @@ const MarketplacePage: React.FC = () => {
     setNotification({ ...notification, open: false });
   };
   
-  
+
   const handleDownloadRequest = async (file: FileMetadata) => {
     if (refresh) {
+      console.log('handling download request for file', file.Hash)
+      setFileHash(file.Hash)
       await getFileByHash(file.Hash)
     } else {
       setSelectedFile(file)
@@ -62,7 +83,7 @@ const MarketplacePage: React.FC = () => {
   };
 
   const handleProviderSelect = async (provider: string) => {
-    console.log("requesting file from provider: ", provider)
+    console.log(`requesting file ${fileHash} from provider ${provider}: `)
     setLoadingRequest(true)
     try {
       let request: Transaction = {
@@ -167,6 +188,7 @@ const MarketplacePage: React.FC = () => {
 
         setSelectedFile(data);
         setProviders(data.Providers);
+        console.log("providers for file ", fileHash, data.Providers)
         setSearchResults([data])
     } catch (error) {
         console.error("Error:", error);
@@ -175,11 +197,6 @@ const MarketplacePage: React.FC = () => {
       setLoadingSearch(false)
     }
   };
-
-
-  // const handleDownload = (fileHash:string) => {
-  //   getFile(fileHash);
-  // };
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -245,7 +262,7 @@ const MarketplacePage: React.FC = () => {
               <TableCell>File Name</TableCell>
               <TableCell>File Size (KB)</TableCell>
               <TableCell>Rating</TableCell>
-              <TableCell>Created At</TableCell>
+              {/* <TableCell>Created At</TableCell> */}
               <TableCell></TableCell>
             </TableRow>
           </TableHead>
@@ -255,9 +272,9 @@ const MarketplacePage: React.FC = () => {
                 <TableCell>{file.Name}</TableCell>
                 <TableCell>{(file.Size / 1024).toFixed(2)}</TableCell>
                 {/* <TableCell>{file.Reputation}</TableCell> */}
-                <TableCell>3/5</TableCell>
+                <TableCell>{ratings[file.Hash] !== undefined ? ratings[file.Hash] : "0"}</TableCell> {/* Use ratings */}
                 {/* <TableCell>{file.createdAt.toLocaleDateString()}</TableCell> */}
-                <TableCell>2023-09-15</TableCell>
+                {/* <TableCell>2023-09-15</TableCell> */}
 
                 <TableCell>
                   <Button variant="contained" onClick={() => handleDownloadRequest(file)}>
@@ -294,18 +311,14 @@ const MarketplacePage: React.FC = () => {
           </Box>
         )}
   
-          {providers.length ? (
-            providers
-              .filter((value, index, self) =>
-                index === self.findIndex((t) => (
-                  t.PeerID === value.PeerID && t.IsActive // only display peer if currently providing
-                ))
-              )
-              .map((provider) => (
+          {Object.entries(providers).length ? (
+            Object.entries(providers)
+              .filter(([peerID, provider]) => provider.IsActive)
+              .map(([peerID, provider]) => (
                 <Button
-                  key={provider.PeerID} // Ensure this is unique for the key
+                  key={peerID} // Ensure this is unique for the key
                   variant="outlined"
-                  onClick={() => handleProviderSelect(provider.PeerID)}
+                  onClick={() => handleProviderSelect(peerID)}
                   sx={{
                     margin: 1,
                     display: 'flex',
@@ -314,7 +327,7 @@ const MarketplacePage: React.FC = () => {
                   }}
                 >
                   <span style={{ wordBreak: 'break-all', whiteSpace: 'normal' }}>
-                    {provider.PeerID}
+                    {peerID}
                   </span>
                   <span>{provider.Fee} SQD/MB</span>
                 </Button>

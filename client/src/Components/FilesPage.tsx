@@ -102,17 +102,36 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   };
 
   useEffect(() => {
-    downloadedFiles.forEach(file => {
-      if (!ratings[file.Hash]) {
-        getRating(file.Hash).then(ratingData => {
-          if (ratingData && ratingData.rating !== undefined) {
-            setRatings(prev => ({ ...prev, [file.Hash]: ratingData.rating }));
-          }
-        });
-      }
-    });
-  }, [downloadedFiles]);
+    const fetchRatings = async () => {
+      const updatedRatings: { [key: string]: number } = { ...ratings };
   
+      for (const file of downloadedFiles) {
+        if (!updatedRatings[file.Hash]) {
+          try {
+            const ratingData = await getRating(file.Hash);
+            console.log("ratingData: ", ratingData)
+
+            if (ratingData) {
+              console.log(`file hash: ${file.Hash} | rating: ${ratingData}`)
+              updatedRatings[file.Hash] = ratingData;
+            }
+          } catch (error) {
+            console.error("Failed to fetch rating:", error);
+          }
+        }
+      }
+  
+      // After fetching all ratings, update the state
+      setRatings(updatedRatings);
+    };
+  
+    fetchRatings(); // Call the async function
+  }, [downloadedFiles]); // Depend only on downloadedFiles
+  
+  
+  useEffect(() => {
+    console.log("Updated ratings:", ratings);
+  }, [ratings]); // This will run whenever ratings change
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -198,7 +217,8 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         Fee: fees[file.name] || 0,
         OriginalUploader: true,
         NameWithExtension: fileExtension,
-        Rating: "",
+        Rating: 0,
+        AlreadyRated: false,
       };
   
       // Save file locally using Electron API
@@ -364,25 +384,31 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
   }
 
-  const handleVote = async (fileHash: string, voteType: string ) => {
+  const handleVote = async (fileHash: string, voteType: 'upvote' | 'downvote') => { 
     try {
       const response = await fetch(`http://localhost:8081/files/vote?fileHash=${fileHash}&voteType=${voteType}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to rate file")
+      if (response.ok) {
+        setRatings(prevRatings => {
+          const currentRating = prevRatings[fileHash] || 0;
+          const newRating =
+            voteType === 'upvote' ? currentRating + 1 : currentRating - 1;
+      
+          return { ...prevRatings, [fileHash]: newRating };
+        });
+      } else {
+        throw new Error("Failed to update vote");
       }
-      const data = await response.json();
-      console.log('file rated successfully', data);
-
-      setNotification({ open: true, message: "Successfully rated file.", severity: "success" });
     } catch (error) {
-      console.error("error: ", error);
-      setNotification({ open: true, message: "Unable to rate file.", severity: "error" });
+      console.error("Error updating vote:", error);
     }
-  }
+  };
+  
   
   const getRating = async (fileHash: string) => {
     console.log("getting rating for file: ", fileHash);
@@ -391,7 +417,9 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         method: "GET",
       });
       if (!response.ok) throw new Error(`Failed to get rating for ${fileHash}`);
-      return response.json()
+      let data = await response.json()
+      console.log("file rating: ", data)
+      return data
     } catch (error) {
       console.error('error: failed to get file rating: ', error);
     }

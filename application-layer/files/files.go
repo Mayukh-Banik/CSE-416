@@ -100,6 +100,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("UPLOAD FILE HANDLER: FILEHASH ", requestBody.Hash)
 
 	var filePath string
 	fmt.Println("original uploader: ", requestBody.OriginalUploader)
@@ -167,7 +168,7 @@ func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error retrieving file data: %v", err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("file data from dht:", data)
+	// fmt.Println("file data from dht:", data)
 
 	// Create an instance of FileMetadata to hold the decoded data
 	var metadata models.DHTMetadata

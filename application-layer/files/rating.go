@@ -5,6 +5,7 @@ import (
 	"application-layer/models"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -15,29 +16,34 @@ import (
 
 // Handle voting for both upvotes and downvotes
 func handleVote(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("in handleVote")
+	log.Println("in handleVote")
+
 	fileHash := r.URL.Query().Get("fileHash")
 	voteType := r.URL.Query().Get("voteType")
-	fmt.Printf("file hash: %v | vote type: %v\n", fileHash, voteType)
+	log.Printf("file hash: %s | vote type: %s\n", fileHash, voteType)
 
 	if fileHash == "" || voteType == "" {
-		http.Error(w, "File hash or vote type not provided", http.StatusBadRequest)
+		http.Error(w, `{"error": "File hash or vote type not provided"}`, http.StatusBadRequest)
 		return
 	}
 
 	if err := votingHelper(fileHash, voteType); err != nil {
-		fmt.Printf("handleVote: %v", err)
-		http.Error(w, fmt.Sprintf("Voting failed: %v", err), http.StatusInternalServerError)
+		log.Printf("handleVote error: %v", err)
+		http.Error(w, fmt.Sprintf(`{"error": "Voting failed: %v"}`, err), http.StatusInternalServerError)
 		return
 	}
 
+	log.Println("handleVote: successfully voted!")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Vote '%s' recorded for file %s", voteType, fileHash)
+	fmt.Fprintf(w, `{"message": "Vote '%s' recorded for file %s"}`, voteType, fileHash)
 }
 
 func votingHelper(fileHash, voteType string) error {
 	// Retrieve metadata from DHT
 	fmt.Println("in voting helper")
+
+	// check if user has already voted
 	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash)
 	if err != nil {
 		fmt.Println("error retrieving file data from dht")
@@ -71,10 +77,13 @@ func votingHelper(fileHash, voteType string) error {
 	}
 
 	// Apply vote logic
+	fmt.Println("voting helper: vote type:", voteType)
 	if voteType == "upvote" {
+		fmt.Println("votingHelper: upvoting")
 		metadata.Upvote++
 		metadata.Rating++
 	} else if voteType == "downvote" {
+		fmt.Println("votingHelper: downvoting")
 		metadata.Rating--
 		metadata.Downvote++
 	}
@@ -89,8 +98,10 @@ func votingHelper(fileHash, voteType string) error {
 	if err != nil {
 		return fmt.Errorf("failed to encode updated metadata: %v", err)
 	}
-
-	return dht_kad.DHT.PutValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash, updatedData)
+	fmt.Println("votingHelper: metadata after updating vote: ", metadata)
+	err = dht_kad.DHT.PutValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash, updatedData)
+	fmt.Println("error in votingHelper??:", err)
+	return err
 }
 
 func handleGetRating(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +124,7 @@ func handleGetRating(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("rating for file hash: ", fileHash, metadata.Rating)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(metadata.Rating); err != nil {
 		http.Error(w, "Failed to encode file rating", http.StatusInternalServerError)

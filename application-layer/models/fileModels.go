@@ -12,7 +12,8 @@ type FileMetadata struct {
 	Fee               int64  `json:"Fee"`
 	CreatedAt         string `json:"CreatedAt"`
 	OriginalUploader  bool   `json:"OriginalUploader"`
-	Rating            string `json:"Rating"` // upvote, downvote, "" - no vote
+	Rating            int64  `json:"Rating"` // upvote, downvote, "" - no vote
+	AlreadyRated      bool   `json:"AlreadyRated"`
 }
 
 type DHTMetadata struct {
@@ -27,6 +28,7 @@ type DHTMetadata struct {
 	NumRaters         int64
 	Upvote            int64
 	Downvote          int64
+	Hash              string
 }
 
 type Provider struct {

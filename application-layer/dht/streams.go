@@ -345,7 +345,7 @@ func receieveDownloadRequest(node host.Host) {
 			fmt.Println("receivedownloadrequest: sending file")
 			sendFile(node, request)
 		} else {
-			fmt.Println("receivedownloadrequest: decline")
+			fmt.Println("receivedownloadrequest: decline bc file is not in FileHashToPath")
 			sendDecline(request)
 		}
 
