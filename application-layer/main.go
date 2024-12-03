@@ -32,7 +32,10 @@ func main() {
 	}
 
 	// initialization
-	walletService := wallet.NewWalletService(rpcUser, rpcPass)
+	walletService, err := wallet.NewWalletService(rpcUser, rpcPass)
+	if err != nil {
+		log.Fatalf("Failed to initialize WalletService: %v", err)
+	}
 	userService := wallet.NewUserService()
 	walletController := controllers.NewWalletController(walletService)
 	authController := controllers.NewAuthController(userService, walletService)

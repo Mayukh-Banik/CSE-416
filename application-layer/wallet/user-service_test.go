@@ -6,7 +6,10 @@ import (
 
 func TestSignUp(t *testing.T) {
 	// Step 1: Initialize services
-	walletService := NewWalletService("user", "password")
+	walletService, err := NewWalletService("user", "password")
+	if err != nil {
+		t.Fatalf("NewWalletService failed: %v", err)
+	}
 	userService := NewUserService()
 	passphrase := "CSE416" // Hardcoded passphrase for testing
 

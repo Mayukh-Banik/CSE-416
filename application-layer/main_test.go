@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,7 +30,10 @@ func TestHandleSignUp(t *testing.T) {
 	}
 	t.Logf("Loaded WALLET_PASSPHRASE: %s", passphrase)
 
-	walletService := wallet.NewWalletService("user", passphrase)
+	walletService, err := wallet.NewWalletService("user", passphrase)
+	if err != nil {
+		log.Fatalf("Failed to initialize WalletService: %v", err)
+	}
 	userService := wallet.NewUserService()
 	authController := &controllers.AuthController{
 		UserService:   userService,
@@ -82,7 +86,10 @@ func TestHandleSignUp(t *testing.T) {
 // TestHandleLoginRequest tests the generation of a login challenge for a given wallet address.
 func TestHandleLoginRequest(t *testing.T) {
 	// Step 1: Initialize services
-	walletService := wallet.NewWalletService("user", "password")
+	walletService, err := wallet.NewWalletService("user", "password")
+	if err != nil {
+		log.Fatalf("Failed to initialize WalletService: %v", err)
+	}
 	userService := wallet.NewUserService()
 	authController := controllers.NewAuthController(userService, walletService)
 
@@ -129,7 +136,10 @@ func TestHandleLoginRequest(t *testing.T) {
 // TestHandleLogin tests the verification of a signed challenge.
 func TestHandleLogin(t *testing.T) {
 	// Step 1: Initialize services
-	walletService := wallet.NewWalletService("user", "password")
+	walletService, err := wallet.NewWalletService("user", "password")
+	if err != nil {
+		log.Fatalf("Failed to initialize WalletService: %v", err)
+	}
 	userService := wallet.NewUserService()
 	authController := controllers.NewAuthController(userService, walletService)
 
@@ -179,7 +189,10 @@ func TestHandleLogin(t *testing.T) {
 
 func TestSignUp(t *testing.T) {
 	// Step 1: Initialize services
-	walletService := wallet.NewWalletService("user", "password")
+	walletService, err := wallet.NewWalletService("user", "password")
+	if err != nil {
+		log.Fatalf("Failed to initialize WalletService: %v", err)
+	}
 	userService := wallet.NewUserService()
 	passphrase := os.Getenv("WALLET_PASSPHRASE")
 
@@ -212,7 +225,10 @@ func TestSignUp(t *testing.T) {
 }
 
 func TestGenerateNewAddress(t *testing.T) {
-	ws := wallet.NewWalletService("user", "password") // No parameters needed as it loads from .env
+	ws, err := wallet.NewWalletService("user", "password") // No parameters needed as it loads from .env
+	if err != nil {
+		log.Fatalf("Failed to initialize WalletService: %v", err)
+	}
 	address, pubKey, err := ws.GenerateNewAddressWithPubKey()
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -224,8 +240,11 @@ func TestGenerateNewAddress(t *testing.T) {
 }
 
 func TestGenerateNewAddressWithPubKeyAndPrivKey(t *testing.T) {
-	ws := wallet.NewWalletService("user", "password") // No parameters needed as it loads from .env
-	passphrase := os.Getenv("WALLET_PASSPHRASE")      // Replace with a valid passphrase
+	ws, err := wallet.NewWalletService("user", "password") // No parameters needed as it loads from .env
+	if err != nil {
+		log.Fatalf("Failed to initialize WalletService: %v", err)
+	}
+	passphrase := os.Getenv("WALLET_PASSPHRASE") // Replace with a valid passphrase
 	address, pubKey, privateKey, balance, err := ws.GenerateNewAddressWithPubKeyAndPrivKey(passphrase)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)

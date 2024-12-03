@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"path/filepath"
+
+	"github.com/btcsuite/btcd/rpcclient"
 )
 
 type WalletServiceInterface interface {
@@ -26,11 +28,13 @@ type WalletService struct {
 	RpcUser    string
 	RpcPass    string
 	RpcServer  string
+	RpcClient  *rpcclient.Client
 }
 
 // NewWalletService initializes WalletService with provided RPC credentials
-func NewWalletService(rpcUser, rpcPass string) *WalletService {
+func NewWalletService(rpcUser, rpcPass string) (*WalletService, error) {
 
+	// 현재 작업 디렉토리 확인
 	cwd, err := os.Getwd()
 	if err != nil {
 		log.Printf("Failed to get current working directory: %v", err)
@@ -38,30 +42,57 @@ func NewWalletService(rpcUser, rpcPass string) *WalletService {
 		log.Printf("Current working directory: %s", cwd)
 	}
 
-	var btcctlPath string
+	// 네트워크 타입과 RPC 포트 설정
+	network := os.Getenv("NETWORK")
+	rpcPort := os.Getenv("BTCD_RPC_PORT")
+	if rpcPort == "" {
+		if network == "testnet" {
+			rpcPort = "18332"
+		} else {
+			rpcPort = "8332"
+		}
+	}
+	log.Printf("Using network: %s, RPC Port: %s", network, rpcPort)
 
-	// 운영 체제에 따라 btcctl 경로 설정
-	switch runtime.GOOS {
-	case "windows":
-		// btcctlPath = `E:\.code-workspace\CSE-416\application-layer\btcd\cmd\btcctl\btcctl.exe` // 절대 경로로 변경
-		btcctlPath = `./btcd/cmd/btcctl/btcctl.exe`
-	default: // macOS 및 Linux
-		btcctlPath = `./btcd/cmd/btcctl/btcctl`
+	// RPC 클라이언트 생성
+	rpcClient, err := rpcclient.New(&rpcclient.ConnConfig{
+		Host:         "127.0.0.1:" + rpcPort,
+		User:         rpcUser,
+		Pass:         rpcPass,
+		HTTPPostMode: true, // 기본값: true
+		DisableTLS:   true, // TLS 비활성화
+	}, nil)
+
+	if err != nil {
+		log.Printf("Failed to create RPC client: %v", err)
+		return nil, err
 	}
 
-	// 상대 경로가 실제로 존재하는지 확인
+	// 운영 체제에 따라 btcctl 경로 설정
+	var btcctlPath string
+	switch runtime.GOOS {
+	case "windows":
+		btcctlPath = filepath.Join("btcd", "cmd", "btcctl", "btcctl.exe")
+	default: // macOS 및 Linux
+		btcctlPath = filepath.Join("btcd", "cmd", "btcctl", "btcctl")
+	}
+
+	// btcctl 경로의 존재 여부 확인
 	if _, err := os.Stat(btcctlPath); os.IsNotExist(err) {
-		log.Printf("btcctl.exe does not exist at path: %s", btcctlPath)
+		log.Printf("btcctl does not exist at path: %s", btcctlPath)
+		return nil, err
 	} else if err != nil {
-		log.Printf("Error checking btcctl.exe path: %v", err)
+		log.Printf("Error checking btcctl path: %v", err)
+		return nil, err
 	} else {
-		log.Printf("btcctl.exe exists at path: %s", btcctlPath)
+		log.Printf("btcctl exists at path: %s", btcctlPath)
 	}
 
 	// 상대 경로를 절대 경로로 변환
 	absPath, err := filepath.Abs(btcctlPath)
 	if err != nil {
 		log.Printf("Failed to get absolute path for btcctlPath '%s': %v", btcctlPath, err)
+		return nil, err
 	} else {
 		log.Printf("Absolute btcctlPath: %s", absPath)
 	}
@@ -74,21 +105,24 @@ func NewWalletService(rpcUser, rpcPass string) *WalletService {
 		// macOS 및 Linux는 별도 처리 필요 없음
 	}
 
-	// btcctlPath가 실제로 존재하는지 다시 확인
+	// 절대 경로의 존재 여부 재확인
 	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		log.Printf("btcctl.exe does not exist at absolute path: %s", absPath)
+		log.Printf("btcctl executable does not exist at absolute path: %s", absPath)
+		return nil, err
 	} else if err != nil {
-		log.Printf("Error checking btcctl.exe at absolute path: %v", err)
+		log.Printf("Error checking btcctl at absolute path: %v", err)
+		return nil, err
 	} else {
-		log.Printf("btcctl.exe exists at absolute path: %s", absPath)
+		log.Printf("btcctl executable exists at absolute path: %s", absPath)
 	}
 
 	return &WalletService{
-		BtcctlPath: btcctlPath,
+		BtcctlPath: absPath,
 		RpcUser:    rpcUser,
 		RpcPass:    rpcPass,
-		RpcServer:  "127.0.0.1:8332",
-	}
+		RpcServer:  "127.0.0.1:" + rpcPort, // 환경 변수에 따라 동적으로 설정
+		RpcClient:  rpcClient,              // 생성된 RPC 클라이언트 저장
+	}, nil
 }
 
 // GenerateNewAddress generates a new wallet address using btcctl
