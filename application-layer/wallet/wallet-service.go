@@ -91,6 +91,8 @@ func NewWalletService(rpcUser, rpcPass string) *WalletService {
 	}
 }
 
+
+
 // GenerateNewAddress generates a new wallet address using btcctl
 func (ws *WalletService) GenerateNewAddress() (string, error) {
 	cmd := exec.Command(ws.BtcctlPath, "--wallet", "--rpcuser="+ws.RpcUser, "--rpcpass="+ws.RpcPass, "--rpcserver="+ws.RpcServer, "--notls", "getnewaddress")
