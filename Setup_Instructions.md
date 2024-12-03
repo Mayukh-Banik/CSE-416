@@ -112,6 +112,27 @@ npm run start:mining [number_of_blocks]
 
 ---
 
+## **Step 7: Start server and client**
+Now, start both the server and client to run the complete system.
+
+1. Start Server
+Launch the backend server. This runs the Go-based application layer responsible for file sharing and other functionalities.
+```bash
+npm run start:server
+```
+  Description:
+  This command navigates to the application-layer directory and executes the main.go file. The server handles API requests, wallet management, and other backend operations.
+
+2. Start Client
+Launch the frontend client. This runs the React application providing the user interface.
+```bash
+npm run start:client
+```
+  Description:
+  This command navigates to the client directory and starts the React development server. The client allows users to interact with the application, manage wallets, and perform mining operations.
+
+Important:
+Ensure that both the server and client are running simultaneously in separate terminal windows. Verify that each is operating correctly by checking their respective logs for any error messages.
 ## **Additional Information**
 
 - **Retrieve Information About the Network or Addresses**  
