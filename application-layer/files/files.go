@@ -342,7 +342,7 @@ func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
 	sendWG.Wait()
 	responseWG.Wait()
 
-	<-time.After(10 * time.Second)
+	<-time.After(5 * time.Second)
 
 	fmt.Println("getAdjacentNodeFilesMetadata: received everyone's uploaded files: ", dht_kad.RefreshResponse)
 	// Set response headers

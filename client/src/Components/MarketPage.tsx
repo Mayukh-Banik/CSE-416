@@ -39,6 +39,7 @@ const MarketplacePage: React.FC = () => {
 
   useEffect(() => {
     const fetchRatings = async () => {
+      setRatings({})
       const updatedRatings: { [key: string]: number } = { ...ratings };
       console.log('search results: ', searchResults)
       for (const file of searchResults) {
@@ -51,7 +52,9 @@ const MarketplacePage: React.FC = () => {
       console.log("all file ratings: ", ratings)
     };
   
-    if (searchResults != null) fetchRatings();
+    if (searchResults != null) {
+    fetchRatings();
+  }
   }, [searchResults]); // Runs when search results change
   
 
@@ -63,6 +66,7 @@ const MarketplacePage: React.FC = () => {
     setLoadingRequest(false);
     setLoadingSearch(false);
     setSearchResults([])
+    setRatings({})
   }
 
   const handleCloseNotification = () => {
@@ -190,6 +194,9 @@ const MarketplacePage: React.FC = () => {
         setProviders(data.Providers);
         console.log("providers for file ", fileHash, data.Providers)
         setSearchResults([data])
+        const updatedRatings: { [key: string]: number } = {};
+        updatedRatings[fileHash] = data.Rating
+        setRatings(updatedRatings)
     } catch (error) {
         console.error("Error:", error);
         setNotification({ open: true, message: "File not found", severity: "error" });
