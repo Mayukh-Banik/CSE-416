@@ -37,12 +37,14 @@ var (
 	Relay_node_addr = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
 	// Bootstrap_node_addr = "/ip4/130.245.173.222/tcp/61000/p2p/12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE"
 	// Bootstrap_node_addr = "/ip4/192.168.86.218/tcp/61000/p2p/12D3KooWPs4FtjU4YmGoFgnd225gj3XKBD6QZpWFK5Pq1yEp87kx"
-	Bootstrap_node_addr = "/ip4/192.168.1.169/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
-	GlobalCtx           context.Context
-	PeerID              string
-	DHT                 *dht.IpfsDHT
-	ProviderStore       providers.ProviderStore
-	Host                host.Host
+	Bootstrap_node_addr = "/ip4/10.1.163.195/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+	// Bootstrap_node_addr = "/ip4/192.168.86.218/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+
+	GlobalCtx     context.Context
+	PeerID        string
+	DHT           *dht.IpfsDHT
+	ProviderStore providers.ProviderStore
+	Host          host.Host
 )
 
 func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {

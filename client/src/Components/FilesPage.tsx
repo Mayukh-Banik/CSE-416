@@ -218,7 +218,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         OriginalUploader: true,
         NameWithExtension: fileExtension,
         Rating: 0,
-        AlreadyRated: false,
+        HasVoted: false,
       };
   
       // Save file locally using Electron API

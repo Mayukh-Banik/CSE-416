@@ -20,6 +20,7 @@ const collapsedDrawerWidth = 100;
 
 const AccountViewPage: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([])
+  const [ratings, setRatings] = useState<{ [key: string]: number }>({});
   const theme = useTheme();
 
   // Initial account data
@@ -52,43 +53,37 @@ const AccountViewPage: React.FC = () => {
       fetchFiles();
     }, []);
 
+
+  const handleVote = async (fileHash: string, voteType: 'upvote' | 'downvote') => { 
+    try {
+      const response = await fetch(`http://localhost:8081/files/vote?fileHash=${fileHash}&voteType=${voteType}`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        setRatings(prevRatings => {
+          const currentRating = prevRatings[fileHash] || 0;
+          const newRating =
+            voteType === 'upvote' ? currentRating + 1 : currentRating - 1;
+      
+          return { ...prevRatings, [fileHash]: newRating };
+        });
+      } else {
+        throw new Error("Failed to update vote");
+      }
+    } catch (error) {
+      console.error("Error updating vote:", error);
+    }
+  };
+
+
   // Function to calculate reputation out of 5 stars
   const calculateReputation = () => {
     return (accountDetails.totalScore / accountDetails.totalVotes).toFixed(2); // Round to 2 decimal points
   };
-
-  // // Function to handle upvote (equivalent to a 5-star vote)
-  // const handleUpvote = (index: number) => {
-  //   const newFiles = [...files];
-  //   if (!newFiles[index].hasVoted) {
-  //     newFiles[index].rating += 5;
-  //     newFiles[index].hasVoted = true;
-  //     setFiles(newFiles);
-
-  //     // Add 5 stars to the total score and increase vote count by 1
-  //     setAccountDetails((prevAccountDetails) => ({
-  //       ...prevAccountDetails,
-  //       totalVotes: prevAccountDetails.totalVotes + 1,
-  //       totalScore: prevAccountDetails.totalScore + 5,
-  //     }));
-  //   }
-  // };
-
-  // // Function to handle downvote (equivalent to a 0-star vote)
-  // const handleDownvote = (index: number) => {
-  //   const newFiles = [...files];
-  //   if (!newFiles[index].hasVoted) {
-  //     newFiles[index].rating += 0; // No change in rating for a downvote
-  //     newFiles[index].hasVoted = true;
-  //     setFiles(newFiles);
-
-  //     // Add 0 stars to the total score and increase vote count by 1
-  //     setAccountDetails((prevAccountDetails) => ({
-  //       ...prevAccountDetails,
-  //       totalVotes: prevAccountDetails.totalVotes + 1,
-  //     }));
-  //   }
-  // };
 
   return (
     <Box
@@ -149,14 +144,14 @@ const AccountViewPage: React.FC = () => {
                   <TableCell>{file.Rating}</TableCell>
                   <TableCell>
                     <Button
-                      // onClick={() => handleUpvote(index)}
-                      // disabled={file.hasVoted} // Disable button if already voted
+                      onClick={() => handleVote(file.Hash, "upvote")}
+                      disabled={file.HasVoted} // Disable button if already voted
                     >
                       Upvote
                     </Button>
                     <Button
-                      // onClick={() => handleDownvote(index)}
-                      // disabled={file.hasVoted} // Disable button if already voted
+                      onClick={() => handleVote(file.Hash, "downvote")}
+                      disabled={file.HasVoted || file.OriginalUploader} // Disable button if already voted
                     >
                       Downvote
                     </Button>

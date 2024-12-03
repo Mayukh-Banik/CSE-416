@@ -28,5 +28,5 @@ export interface FileMetadata {
   OriginalUploader: boolean; // true is user acquire file by downloading, false if user themselves uploaded file
   NameWithExtension?: string;
   Rating?: number;
-  AlreadyRated: boolean
+  HasVoted: boolean
 }
