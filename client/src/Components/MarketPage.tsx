@@ -66,7 +66,7 @@ const MarketplacePage: React.FC = () => {
     setFileHash("");
     setProviders([]);
     setSelectedFile(null);
-    // setSearchTerm("");
+    setSearchTerm("");
     setLoadingRequest(false);
     setLoadingSearch(false);
     setSearchResults([])
