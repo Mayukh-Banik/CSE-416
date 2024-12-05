@@ -1384,6 +1384,38 @@ const scripts = {
             console.log("Deleting all config files...");
             deleteAllConfigFiles();
         }
+    },
+    stopBtcd: {
+        windows: () => {
+            console.log("Stopping btcd process on Windows...");
+            try {
+                execSync('taskkill /F /IM btcd.exe', { stdio: 'inherit' });
+                console.log("Successfully stopped btcd process.");
+            } catch (err) {
+                console.error(`Failed to stop btcd process: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        macos: () => {
+            console.log("Stopping btcd process on macOS...");
+            try {
+                execSync('pkill -f btcd', { stdio: 'inherit' });
+                console.log("Successfully stopped btcd process.");
+            } catch (err) {
+                console.error(`Failed to stop btcd process: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        linux: () => {
+            console.log("Stopping btcd process on Linux...");
+            try {
+                execSync('pkill -f btcd', { stdio: 'inherit' });
+                console.log("Successfully stopped btcd process.");
+            } catch (err) {
+                console.error(`Failed to stop btcd process: ${err.message}`);
+                process.exit(1);
+            }
+        }
     }
 };
 
@@ -1394,12 +1426,10 @@ if (!scriptName || !scripts[scriptName]) {
     process.exit(1);
 }
 
-// Retrieve additional arguments for the script
 const scriptArgs = process.argv.slice(3);
-
-// Determine the operating system type
 const platform = os.platform();
 let osType = "";
+
 if (platform === "win32") osType = "windows";
 else if (platform === "darwin") osType = "macos";
 else if (platform === "linux") osType = "linux";
@@ -1417,7 +1447,7 @@ if (!scriptFunction) {
 
 try {
     console.log(`Running script '${scriptName}' on '${osType}' with arguments: ${scriptArgs.join(" ")}`);
-    scriptFunction(...scriptArgs); // Pass arguments to the function
+    scriptFunction(...scriptArgs);
 } catch (err) {
     console.error(`Error executing script '${scriptName}': ${err.message}`);
     process.exit(1);

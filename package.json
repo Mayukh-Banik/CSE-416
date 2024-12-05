@@ -31,6 +31,7 @@
         "start:server": "cd application-layer && go run main.go",
         "start:btcwallet": "node scripts/run-os-script.js startBtcwallet",
         "test:wallet": "node scripts/run-os-script.js testWallet",
+        "stop:btcd": "node scripts/run-os-script.js stopBtcd",
         "start:btcd:mainnet": "node scripts/run-os-script.js startBtcdMainnet",
         "start:btcwallet:mainnet": "node scripts/run-os-script.js startBtcwalletMainnet",
         "test:controller": "cd application-layer && go test ./controllers -v",
