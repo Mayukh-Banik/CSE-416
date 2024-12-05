@@ -3,6 +3,23 @@
 
 Follow these steps to successfully build and start your mining process:
 
+
+---
+
+## **Step 0: Initialize and Clean Configuration Files**
+
+1. **Initialize Configuration Files**  
+   This command creates the default configuration files for btcd, btcwallet, and btcctl.
+   ```bash
+   npm run init:config
+   ```
+
+2. **Delete Configuration Files**  
+   This command removes all existing configuration files for a fresh setup.
+   ```bash
+   npm run delete:config
+   ```
+
 ---
 
 ## **Step 1: Build Required Components**
@@ -21,6 +38,13 @@ Run the following commands to build the necessary components:
    ```bash
    npm run build:btcctl
    ```
+
+**or**
+
+To build all the required components (BTCD, BTCWallet, BTCCTL) in one step, run:
+```bash
+npm run build
+```
 
 ---
 

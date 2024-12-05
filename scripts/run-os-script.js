@@ -11,12 +11,15 @@ const isTestnet = network === 'testnet';
 const btcdRpcPort = isTestnet ? '18334' : '8334';
 const btcwalletRpcPort = isTestnet ? '18332' : '8332';
 
-// Path to `btcwallet.conf` file
+// Paths to config files
+const btcdDir = path.resolve("application-layer", "btcd");
+const btcctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
 const walletDir = path.resolve("application-layer", "btcwallet");
-const configFilePath = path.join(walletDir, "btcwallet.conf");
 
-// Generate the content for `btcwallet.conf`
-const configContent = `
+const configFiles = {
+    btcwallet: {
+        path: path.join(walletDir, "btcwallet.conf"),
+        content: `
 username=user
 password=password
 ${isTestnet ? 'testnet=1' : ''}
@@ -26,12 +29,90 @@ btcdpassword=password
 rpcconnect=127.0.0.1:${btcdRpcPort}
 noservertls=1
 noclienttls=1
-`;
+        `
+    },
+    btcd: {
+        path: path.join(btcdDir, "btcd.conf"),
+        content: `
+rpcuser=user
+rpcpass=password
+notls=1
+debuglevel=info
+${isTestnet ? 'testnet=1' : ''}
+miningaddr=1ANiT1wNVVPrnHyafGDpvtnYJHVUpZ6n1t
+        `
+    },
+    btcctl: {
+        path: path.join(btcctlDir, "btcctl.conf"),
+        content: `
+rpcuser=user
+rpcpass=password
+${isTestnet ? 'testnet=1' : ''}
+rpcserver=127.0.0.1:${btcdRpcPort}
+notls=1
+wallet=1
+        `
+    }
+};
 
 // Path to `env` file
 // const envDir = path.resolve("application-layer", "env");
 // const envConfigFilePath = path.join(envDir, "btcwallet.conf");
 
+/**
+ * Create a config file if it doesn't exist
+ * @param {string} filePath - Path to the config file
+ * @param {string} content - Content to write to the config file
+ */
+function createConfigFile(filePath, content) {
+    if (!fs.existsSync(filePath)) {
+        try {
+            fs.writeFileSync(filePath, content.trim());
+            console.log(`Generated config file at: ${filePath}`);
+        } catch (err) {
+            console.error(`Failed to create config file at ${filePath}: ${err.message}`);
+        }
+    } else {
+        console.log(`Config file already exists at: ${filePath}, skipping creation.`);
+    }
+}
+
+/**
+ * Delete a config file if it exists
+ * @param {string} filePath - Path to the config file
+ */
+function deleteConfigFile(filePath) {
+    if (fs.existsSync(filePath)) {
+        try {
+            fs.unlinkSync(filePath);
+            console.log(`Deleted config file at: ${filePath}`);
+        } catch (err) {
+            console.error(`Failed to delete config file at ${filePath}: ${err.message}`);
+        }
+    } else {
+        console.log(`Config file does not exist at: ${filePath}, nothing to delete.`);
+    }
+}
+
+/**
+ * Initialize all config files
+ */
+function initializeConfigFiles() {
+    for (const key in configFiles) {
+        const { path, content } = configFiles[key];
+        createConfigFile(path, content);
+    }
+}
+
+/**
+ * Delete all config files
+ */
+function deleteAllConfigFiles() {
+    for (const key in configFiles) {
+        const { path } = configFiles[key];
+        deleteConfigFile(path);
+    }
+}
 
 
 
@@ -46,7 +127,7 @@ function generateNewAddress() {
     try {
         const address = execSync(command, { encoding: 'utf-8' }).trim();
         console.log(`Generated Address: ${address}`);
-        
+
         // Call other helpers to refresh related data
         console.log("Refreshing related data...");
         const receivedAddresses = getReceivedAddresses();
@@ -98,7 +179,7 @@ function getReceivedAddresses() {
         return jsonData; // Returns the parsed data
     } catch (err) {
         console.error(`Failed to list received addresses: ${err.message}`);
-        throw err; 
+        throw err;
     }
 }
 
@@ -127,10 +208,10 @@ function getGenerateStatus() {
         fs.writeFileSync(outputFilePath, JSON.stringify(jsonData, null, 2));
         console.log(`Output saved to: ${outputFilePath}`);
 
-        return jsonData; 
+        return jsonData;
     } catch (err) {
         console.error(`Failed to execute btcctl getgenerate: ${err.message}`);
-        throw err; 
+        throw err;
     }
 }
 
@@ -162,7 +243,7 @@ function getMiningInfo() {
         return jsonData;
     } catch (err) {
         console.error(`Failed to execute btcctl getmininginfo: ${err.message}`);
-        throw err; 
+        throw err;
     }
 }
 
@@ -313,11 +394,6 @@ function deleteAddressByIndex(index) {
         process.exit(1);
     }
 }
-
-
-// Create or overwrite the configuration file
-fs.writeFileSync(configFilePath, configContent.trim());
-console.log(`Generated btcwallet.conf for ${network} at: ${configFilePath}`);
 
 // Define various scripts for building and managing btcd, btcwallet, and btcctl
 const scripts = {
@@ -869,6 +945,7 @@ const scripts = {
     startBtcwalletTestnet: {
         windows: () => {
             const walletExe = path.join(walletDir, "btcwallet.exe");
+            const configFilePath = configFiles.btcwallet.path;
             const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
             console.log(`Executing: ${command}`);
             try {
@@ -881,6 +958,7 @@ const scripts = {
         },
         macos: () => {
             const walletExe = path.join(walletDir, "btcwallet");
+            const configFilePath = configFiles.btcwallet.path;
             const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
             console.log(`Executing: ${command}`);
             try {
@@ -893,6 +971,7 @@ const scripts = {
         },
         linux: () => {
             const walletExe = path.join(walletDir, "btcwallet");
+            const configFilePath = configFiles.btcwallet.path;
             const command = `"${walletExe}" --testnet --configfile="${configFilePath}" --noservertls --rpclisten=127.0.0.1:${btcwalletRpcPort}`;
             console.log(`Executing: ${command}`);
             try {
@@ -912,7 +991,7 @@ const scripts = {
             } catch (err) {
                 console.error(`Error during address generation and data refresh: ${err.message}`);
             }
-            
+
         },
         macos: () => {
             try {
@@ -920,7 +999,7 @@ const scripts = {
             } catch (err) {
                 console.error(`Error during address generation and data refresh: ${err.message}`);
             }
-            
+
         },
         linux: () => {
             try {
@@ -928,7 +1007,7 @@ const scripts = {
             } catch (err) {
                 console.error(`Error during address generation and data refresh: ${err.message}`);
             }
-            
+
         }
     },
     startBtcdWithMiningaddrTestnet: {
@@ -1107,7 +1186,7 @@ const scripts = {
             }
         }
     },
-    
+
     getGenerate: {
         windows: () => {
             try {
@@ -1140,7 +1219,7 @@ const scripts = {
             }
         }
     },
-    
+
     getMiningInfo: {
         windows: () => {
             try {
@@ -1173,7 +1252,7 @@ const scripts = {
             }
         }
     },
-    
+
     getMiningAddressIndex: {
         windows: () => {
             displayMiningAddressIndex();
@@ -1277,8 +1356,35 @@ const scripts = {
                 process.exit(1);
             }
         }
+    },
+    initConfig: {
+        windows: () => {
+            console.log("Initializing all config files...");
+            initializeConfigFiles();
+        },
+        macos: () => {
+            console.log("Initializing all config files...");
+            initializeConfigFiles();
+        },
+        linux: () => {
+            console.log("Initializing all config files...");
+            initializeConfigFiles();
+        }
+    },
+    deleteConfig: {
+        windows: () => {
+            console.log("Deleting all config files...");
+            deleteAllConfigFiles();
+        },
+        macos: () => {
+            console.log("Deleting all config files...");
+            deleteAllConfigFiles();
+        },
+        linux: () => {
+            console.log("Deleting all config files...");
+            deleteAllConfigFiles();
+        }
     }
-
 };
 
 // Retrieve the script name from command-line arguments

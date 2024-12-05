@@ -6,43 +6,33 @@
     "author": "Squid Team",
     "scripts": {
         "start": "cd client && react-scripts start",
-        "build": "cd client && npm run build",
         "electron-dev": "concurrently \"npm run start\" \"wait-on http://localhost:3000 && electron .\"",
         "electron-build": "npm run build && electron .",
         "electron": "electron ./main.js",
-        
         "start:btcd": "node scripts/run-os-script.js startBtcd",
-
-        
         "build:btcd": "node scripts/run-os-script.js buildBtcd",
         "build:btcwallet": "node scripts/run-os-script.js buildBtcwallet",
         "build:btcctl": "node scripts/run-os-script.js buildBtcctl",
-
+        "build": "npm run build:btcd && npm run build:btcwallet && npm run build:btcctl",
+        "init:config": "node scripts/run-os-script.js initConfig",
+        "delete:config": "node scripts/run-os-script.js deleteConfig",
         "create:btcwallet:testnet": "node scripts/run-os-script.js createBtcwalletTestnet",
         "start:btcd:testnet": "node scripts/run-os-script.js startBtcdTestnet",
         "start:btcwallet:testnet": "node scripts/run-os-script.js startBtcwalletTestnet",
         "generate:newaddress": "node scripts/run-os-script.js generateNewAddress && node scripts/run-os-script.js getReceivedByAddress && node scripts/run-os-script.js getGenerate && node scripts/run-os-script.js getMiningInfo && node scripts/run-os-script.js getMiningAddressIndex",
-        
         "start:btcdWithMiningaddressIndex:testnet": "node scripts/run-os-script.js startBtcdWithMiningaddrTestnet",
-        "start:mining" : "node scripts/run-os-script.js startMining",
-
+        "start:mining": "node scripts/run-os-script.js startMining",
         "get:receivedaddresses": "node scripts/run-os-script.js getReceivedByAddress",
         "get:generate": "node scripts/run-os-script.js getGenerate",
         "get:mininginfo": "node scripts/run-os-script.js getMiningInfo",
         "get:miningAddressIndex": "node scripts/run-os-script.js getMiningAddressIndex",
-
         "delete:addressByIndex": "node scripts/run-os-script.js getMiningAddressIndex && node scripts/run-os-script.js getReceivedByAddress && node scripts/run-os-script.js getGenerate && node scripts/run-os-script.js getMiningInfo && node scripts/run-os-script.js getMiningAddressIndex",
-        
         "start:client": "cd client && npm start",
         "start:server": "cd application-layer && go run main.go",
-
         "start:btcwallet": "node scripts/run-os-script.js startBtcwallet",
         "test:wallet": "node scripts/run-os-script.js testWallet",
-
         "start:btcd:mainnet": "node scripts/run-os-script.js startBtcdMainnet",
         "start:btcwallet:mainnet": "node scripts/run-os-script.js startBtcwalletMainnet",
-
-
         "test:controller": "cd application-layer && go test ./controllers -v",
         "test": "npm run test:wallet && npm run test:controller",
         "run:all": "concurrently \"npm run build:btcd\" \"npm run start:btcd\" \"npm run build:btcwallet\" \"npm run start:btcwallet\" \"npm run build:btcctl\" \"npm run test:wallet\""
