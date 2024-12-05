@@ -100,7 +100,9 @@ func votingHelper(fileHash, voteType string) error {
 	}
 	fmt.Println("votingHelper: metadata after updating vote: ", metadata)
 	err = dht_kad.DHT.PutValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash, updatedData)
-	fmt.Println("error in votingHelper??:", err)
+	fmt.Println("votingHelper: error publishing file to DHT", err)
+	err = dht_kad.DHT.PutValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash, updatedData)
+	fmt.Println("votingHelper: error publishing file to cloud node", err)
 	return err
 }
 
