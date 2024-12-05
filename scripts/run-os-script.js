@@ -139,7 +139,7 @@ function generateNewAddress() {
         const miningInfo = getMiningInfo();
         console.log("Updated mining info:", miningInfo);
 
-        displayMiningAddressIndex();
+        getMiningAddressIndex();
         console.log("Updated mining address index displayed.");
 
         console.log("Data refresh completed successfully.");
@@ -287,8 +287,18 @@ function getMiningAddress(index) {
     return selectedAddress;
 }
 
-// Helper function to display addresses with indices
-function displayMiningAddressIndex() {
+function getMiningAddressIndex() {
+    // Step 1: Update received_addresses.json
+    console.log("Updating received addresses...");
+    try {
+        const updatedAddresses = getReceivedAddresses();
+        console.log("Updated received addresses successfully.");
+    } catch (err) {
+        console.error(`Failed to update received addresses: ${err.message}`);
+        process.exit(1);
+    }
+
+    // Step 2: Read updated data from received_addresses.json
     const receivedAddressesPath = path.resolve("application-layer", "btcd", "cmd", "btcctl", "received_addresses.json");
     if (!fs.existsSync(receivedAddressesPath)) {
         console.error(`received_addresses.json not found at: ${receivedAddressesPath}`);
@@ -309,7 +319,8 @@ function displayMiningAddressIndex() {
         process.exit(1);
     }
 
-    console.log("Received Addresses:");
+    // Step 3: Display the chart
+    console.log("Generating address index chart...");
     console.log("Index | Address                                  | Amount      | Confirmations");
     console.log("--------------------------------------------------------------------------------");
 
@@ -318,7 +329,10 @@ function displayMiningAddressIndex() {
         const confirmations = addr.confirmations !== undefined ? addr.confirmations : '0';
         console.log(`${index.toString().padEnd(5)} | ${addr.address.padEnd(40)} | ${amount.padEnd(10)} | ${confirmations}`);
     });
-};
+
+    console.log("Address index chart generated successfully.");
+}
+
 
 // Helper function to delete an address by index
 function deleteAddressByIndex(index) {
@@ -386,7 +400,7 @@ function deleteAddressByIndex(index) {
 
         // Refresh mining address index
         console.log("Refreshing mining address index...");
-        displayMiningAddressIndex();
+        getMiningAddressIndex();
 
         console.log("Data refreshed successfully.");
     } catch (err) {
@@ -1255,15 +1269,19 @@ const scripts = {
 
     getMiningAddressIndex: {
         windows: () => {
-            displayMiningAddressIndex();
+            console.log("Refreshing address index on Windows...");
+            getMiningAddressIndex();
         },
         macos: () => {
-            displayMiningAddressIndex();
+            console.log("Refreshing address index on macOS...");
+            getMiningAddressIndex();
         },
         linux: () => {
-            displayMiningAddressIndex();
+            console.log("Refreshing address index on Linux...");
+            getMiningAddressIndex();
         }
     },
+    
     deleteAddressByIndex: {
         windows: (index) => {
             deleteAddressByIndex(parseInt(index, 10));
