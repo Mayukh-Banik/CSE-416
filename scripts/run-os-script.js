@@ -128,26 +128,37 @@ function generateNewAddress() {
         const address = execSync(command, { encoding: 'utf-8' }).trim();
         console.log(`Generated Address: ${address}`);
 
-        // Call other helpers to refresh related data
-        console.log("Refreshing related data...");
+        // Refresh received addresses
+        console.log("Refreshing received addresses...");
         const receivedAddresses = getReceivedAddresses();
-        console.log("Updated received addresses:", receivedAddresses);
 
+        // Refresh generate status
+        console.log("Refreshing generate status...");
         const generateStatus = getGenerateStatus();
-        console.log("Updated generate status:", generateStatus);
 
+        // Refresh mining info
+        console.log("Refreshing mining info...");
         const miningInfo = getMiningInfo();
-        console.log("Updated mining info:", miningInfo);
 
-        getMiningAddressIndex();
-        console.log("Updated mining address index displayed.");
+        // Generate address index chart directly
+        console.log("Generating address index chart...");
+        console.log("Index | Address                                  | Amount      | Confirmations");
+        console.log("--------------------------------------------------------------------------------");
 
+        receivedAddresses.forEach((addr, index) => {
+            const amount = addr.amount !== undefined ? addr.amount.toFixed(8) : '0.00000000';
+            const confirmations = addr.confirmations !== undefined ? addr.confirmations : '0';
+            console.log(`${index.toString().padEnd(5)} | ${addr.address.padEnd(40)} | ${amount.padEnd(10)} | ${confirmations}`);
+        });
+
+        console.log("Address index chart generated successfully.");
         console.log("Data refresh completed successfully.");
     } catch (err) {
         console.error(`Failed to generate new address: ${err.message}`);
         throw err; // Ensure proper error handling
     }
 }
+
 
 
 function getReceivedAddresses() {
@@ -161,7 +172,6 @@ function getReceivedAddresses() {
 
     try {
         const output = execSync(command, { encoding: 'utf-8' }).trim();
-        console.log(`Received Addresses:\n${output}`);
 
         // Attempt to parse JSON
         let jsonData;
@@ -194,7 +204,6 @@ function getGenerateStatus() {
 
     try {
         const output = execSync(command, { encoding: 'utf-8' }).trim();
-        console.log(`GetGenerate Output:\n${output}`);
 
         let jsonData;
         try {
@@ -226,7 +235,6 @@ function getMiningInfo() {
 
     try {
         const output = execSync(command, { encoding: 'utf-8' }).trim();
-        console.log(`GetMiningInfo Output:\n${output}`);
 
         let jsonData;
         try {
