@@ -19,6 +19,7 @@ import (
 )
 
 var (
+	dirPath              = filepath.Join("..", "utils")
 	marketplaceFilesPath = filepath.Join(dirPath, "marketplaceFiles.json")
 	sem                  = make(chan struct{}, 5) //limit to 5 concurrent requests
 )
