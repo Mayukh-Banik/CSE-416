@@ -2,26 +2,24 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
-	"sync"
-
-	dht "../application-layer/dht"
-	"../application-layer/models"
-	"../application-layer/utils"
+	"strings"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/multiformats/go-multiaddr"
 )
 
 var (
-	dirPath              = filepath.Join("..", "utils")
 	marketplaceFilesPath = filepath.Join(dirPath, "marketplaceFiles.json")
-	fileMutex            sync.Mutex
 	sem                  = make(chan struct{}, 5) //limit to 5 concurrent requests
 )
 
@@ -39,7 +37,7 @@ func sendMarketplaceFiles(host host.Host, targetID string) error {
 	fmt.Printf("sending all marketplace files to requester %s \n", targetID)
 
 	// create stream to send the entire json file
-	fileStream, err := dht.CreateNewStream(host, targetID, "/marketplaceFiles/p2p")
+	fileStream, err := createNewStream(host, targetID, "/marketplaceFiles/p2p")
 	if err != nil {
 		fmt.Println("Error creating file stream:", err)
 		return err
@@ -126,10 +124,10 @@ func receiveCloudNodeFiles(node host.Host) error {
 			return
 		}
 
-		var fileMetadata models.FileMetadata
+		var fileMetadata FileMetadata
 		err = json.Unmarshal(data, &fileMetadata)
 
-		utils.SaveOrUpdateFile(fileMetadata, dirPath, marketplaceFilesPath)
+		SaveOrUpdateFile(fileMetadata, dirPath, marketplaceFilesPath)
 	})
 	return nil
 }
@@ -146,3 +144,48 @@ refresh cloud node every 24 hours to check if files are still active/published -
 
 when nodes log in, they automatically republish files to the dht every x hours
 */
+
+// adapted from sendDataToPeer
+func createNewStream(node host.Host, targetPeerID string, streamProtocol protocol.ID) (network.Stream, error) {
+	fmt.Printf("CreateNewStream %v: sending data to peer %v\n", streamProtocol, targetPeerID)
+
+	// Create a context for connection
+	var ctx = context.Background()
+	targetPeerID = strings.TrimSpace(targetPeerID)
+
+	// Create the relay address
+	relayAddr, err := multiaddr.NewMultiaddr(relay_addr)
+	if err != nil {
+		log.Printf("Failed to create relay multiaddr: %v", err)
+		return nil, fmt.Errorf("failed to create relay multiaddr: %v", err)
+	}
+
+	// Encapsulate the relay address with the target peer's address
+	peerMultiaddr := relayAddr.Encapsulate(multiaddr.StringCast("/p2p-circuit/p2p/" + targetPeerID))
+
+	// Parse the multiaddress into a PeerInfo object
+	peerinfo, err := peer.AddrInfoFromP2pAddr(peerMultiaddr)
+	if err != nil {
+		log.Printf("Failed to parse peer address: %s", err)
+		return nil, fmt.Errorf("failed to parse peer address: %v", err)
+	}
+
+	// Connect to the target peer
+	if err := node.Connect(ctx, *peerinfo); err != nil {
+		log.Printf("Failed to connect to peer %s via relay: %v", peerinfo.ID, err)
+		return nil, fmt.Errorf("failed to connect to peer %s via relay: %v", peerinfo.ID, err)
+	}
+	fmt.Printf("connected to node %v, now creating stream %v", targetPeerID, streamProtocol)
+
+	// Create a new stream to the target peer
+	// stream, err := node.NewStream(ctx, peerinfo.ID, streamProtocol)
+	stream, err := node.NewStream(network.WithAllowLimitedConn(ctx, string(streamProtocol)), peerinfo.ID, streamProtocol)
+
+	if err != nil {
+		log.Printf("Failed to open stream to %s: %s", peerinfo.ID, err)
+		return nil, fmt.Errorf("failed to open stream to peer %s: %v", peerinfo.ID, err)
+	}
+
+	fmt.Printf("Successfully created stream to peer %s\n", peerinfo.ID)
+	return stream, nil
+}
