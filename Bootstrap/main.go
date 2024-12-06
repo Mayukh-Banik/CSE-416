@@ -29,6 +29,7 @@ import (
 var (
 	globalCtx      context.Context
 	relay_addr     = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
+	bootstrap_addr = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
 	bootstrap_seed = "immacry"
 )
 
@@ -222,11 +223,14 @@ func main() {
 	// go discoverPeers(ctx, dht, node)
 	// go monitorPeers(node)
 	connectToPeer(node, relay_addr)
-
+	connectToPeer(node, bootstrap_addr)
 	if len(os.Args) > 1 {
 		// empty for now
 	}
 	makeReservation(node)
+
+	receiveCloudNodeFiles(node)
+	receiveMarketplaceRequest(node)
 	go handleInput(ctx, dht)
 
 	defer node.Close()

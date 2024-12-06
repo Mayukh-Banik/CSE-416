@@ -127,6 +127,10 @@ func receiveCloudNodeFiles(node host.Host) error {
 
 		var fileMetadata FileMetadata
 		err = json.Unmarshal(data, &fileMetadata)
+		if err != nil {
+			fmt.Printf("receiveCloudNodeFiles: failed to unmarshal file metadata: %v", err)
+			return
+		}
 
 		SaveOrUpdateFile(fileMetadata, dirPath, marketplaceFilesPath)
 	})
