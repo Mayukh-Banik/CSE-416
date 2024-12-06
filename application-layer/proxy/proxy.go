@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"sync"
+
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -33,6 +35,7 @@ var (
 	globalCtx       context.Context
 	Peer_Addresses  []ma.Multiaddr
 	isHost          = true
+	fileMutex       sync.Mutex
 )
 
 type Proxy struct {
@@ -53,6 +56,9 @@ type Proxy struct {
 const proxyFilePath = "../utils/proxy_data.json"
 
 func saveProxyToFile(proxy Proxy) error {
+	fileMutex.Lock()
+	defer fileMutex.Unlock()
+
 	dir := filepath.Dir(proxyFilePath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -123,6 +129,7 @@ func addProxy(address string, peerID string) {
 	if err != nil {
 		fmt.Println("Error saving proxy:", err)
 	} else {
+
 		fmt.Println("Proxy saved successfully.")
 	}
 }
@@ -443,6 +450,8 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	// Poll for peer addresses (optional)
 	go pollPeerAddresses(node)
 	if r.Method == "GET" {
+		fileMutex.Lock()
+		defer fileMutex.Unlock()
 		// Open the file that stores the proxy data
 		file, err := os.Open(proxyFilePath)
 		if err != nil {

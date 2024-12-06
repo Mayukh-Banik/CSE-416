@@ -66,6 +66,7 @@ const ProxyHosts: React.FC = () => {
       }
   
       const result = await response.json();
+      
       console.log('Proxy added successfully:', result);
     } catch (error) {
       console.error('Error adding proxy:', error);
@@ -113,7 +114,6 @@ const ProxyHosts: React.FC = () => {
 
     setProxyHosts([...proxyHosts, { ...newProxy, logs: [], isEnabled: false }]);
 
-    // Reset new proxy fields
     setNewProxy({
       name:'',
       location: '',
