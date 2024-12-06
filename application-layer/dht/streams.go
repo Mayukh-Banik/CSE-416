@@ -3,6 +3,7 @@ package dht_kad
 import (
 	"application-layer/models"
 	"application-layer/utils"
+	"application-layer/websocket"
 	"bufio"
 	"bytes"
 	"encoding/json"
@@ -18,13 +19,15 @@ import (
 )
 
 var (
-	PendingRequests = make(map[string]models.Transaction) // all requests made by host node
-	FileHashToPath  = make(map[string]string)             // file paths of files uploaded by host node
-	Mutex           = &sync.Mutex{}
-	FileMapMutex    = &sync.Mutex{}
-	dir             = filepath.Join("..", "squidcoinFiles")
-	RefreshResponse []models.FileMetadata
+	MarketplaceFiles []models.FileMetadata
+	PendingRequests  = make(map[string]models.Transaction) // all requests made by host node
+	FileHashToPath   = make(map[string]string)
 
+	MarketplaceFilesSignal = make(chan struct{})
+	Mutex                  = &sync.Mutex{}
+	FileMapMutex           = &sync.Mutex{}
+
+	dir                = filepath.Join("..", "squidcoinFiles")
 	dirPath            = filepath.Join("..", "utils")
 	UploadedFilePath   = filepath.Join(dirPath, "files.json")
 	DownloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
@@ -57,32 +60,34 @@ func SendDownloadRequest(requestMetadata models.Transaction) error {
 	return nil
 }
 
-func sendDecline(transaction models.Transaction) {
-	transaction.Status = "declined"
-
-	transactionJson, err := json.Marshal(transaction)
+func sendDecline(targetID string, fileHash string) {
+	declineMessage := map[string]string{
+		"status":   "declined",
+		"fileHash": fileHash,
+	}
+	declineData, err := json.Marshal(declineMessage)
 	if err != nil {
-		log.Printf("sendDecline: error encoding metadata to data: %v", err)
+		log.Printf("Error marshaling decline message: %v", err)
 		return
 	}
 
 	// Send decline to the target peer
-	requestStream, err := CreateNewStream(DHT.Host(), transaction.RequesterID, "/requestResponse/p2p")
+	requestStream, err := CreateNewStream(DHT.Host(), targetID, "/requestResponse/p2p")
 	if err != nil {
-		log.Printf("Error creating stream to target peer %s: %v", transaction.RequesterID, err)
+		log.Printf("Error creating stream to target peer %s: %v", targetID, err)
 		return
 	}
 	defer requestStream.Close()
 
 	// Write data with a newline as a delimiter
-	transactionJson = append(transactionJson, '\n')
-	_, err = requestStream.Write(transactionJson)
+	declineData = append(declineData, '\n')
+	_, err = requestStream.Write(declineData)
 	if err != nil {
 		log.Printf("Error writing to stream: %v", err)
 		return
 	}
 
-	log.Printf("Decline message sent to peer %s for file hash %s", transaction.RequesterID, transaction.FileHash)
+	log.Printf("Decline message sent to peer %s for file hash %s", targetID, fileHash)
 }
 
 // send metadata before sending file content
@@ -101,78 +106,45 @@ func sendMetadata(stream network.Stream, fileHash string) error {
 		return fmt.Errorf("sendMetadata: error decoding file metadata: %w", err)
 	}
 
-	fmt.Println("sending metadata for file: ", metadata.NameWithExtension)
-	var fileMetadata = models.FileMetadata{
-		Name:              metadata.Name,
-		NameWithExtension: metadata.NameWithExtension,
-		Type:              metadata.Type,
-		Size:              metadata.Size,
-		Description:       metadata.Description,
-		Hash:              fileHash,
-		OriginalUploader:  false,
-		IsPublished:       true, //automatically become provider when you download file
-	}
-
-	fileMetadataJSON, err := json.Marshal(fileMetadata)
+	metadataJSON, err := json.Marshal(metadata)
 	if err != nil {
 		return fmt.Errorf("sendMetadata: error encoding metadata to data: %w", err)
 	}
 
 	// newline signifies end of metadata
-	fileMetadataJSON = append(fileMetadataJSON, '\n')
+	metadataJSON = append(metadataJSON, '\n')
 
 	// Write metadata to stream
-	_, err = stream.Write(fileMetadataJSON)
+	_, err = stream.Write(metadataJSON)
 	if err != nil {
 		log.Fatalf("sendMetadata: failed to write metadata to stream: %s", err)
 	}
 
-	fmt.Println("sendMetadata: metadata sent successfully: ", fileMetadataJSON)
+	fmt.Println("metadata sent successfully :)")
 	return nil
 }
 
-// sendFile(node, request, PeerID)
+func sendFile(host host.Host, targetID string, fileHash string, requesterID string, fileName string) {
+	fmt.Printf("Sending file %s to requester %s...\n", fileHash, targetID)
 
-func sendFile(host host.Host, request models.Transaction) {
-	requesterID, fileHash := request.RequesterID, request.FileHash
-
-	fmt.Printf("Sending file %s to requester %s...\n", fileHash, requesterID)
-
-	filePath := FileHashToPath[request.FileHash]
-	fmt.Println("sendFile: filePath: ", filePath)
+	filePath := FileHashToPath[fileHash]
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		fmt.Printf("error: file %s not found in %s\n", fileHash, filePath)
 		return
 	}
 
-	fmt.Printf("sending file %s to requester %s \n", request.FileName, requesterID)
+	fmt.Printf("sending file %s to requester %s \n", fileName, requesterID)
 
 	// create stream to send the file
-	fileStream, err := CreateNewStream(host, request.RequesterID, "/sendFile/p2p")
+	fileStream, err := CreateNewStream(host, targetID, "/sendFile/p2p")
 	if err != nil {
 		fmt.Println("Error creating file stream:", err)
 		return
 	}
 	defer fileStream.Close()
 
-	// sending transaction details before file metadata and content
-	transactionData, err := json.Marshal(request)
-	if err != nil {
-		fmt.Printf("error marshaling transaction data: %v\n", err)
-		return
-	}
-
-	transactionData = append(transactionData, '\n')
-
-	_, err = fileStream.Write(transactionData)
-	if err != nil {
-		fmt.Printf("error sending transaction data: %v\n", err)
-		return
-	}
-	fmt.Printf("Sent transaction data sent for %s\n", request.TransactionID)
-
-	// send metadata next
+	// send metadata first
 	err = sendMetadata(fileStream, fileHash)
 	if err != nil {
 		fmt.Println("error sending file metadata")
@@ -208,6 +180,50 @@ func sendFile(host host.Host, request models.Transaction) {
 		fmt.Printf("sent %d bytes to requester %s\n", n, requesterID)
 	}
 }
+
+func SendMarketFilesRequest(nodeID string) error {
+	fmt.Println("Requesting marketplace files data from cloud node ", nodeID)
+
+	// refreshResponse = []model.FileMetadata{}
+	requestStream, err := CreateNewStream(DHT.Host(), nodeID, "/sendRefreshRequest/p2p")
+	if err != nil {
+		return fmt.Errorf("error sending refresh request")
+	}
+	defer requestStream.Close()
+
+	requestData := []byte(PeerID)
+
+	// send JSON data over the stream
+	_, err = requestStream.Write(requestData)
+	if err != nil {
+		return fmt.Errorf("error sending refresh request: %v", err)
+	}
+
+	fmt.Printf("Sent refresh request to cloud node %s\n", nodeID)
+	return nil
+}
+
+func SendCloudNodeFiles(nodeID string, fileMetadata models.FileMetadata) error {
+	stream, err := CreateNewStream(DHT.Host(), nodeID, "/sendRefreshRequest/p2p")
+	if err != nil {
+		return fmt.Errorf("error sending file to cloud node")
+	}
+	defer stream.Close()
+
+	fileData, err := json.Marshal(fileMetadata)
+	if err != nil {
+		return fmt.Errorf("sendCloudNodeFiles: failed to marshal file metadata: %v", err)
+	}
+
+	_, err = stream.Write(fileData)
+	if err != nil {
+		return fmt.Errorf("sendCloudNodeFiles: failed to send file metadata to cloud node")
+	}
+
+	fmt.Printf("Sent file metadata to cloud node %s\n", nodeID)
+	return nil
+}
+
 func sendSuccessConfirmation(transaction models.Transaction) {
 	// Send decline to the target peer
 	confirmationStream, err := CreateNewStream(DHT.Host(), transaction.TargetID, "/requestResponse/p2p")
@@ -229,86 +245,10 @@ func sendSuccessConfirmation(transaction models.Transaction) {
 		return
 	}
 }
-func SendRefreshFilesRequest(nodeID string, wg *sync.WaitGroup) error {
-	defer wg.Done()
-
-	fmt.Println("Requesting all files data from ", nodeID)
-	// refreshResponse = []model.FileMetadata{}
-	requestStream, err := CreateNewStream(DHT.Host(), nodeID, "/sendRefreshRequest/p2p")
-	if err != nil {
-		return fmt.Errorf("error sending refresh request")
-	}
-	defer requestStream.Close()
-
-	request := models.RefreshRequest{
-		Message:     "gimme all your files",
-		RequesterID: PeerID,
-		TargetID:    nodeID,
-	}
-
-	// Marshal the request metadata to JSON
-	requestData, err := json.Marshal(request)
-	if err != nil {
-		return fmt.Errorf("error marshaling refresh request data: %v", err)
-	}
-
-	// send JSON data over the stream
-	_, err = requestStream.Write(requestData)
-	if err != nil {
-		return fmt.Errorf("error sending refresh request data: %v", err)
-	}
-
-	fmt.Printf("Sent refresh request to target peer %s\n", nodeID)
-	return nil
-}
-
-func sendRefreshResponse(node host.Host, targetID string) error {
-	fmt.Printf("sendRefreshResponse: sending all files to %v", targetID)
-	dirPath := filepath.Join("..", "utils")
-	filePath := filepath.Join(dirPath, "files.json")
-
-	fileData, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to read files.json: %v", err)
-	}
-
-	// var files []models.FileMetadata
-	// if err := json.Unmarshal(fileData, &files); err != nil {
-	// 	return fmt.Errorf("failed to parse JSON: %v", err)
-
-	// }
-
-	refreshRequestStream, err := CreateNewStream(node, targetID, "/sendRefreshResponse/p2p")
-	if err != nil {
-		fmt.Println("Error creating file stream:", err)
-	}
-	defer refreshRequestStream.Close()
-
-	reader := bufio.NewReader(fileData)
-	buffer := make([]byte, 4096)
-
-	for {
-		n, err := reader.Read(buffer)
-		if err != nil {
-			if err == io.EOF {
-				fmt.Println("All JSON data sent")
-				break
-			}
-			return fmt.Errorf("error reading JSON data: %w", err)
-		}
-
-		_, err = refreshRequestStream.Write(buffer[:n])
-		if err != nil {
-			return fmt.Errorf("error sending byte data for JSON")
-		}
-		fmt.Printf("Sent %d bytes\n", n)
-	}
-	return nil
-}
 
 // RECEIVING FUNCTIONS
 
-func receieveDownloadRequest(node host.Host) {
+func receiveDownloadRequest(node host.Host) {
 	fmt.Println("listening for download requests")
 	// listen for streams on "/sendRequest/p2p"
 	node.SetStreamHandler("/sendRequest/p2p", func(s network.Stream) {
@@ -334,19 +274,15 @@ func receieveDownloadRequest(node host.Host) {
 			return
 		}
 		log.Printf("Received data: %s", data)
-		log.Println("receieveDownloadRequest: files in FileHashToPath: ", FileHashToPath)
-		fmt.Print("FILEHASHTOPATH", FileHashToPath)
-		fmt.Print("Request.FileHash", request.FileHash)
-
-		utils.AddOrUpdateTransaction(request)
+		log.Println("files in FileHashToPath: ", FileHashToPath)
 
 		// send file to requester if it exists
 		if FileHashToPath[request.FileHash] != "" {
 			fmt.Println("receivedownloadrequest: sending file")
-			sendFile(node, request)
+			sendFile(node, request.RequesterID, request.FileHash, PeerID, request.FileName)
 		} else {
-			fmt.Println("receivedownloadrequest: decline bc file is not in FileHashToPath")
-			sendDecline(request)
+			fmt.Println("receivedownloadrequest: decline")
+			sendDecline(request.RequesterID, request.FileHash)
 		}
 
 	})
@@ -367,20 +303,33 @@ func receiveDecline(node host.Host) {
 			}
 			return
 		}
+
 		log.Printf("Raw data received: %s", data)
 
-		var declineMessage models.Transaction
+		// Unmarshal the JSON data
+		var declineMessage map[string]string
 		err = json.Unmarshal(data, &declineMessage)
 		if err != nil {
-			fmt.Printf("error unmarshalling file request: %v", err)
+			log.Printf("Error unmarshalling data: %v", err)
 			return
 		}
-		declineMessage.Status = "declined"
-		utils.AddOrUpdateTransaction(declineMessage)
+
+		// Process the decline message
+		status, statusOK := declineMessage["status"]
+		fileHash, fileHashOK := declineMessage["fileHash"]
+
+		if statusOK && fileHashOK && status == "declined" {
+			log.Printf("Received decline message for file with hash: %s", fileHash)
+			websocket.NotifyFrontend(declineMessage)
+			// Notify user on the frontend of the decline
+			// Update transaction details to DECLINED
+		} else {
+			log.Println("Received invalid decline message")
+		}
 	})
 }
 
-func receiveFile(node host.Host) error {
+func receiveFile(node host.Host) {
 	fmt.Println("listening for file data")
 	// listen for streams on "/sendFile/p2p"
 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream) {
@@ -388,23 +337,6 @@ func receiveFile(node host.Host) error {
 
 		// read metadata - use metadata struct later
 		buf := bufio.NewReader(s)
-
-		// read in transaction details first
-		transactionJSON, err := buf.ReadBytes('\n') // Read until newline
-		if err != nil {
-			log.Fatalf("Failed to read metadata: %v", err)
-		}
-
-		// Parse JSON metadata
-		var transaction models.Transaction
-
-		err = json.Unmarshal(transactionJSON, &transaction)
-		if err != nil {
-			log.Fatalf("Failed to unmarshal metadata: %v", err)
-		}
-
-		fmt.Printf("Received metadata: transactionID=%s\n", transaction.TransactionID)
-
 		// Read metadata
 		metadataJSON, err := buf.ReadBytes('\n') // Read until newline
 		if err != nil {
@@ -419,17 +351,10 @@ func receiveFile(node host.Host) error {
 			log.Fatalf("Failed to unmarshal metadata: %v", err)
 		}
 
-		fmt.Printf("Received metadata: FileName=%s\n", metadata.NameWithExtension)
-
-		// check if squidcoinFiles directory exists
-		err = os.MkdirAll(dir, os.ModePerm)
-		if err != nil {
-			log.Fatalf("Failed to create directory %s: %v", dir, err)
-		}
+		fmt.Printf("Received metadata: FileName=%s\n", metadata.Name)
 
 		// open file for writing
-		outputPath := filepath.Join(dir, metadata.NameWithExtension)
-		fmt.Println("receiveFile: outputPath", outputPath)
+		outputPath := filepath.Join(dir, metadata.Name)
 		file, err := os.Create(outputPath)
 		if err != nil {
 			log.Printf("error creating file %s: %v\n", outputPath, err)
@@ -443,7 +368,6 @@ func receiveFile(node host.Host) error {
 			if err != nil {
 				if err == io.EOF {
 					log.Printf("file %s received and saved to %s\n", metadata.Name, outputPath)
-
 					break
 				}
 				log.Printf("Ererrorror reading file chunk: %v\n", err)
@@ -456,7 +380,7 @@ func receiveFile(node host.Host) error {
 				return
 			}
 
-			log.Printf("receieved and wrote %d bytes of file %s\n", n, metadata.Name)
+			log.Printf("received and wrote %d bytes of file %s\n", n, metadata.Name)
 		}
 
 		// after successfully downloading file, the user is now a provider of the file
@@ -464,24 +388,49 @@ func receiveFile(node host.Host) error {
 
 		FileMapMutex.Lock()
 
-		fmt.Println("file name with extension: ", metadata.NameWithExtension)
-		FileHashToPath[metadata.Hash] = filepath.Join(dir, metadata.NameWithExtension) // add file and its path to the map
+		FileHashToPath[metadata.Hash] = filepath.Join(dir, metadata.Name) // add file and its path to the map
 		FileMapMutex.Unlock()
 
-		transaction.Status = "complete"
-		fmt.Println("receiveFile: transaction", transaction)
-		utils.AddOrUpdateTransaction(transaction)
+		ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
+	})
+}
 
-		// ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
-		err = UpdateFileInDHT(metadata)
-		if err != nil {
-			// is it a failure if the user receives the file but cannot be added to the dht?
-			fmt.Errorf("failed to update dht metadata")
+func receiveMarketplaceFiles(node host.Host) {
+	fmt.Println("Listening for refresh response")
+	node.SetStreamHandler("/marketplaceFiles/p2p", func(s network.Stream) {
+		defer s.Close()
+
+		// Use a buffer to read the incoming data
+		var receivedData bytes.Buffer
+		buf := make([]byte, 4096) // Chunk size should match sender's buffer
+
+		for {
+			n, err := s.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					fmt.Println("All data received from sender")
+					break
+				}
+				log.Fatalf("Failed to read data: %v", err)
+			}
+			receivedData.Write(buf[:n])
 		}
 
-		sendSuccessConfirmation(transaction)
+		// Parse the accumulated JSON data
+		var fileData []models.FileMetadata
+		err := json.Unmarshal(receivedData.Bytes(), &fileData)
+		fmt.Println("file data received from refresh", fileData)
+		if err != nil {
+			log.Fatalf("Error unmarshaling received data: %v", err)
+		}
+
+		Mutex.Lock()
+		MarketplaceFiles = append(MarketplaceFiles[:0], fileData...)
+		Mutex.Unlock()
+
+		MarketplaceFilesSignal <- struct{}{}
+		fmt.Println("Received files for marketplace:", MarketplaceFiles)
 	})
-	return nil
 }
 
 func receiveSuccessConfirmation(node host.Host) {
@@ -511,76 +460,10 @@ func receiveSuccessConfirmation(node host.Host) {
 	})
 }
 
-func receiveRefreshRequest(node host.Host) {
-	fmt.Println("listening for refresh requests")
-	node.SetStreamHandler("/sendRefreshRequest/p2p", func(s network.Stream) {
-		defer s.Close()
-		buf := bufio.NewReader(s)
-
-		data, err := io.ReadAll(buf) //read in request
-
-		if err != nil {
-			if err == io.EOF {
-				log.Printf("Stream closed by peer :%s", s.Conn().RemotePeer())
-			} else {
-				log.Printf("Error receiving refresh request %v", err)
-			}
-			return
-		}
-
-		var refreshReq models.RefreshRequest
-		err = json.Unmarshal(data, &refreshReq)
-		if err != nil {
-			fmt.Println("unable to marshal refresh request")
-			return
-		}
-
-		sendRefreshResponse(node, refreshReq.RequesterID)
-	})
-}
-
-func receiveRefreshResponse(node host.Host) {
-	fmt.Println("Listening for refresh response")
-	node.SetStreamHandler("/sendRefreshResponse/p2p", func(s network.Stream) {
-		defer s.Close()
-
-		// Use a buffer to read the incoming data
-		var receivedData bytes.Buffer
-		buf := make([]byte, 4096) // Chunk size should match sender's buffer
-
-		for {
-			n, err := s.Read(buf)
-			if err != nil {
-				if err == io.EOF {
-					fmt.Println("All data received from sender")
-					break
-				}
-				log.Fatalf("Failed to read data: %v", err)
-			}
-			receivedData.Write(buf[:n])
-		}
-
-		// Parse the accumulated JSON data
-		var fileData []models.FileMetadata
-		err := json.Unmarshal(receivedData.Bytes(), &fileData)
-		fmt.Println("file data received from refresh", fileData)
-		if err != nil {
-			log.Fatalf("Error unmarshaling received data: %v", err)
-		}
-
-		Mutex.Lock()
-		RefreshResponse = append(RefreshResponse, fileData...)
-		Mutex.Unlock()
-		fmt.Println("Received files for marketplace:", RefreshResponse)
-	})
-}
-
 // listen on streams
 func setupStreams(node host.Host) {
-	receieveDownloadRequest(node)
+	receiveDownloadRequest(node)
 	receiveDecline(node)
 	receiveFile(node)
-	receiveRefreshRequest(node)
-	receiveRefreshResponse(node)
-	receiveSuccessConfirmation(node)
+	receiveMarketplaceFiles(node)
 }
