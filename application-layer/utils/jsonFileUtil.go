@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
+
+	"github.com/gofrs/flock"
 )
 
 var (
@@ -15,10 +18,23 @@ var (
 	transactionFilePath = filepath.Join(dirPath, "transactionFiles.json")
 
 	fileCopyPath = filepath.Join("..", "squidcoinFiles")
+	fileMutex    sync.Mutex // used by cloud-node
 )
 
 // use for user uploaded files and user downlaoded files
 func SaveOrUpdateFile(newFileData models.FileMetadata, dirPath, filePath string) (string, error) {
+	// make thread-safe in case multiple nodes send to cloud node
+	fileMutex.Lock()
+	defer fileMutex.Unlock()
+
+	lock := flock.New(filePath + ".lock")
+	defer lock.Unlock()
+
+	locked, err := lock.TryLock()
+	if err != nil || !locked {
+		return "", fmt.Errorf("failed to get file lock: %v", err)
+	}
+
 	// check if directory and file exist
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {

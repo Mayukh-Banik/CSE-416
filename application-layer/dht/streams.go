@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -20,16 +19,16 @@ import (
 )
 
 var (
-	PendingRequests = make(map[string]models.Transaction) // all requests made by host node
-	FileHashToPath  = make(map[string]string)             // file paths of files uploaded by host node
-	Mutex           = &sync.Mutex{}
-	FileMapMutex    = &sync.Mutex{}
-	dir             = filepath.Join("..", "squidcoinFiles")
-	RefreshResponse []models.FileMetadata
-
-	dirPath            = filepath.Join("..", "utils")
-	UploadedFilePath   = filepath.Join(dirPath, "files.json")
-	DownloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
+	PendingRequests        = make(map[string]models.Transaction) // all requests made by host node
+	FileHashToPath         = make(map[string]string)             // file paths of files uploaded by host node
+	Mutex                  = &sync.Mutex{}
+	FileMapMutex           = &sync.Mutex{}
+	dir                    = filepath.Join("..", "squidcoinFiles")
+	MarketplaceFiles       []models.FileMetadata
+	MarketplaceFilesSignal = make(chan struct{})
+	dirPath                = filepath.Join("..", "utils")
+	UploadedFilePath       = filepath.Join(dirPath, "files.json")
+	DownloadedFilePath     = filepath.Join(dirPath, "downloadedFiles.json")
 )
 
 // SENDING FUNCTIONS
@@ -180,10 +179,9 @@ func sendFile(host host.Host, targetID string, fileHash string, requesterID stri
 	}
 }
 
-func SendRefreshFilesRequest(nodeID string, wg *sync.WaitGroup) error {
-	defer wg.Done()
+func SendMarketFilesRequest(nodeID string) error {
+	fmt.Println("Requesting marketplace files data from cloud node ", nodeID)
 
-	fmt.Println("Requesting all files data from ", nodeID)
 	// refreshResponse = []model.FileMetadata{}
 	requestStream, err := CreateNewStream(DHT.Host(), nodeID, "/sendRefreshRequest/p2p")
 	if err != nil {
@@ -191,69 +189,36 @@ func SendRefreshFilesRequest(nodeID string, wg *sync.WaitGroup) error {
 	}
 	defer requestStream.Close()
 
-	request := models.RefreshRequest{
-		Message:     "gimme all your files",
-		RequesterID: PeerID,
-		TargetID:    nodeID,
-	}
-
-	// Marshal the request metadata to JSON
-	requestData, err := json.Marshal(request)
-	if err != nil {
-		return fmt.Errorf("error marshaling refresh request data: %v", err)
-	}
+	requestData := []byte(PeerID)
 
 	// send JSON data over the stream
 	_, err = requestStream.Write(requestData)
 	if err != nil {
-		return fmt.Errorf("error sending refresh request data: %v", err)
+		return fmt.Errorf("error sending refresh request: %v", err)
 	}
 
-	fmt.Printf("Sent refresh request to target peer %s\n", nodeID)
+	fmt.Printf("Sent refresh request to cloud node %s\n", nodeID)
 	return nil
 }
 
-func sendRefreshResponse(node host.Host, targetID string) error {
-	fmt.Printf("sendRefreshResponse: sending all files to %v", targetID)
-	dirPath := filepath.Join("..", "utils")
-	filePath := filepath.Join(dirPath, "files.json")
-
-	fileData, err := os.Open(filePath)
+func SendCloudNodeFiles(nodeID string, fileMetadata models.FileMetadata) error {
+	stream, err := CreateNewStream(DHT.Host(), nodeID, "/sendRefreshRequest/p2p")
 	if err != nil {
-		return fmt.Errorf("failed to read files.json: %v", err)
+		return fmt.Errorf("error sending file to cloud node")
 	}
+	defer stream.Close()
 
-	// var files []models.FileMetadata
-	// if err := json.Unmarshal(fileData, &files); err != nil {
-	// 	return fmt.Errorf("failed to parse JSON: %v", err)
-
-	// }
-
-	refreshRequestStream, err := CreateNewStream(node, targetID, "/sendRefreshResponse/p2p")
+	fileData, err := json.Marshal(fileMetadata)
 	if err != nil {
-		fmt.Println("Error creating file stream:", err)
+		return fmt.Errorf("sendCloudNodeFiles: failed to marshal file metadata: %v", err)
 	}
-	defer refreshRequestStream.Close()
 
-	reader := bufio.NewReader(fileData)
-	buffer := make([]byte, 4096)
-
-	for {
-		n, err := reader.Read(buffer)
-		if err != nil {
-			if err == io.EOF {
-				fmt.Println("All JSON data sent")
-				break
-			}
-			return fmt.Errorf("error reading JSON data: %w", err)
-		}
-
-		_, err = refreshRequestStream.Write(buffer[:n])
-		if err != nil {
-			return fmt.Errorf("error sending byte data for JSON")
-		}
-		fmt.Printf("Sent %d bytes\n", n)
+	_, err = stream.Write(fileData)
+	if err != nil {
+		return fmt.Errorf("sendCloudNodeFiles: failed to send file metadata to cloud node")
 	}
+
+	fmt.Printf("Sent file metadata to cloud node %s\n", nodeID)
 	return nil
 }
 
@@ -406,34 +371,9 @@ func receiveFile(node host.Host) {
 	})
 }
 
-func receiveRefreshRequest(node host.Host) error {
-	fmt.Println("listening for refresh requests")
-	node.SetStreamHandler("/sendRefreshRequest/p2p", func(s network.Stream) {
-		defer s.Close()
-		buf := bufio.NewReader(s)
-
-		data, err := io.ReadAll(buf) //read in request
-
-		if err != nil {
-			if err == io.EOF {
-				log.Printf("Stream closed by peer :%s", s.Conn().RemotePeer())
-			} else {
-				log.Printf("Error receiving refresh request %v", err)
-			}
-			return
-		}
-
-		var refreshReq models.RefreshRequest
-		err = json.Unmarshal(data, &refreshReq)
-
-		sendRefreshResponse(node, refreshReq.RequesterID)
-	})
-	return nil
-}
-
-func receiveRefreshResponse(node host.Host) {
+func receiveMarketplaceFiles(node host.Host) {
 	fmt.Println("Listening for refresh response")
-	node.SetStreamHandler("/sendRefreshResponse/p2p", func(s network.Stream) {
+	node.SetStreamHandler("/marketplaceFiles/p2p", func(s network.Stream) {
 		defer s.Close()
 
 		// Use a buffer to read the incoming data
@@ -460,14 +400,12 @@ func receiveRefreshResponse(node host.Host) {
 			log.Fatalf("Error unmarshaling received data: %v", err)
 		}
 
-		// for _,file := range fileData {
-		// 	RefreshResponse = append(RefreshResponse, file)
-
-		// }
 		Mutex.Lock()
-		RefreshResponse = append(RefreshResponse, fileData...)
+		MarketplaceFiles = append(MarketplaceFiles[:0], fileData...)
 		Mutex.Unlock()
-		fmt.Println("Received files for marketplace:", RefreshResponse)
+
+		MarketplaceFilesSignal <- struct{}{}
+		fmt.Println("Received files for marketplace:", MarketplaceFiles)
 	})
 }
 
@@ -476,62 +414,5 @@ func setupStreams(node host.Host) {
 	receieveDownloadRequest(node)
 	receiveDecline(node)
 	receiveFile(node)
-	receiveRefreshRequest(node)
-	receiveRefreshResponse(node)
+	receiveMarketplaceFiles(node)
 }
-
-// OTHER - IGNORE WILL PROB DELETE
-func handleDownloadRequestOrResponse(w http.ResponseWriter, r *http.Request) {
-	var transaction models.Transaction
-	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		http.Error(w, "Invalid request data", http.StatusBadRequest)
-		return
-	}
-
-	// Check if the request exists in pendingRequests
-	Mutex.Lock()
-	existingTransaction, exists := PendingRequests[transaction.FileHash]
-	Mutex.Unlock()
-
-	if !exists {
-		http.Error(w, "Transaction not found", http.StatusNotFound)
-		return
-	}
-
-	// Handle based on the transaction status
-	switch transaction.Status {
-	case "accepted":
-		existingTransaction.Status = "accepted"
-		// Send file to requester
-		sendFile(DHT.Host(), existingTransaction.TargetID, existingTransaction.FileHash, existingTransaction.RequesterID, existingTransaction.FileName)
-	case "declined":
-		existingTransaction.Status = "declined"
-		// Notify decline
-		sendDecline(existingTransaction.TargetID, existingTransaction.FileHash)
-	}
-
-	// Update the transaction status in pendingRequests
-	Mutex.Lock()
-	PendingRequests[transaction.FileHash] = existingTransaction
-	Mutex.Unlock()
-}
-
-// func NotifyFrontendOfPendingRequest(request models.Transaction) {
-// 	// Prepare acknowledgment message
-// 	acknowledgment := map[string]string{
-// 		"status":    request.Status,
-// 		"fileHash":  request.FileHash,
-// 		"requester": request.RequesterID,
-// 	}
-// 	acknowledgmentData, _ := json.Marshal(acknowledgment)
-
-// 	// Retrieve the WebSocket connection for the specific user
-// 	if wsConn, exists := websocket.WsConnections[request.TargetID]; exists {
-// 		// Send the notification over the WebSocket connection
-// 		if err := wsConn.WriteJSON(acknowledgmentData); err != nil {
-// 			fmt.Println("Error sending notification to frontend:", err)
-// 		}
-// 	} else {
-// 		fmt.Println("WebSocket connection not found for node:", request.TargetID)
-// 	}
-// }

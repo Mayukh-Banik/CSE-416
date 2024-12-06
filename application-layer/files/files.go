@@ -14,8 +14,6 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var (
@@ -113,6 +111,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	// update publishing info - reflects if user is currently providing or not
 	PublishFile(requestBody)
+	dht_kad.SendCloudNodeFiles(dht_kad.Cloud_node_addr, requestBody)
 
 	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Name)
 	w.WriteHeader(http.StatusOK)
@@ -343,85 +342,29 @@ func deleteFileContent(hash string) error {
 }
 
 // functions below are used in marketplace to get all dht files
-func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Trying to get adjacent node files in backend")
-	dht_kad.RefreshResponse = dht_kad.RefreshResponse[:0]
+func getMarketplaceFiles(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("getting marketplace files")
 
-	relayNode := "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
-	bootstrapNode := "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE"
+	err := dht_kad.SendMarketFilesRequest(dht_kad.PeerID)
+	if err != nil {
+		http.Error(w, "failed to send request to cloud node", http.StatusInternalServerError)
+		return
+	}
 
-	// Retrieve connected peers
-	adjacentNodes := dht_kad.Host.Peerstore().Peers()
-	fmt.Println("Connected peers:", adjacentNodes)
-
-	var sendWG sync.WaitGroup
-	var responseWG sync.WaitGroup
-
-	// Convert PeerID to strings
-	// var peers []string
-	for _, peer := range adjacentNodes {
-		peerID := peer.String()
-		if peerID != relayNode && peerID != bootstrapNode && peerID != dht_kad.PeerID && nodeSupportRefreshStreams(peer) {
-			sendWG.Add(1)
-			responseWG.Add(1)
-			go func(peerID string) {
-				defer responseWG.Done()
-				go dht_kad.SendRefreshFilesRequest(peerID, &sendWG)
-			}(peerID)
-			// peers = append(peers, peer.String())
+	// Wait for the response on the channel
+	fmt.Println("Waiting for marketplace files response...")
+	select {
+	case receivedFiles := <-dht_kad.MarketplaceFilesSignal:
+		// Send response to the frontend
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(receivedFiles); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		}
+	case <-time.After(5 * time.Second): // Timeout to avoid blocking indefinitely
+		http.Error(w, "Timed out waiting for response", http.StatusGatewayTimeout)
 	}
-
-	sendWG.Wait()
-	responseWG.Wait()
-
-	// // create stream to every adjacent node
-	// for _, peer := range peers {
-	// 	if peer != "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN" &&
-	// 		peer != "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE" &&
-	// 		peer != dht_kad.PeerID { // cannot connect to relay node, bootstrap node, or self
-	// 		dht_kad.SendRefreshFilesRequest(peer)
-	// 	}
-	// }
-
-	// dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
-	<-time.After(3 * time.Second)
-
-	fmt.Println("getAdjacentNodeFilesMetadata: received everyone's uploaded files: ", dht_kad.RefreshResponse)
-	// Set response headers
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // Make sure the status is OK
-	fmt.Println("getAdjacentNodeFilesMetadata: back to frontend...")
-
-	// Encode response
-	/**
-	if err := json.NewEncoder(w).Encode(peers); err != nil {
-		http.Error(w, "Failed to encode adjacent nodes", http.StatusInternalServerError)
-	}
-	*/
-
-	if err := json.NewEncoder(w).Encode(dht_kad.RefreshResponse); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-	}
-	fmt.Println("getAdjacentNodeFilesMetadata: back to frontend...")
-
-}
-
-func nodeSupportRefreshStreams(peerID peer.ID) bool {
-	supportSendRefreshRequest := false
-	supportSendRefreshResponse := false
-
-	protocols, _ := dht_kad.Host.Peerstore().GetProtocols(peerID)
-	fmt.Printf("protocols supported by peer %v: %v\n", peerID, protocols)
-
-	for _, protocol := range protocols {
-		if protocol == "/sendRefreshRequest/p2p" {
-			supportSendRefreshRequest = true
-		} else if protocol == "/sendRefreshResponse/p2p" {
-			supportSendRefreshResponse = true
-		}
-	}
-	return supportSendRefreshRequest && supportSendRefreshResponse
+	fmt.Println("getMarketplaceFiles: Finished processing")
 }
 
 // republish files in the dht incase the TTL expired - called upon successful login
