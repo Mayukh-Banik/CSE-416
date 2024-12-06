@@ -370,7 +370,7 @@ func receiveFile(node host.Host) {
 					log.Printf("file %s received and saved to %s\n", metadata.Name, outputPath)
 					break
 				}
-				log.Printf("Ererrorror reading file chunk: %v\n", err)
+				log.Printf("error reading file chunk: %v\n", err)
 				return
 			}
 
