@@ -1,3 +1,4 @@
+
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -14,6 +15,19 @@ const btcwalletRpcPort = isTestnet ? '18332' : '8332';
 // Path to `btcwallet.conf` file
 const walletDir = path.resolve("application-layer", "btcwallet");
 const configFilePath = path.join(walletDir, "btcwallet.conf");
+
+// // Generate the content for `btcwallet.conf`
+// const configContent = `
+// username=user
+// password=password
+// ${isTestnet ? 'testnet=1' : ''}
+// rpclisten=127.0.0.1:${btcwalletRpcPort}
+// btcdusername=user
+// btcdpassword=password
+// rpcconnect=127.0.0.1:${btcdRpcPort}
+// noservertls=1
+// noclienttls=1
+// `;
 
 // Generate the content for `btcwallet.conf`
 const configContent = `
