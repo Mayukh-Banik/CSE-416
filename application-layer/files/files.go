@@ -118,7 +118,6 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	// update publishing info - reflects if user is currently providing or not
 	PublishFile(requestBody)
-	dht_kad.SendCloudNodeFiles(dht_kad.Cloud_node_addr, requestBody)
 
 	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Name)
 	w.WriteHeader(http.StatusOK)
@@ -146,6 +145,8 @@ func PublishFile(requestBody models.FileMetadata) {
 	dht_kad.FileHashToPath[requestBody.Hash] = newPath
 	fmt.Println("PublishFile: fileHashToPath: ", dht_kad.FileHashToPath)
 	dht_kad.FileMapMutex.Unlock()
+
+	dht_kad.SendCloudNodeFiles(requestBody)
 }
 
 // bug
@@ -312,7 +313,7 @@ func deleteFileContent(hash string) error {
 func getMarketplaceFiles(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("getting marketplace files")
 
-	err := dht_kad.SendMarketFilesRequest(dht_kad.PeerID)
+	err := dht_kad.SendMarketFilesRequest(dht_kad.Cloud_node_id)
 	if err != nil {
 		http.Error(w, "failed to send request to cloud node", http.StatusInternalServerError)
 		return
@@ -322,10 +323,12 @@ func getMarketplaceFiles(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Waiting for marketplace files response...")
 	select {
 	case receivedFiles := <-dht_kad.MarketplaceFilesSignal:
+		fmt.Println(receivedFiles)
+		fmt.Printf("getMarketplaceFiles: RECEIVED FILES: \n\n %v \n", dht_kad.MarketplaceFiles)
 		// Send response to the frontend
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(receivedFiles); err != nil {
+		if err := json.NewEncoder(w).Encode(dht_kad.MarketplaceFiles); err != nil {
 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		}
 	case <-time.After(5 * time.Second): // Timeout to avoid blocking indefinitely

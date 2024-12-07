@@ -203,8 +203,8 @@ func SendMarketFilesRequest(nodeID string) error {
 	return nil
 }
 
-func SendCloudNodeFiles(nodeID string, fileMetadata models.FileMetadata) error {
-	stream, err := CreateNewStream(DHT.Host(), nodeID, "/sendRefreshRequest/p2p")
+func SendCloudNodeFiles(fileMetadata models.FileMetadata) error {
+	stream, err := CreateNewStream(DHT.Host(), Cloud_node_id, "/nodeFiles/p2p")
 	if err != nil {
 		return fmt.Errorf("error sending file to cloud node")
 	}
@@ -220,7 +220,7 @@ func SendCloudNodeFiles(nodeID string, fileMetadata models.FileMetadata) error {
 		return fmt.Errorf("sendCloudNodeFiles: failed to send file metadata to cloud node")
 	}
 
-	fmt.Printf("Sent file metadata to cloud node %s\n", nodeID)
+	fmt.Printf("Sent file metadata to cloud node %s\n", Cloud_node_id)
 	return nil
 }
 
@@ -397,6 +397,7 @@ func receiveFile(node host.Host) {
 
 func receiveMarketplaceFiles(node host.Host) {
 	fmt.Println("Listening for refresh response")
+	
 	node.SetStreamHandler("/marketplaceFiles/p2p", func(s network.Stream) {
 		defer s.Close()
 
