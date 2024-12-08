@@ -39,6 +39,7 @@ var (
 	DHT                 *dht.IpfsDHT
 	ProviderStore       providers.ProviderStore
 	Host                host.Host
+	bootstrap_seed      = "BOOTSTRAP1"
 )
 
 func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {

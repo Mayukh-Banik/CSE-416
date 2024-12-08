@@ -5,6 +5,7 @@ import (
 	"application-layer/utils"
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,9 +13,11 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var (
@@ -24,6 +27,7 @@ var (
 	FileMapMutex    = &sync.Mutex{}
 	dir             = filepath.Join("..", "squidcoinFiles")
 	RefreshResponse []models.FileMetadata
+	ProxyResponse   []models.Proxy
 
 	dirPath            = filepath.Join("..", "utils")
 	UploadedFilePath   = filepath.Join(dirPath, "files.json")
@@ -303,6 +307,64 @@ func sendRefreshResponse(node host.Host, targetID string) error {
 		fmt.Printf("Sent %d bytes\n", n)
 	}
 	return nil
+}
+func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// Convert string peerID to libp2p PeerID
+	peerIDObj, err := peer.Decode(peerID)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to decode PeerID %s: %v\n", peerID, err)
+		return
+	}
+
+	// Open a new stream to the peer
+	stream, err := Host.NewStream(context.Background(), peerIDObj, "/proxy/metadata/1.0.0")
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to create stream to peer %s: %v\n", peerID, err)
+		return
+	}
+	defer stream.Close()
+
+	// Write a request message to the stream (if needed)
+	request := models.RefreshRequest{
+		Message:     "Requesting proxy metadata",
+		RequesterID: Host.ID().String(),
+		TargetID:    peerID,
+	}
+
+	requestBytes, err := json.Marshal(request)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to marshal request for peer %s: %v\n", peerID, err)
+		return
+	}
+
+	_, err = stream.Write(requestBytes)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to send request to peer %s: %v\n", peerID, err)
+		return
+	}
+
+	// Read the response
+	responseBytes := make([]byte, 4096)
+	stream.SetReadDeadline(time.Now().Add(10 * time.Second))
+	n, err := stream.Read(responseBytes)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to read response from peer %s: %v\n", peerID, err)
+		return
+	}
+
+	// Unmarshal the response into a Proxy object
+	var proxy models.Proxy
+	err = json.Unmarshal(responseBytes[:n], &proxy)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to unmarshal response from peer %s: %v\n", peerID, err)
+		return
+	}
+
+	// Append the proxy metadata to ProxyResponse
+	ProxyResponse = append(ProxyResponse, proxy)
+	fmt.Printf("SendProxyRequest: Successfully received proxy metadata from peer %s\n", peerID)
 }
 
 // RECEIVING FUNCTIONS
