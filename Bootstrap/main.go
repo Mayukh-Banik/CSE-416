@@ -10,7 +10,9 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/gofrs/flock"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -28,9 +30,13 @@ import (
 
 var (
 	globalCtx      context.Context
+	globalDHT      *dht.IpfsDHT
 	relay_addr     = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
 	bootstrap_addr = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
 	bootstrap_seed = "immacry"
+
+	fileNameToHashMap (map[string][]string)
+	// fileHashToName map[string]string
 )
 
 func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {
@@ -162,6 +168,7 @@ func exchangePeers(node host.Host, newPeer peer.ID) {
 	fmt.Printf("Shared %d peers with %s\n", len(peerInfos), newPeer.String())
 }
 
+/**
 // func handlePeerExchange(node host.Host) {
 // 	node.SetStreamHandler("/orcanet/p2p", func(s network.Stream) {
 // 		defer s.Close()
@@ -204,12 +211,14 @@ func exchangePeers(node host.Host, newPeer peer.ID) {
 // 		}
 // 	})
 // }
+**/
 
 func main() {
 	node, dht, err := createNode()
 	if err != nil {
 		log.Fatalf("Failed to create node: %s", err)
 	}
+	globalDHT = dht
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -231,6 +240,8 @@ func main() {
 
 	receiveCloudNodeFiles(node)
 	receiveMarketplaceRequest(node)
+	startFileCheck()
+
 	go handleInput(ctx, dht)
 
 	defer node.Close()
@@ -348,4 +359,98 @@ func makeReservation(node host.Host) {
 		log.Fatalf("Failed to make reservation on relay: %v", err)
 	}
 	fmt.Printf("Reservation successfull \n")
+}
+
+// checks if files in the marketplace are still available
+// func checkMarketplaceFiles(fileHash string) bool {
+// 	data := []byte(fileHash)
+// 	hash := sha256.Sum256(data)
+// 	mh, err := multihash.EncodeName(hash[:], "sha2-256")
+// 	if err != nil {
+// 		fmt.Printf("Error encoding multihash: %v\n", err)
+// 		return false
+// 	}
+// 	c := cid.NewCidV1(cid.Raw, mh)
+// 	providers := globalDHT.FindProvidersAsync(globalCtx, c, 20)
+
+// 	fmt.Println("Searching for providers...")
+// 	for p := range providers {
+// 		if p.ID == peer.ID("") {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
+
+// updates file availability every 12 hours
+func startFileCheck() {
+	ticker := time.NewTicker(12 * time.Hour)
+	defer ticker.Stop()
+
+	// update the map/list containing current files
+	for range ticker.C {
+		fmt.Println("Starting DHT file availability check...")
+		jsonToMap()
+		fmt.Println("DHT file availability check completed.")
+	}
+}
+
+// on start up: maps file name to hash (for searching operation) and file hash to file name
+func jsonToMap() {
+	// thread safe operation
+	fileMutex.Lock()
+	defer fileMutex.Unlock()
+
+	lock := flock.New(MarketplaceFilesPath + ".lock")
+	defer lock.Unlock()
+
+	locked, err := lock.TryLock()
+	if err != nil || !locked {
+		fmt.Printf("Failed to get file lock: %v\n", err)
+		return
+	}
+
+	// check if dir and file exist
+	if _, err := os.Stat(DirPath); os.IsNotExist(err) {
+		return
+	}
+
+	if _, err := os.Stat(MarketplaceFilesPath); os.IsNotExist(err) {
+		return
+	}
+
+	// read json file
+	data, err := os.ReadFile(MarketplaceFilesPath)
+	if err != nil {
+		fmt.Printf("Failed to read files.json: %v\n", err)
+		return
+	}
+
+	var files []DHTMetadata
+	if err := json.Unmarshal(data, &files); err != nil {
+		fmt.Printf("Failed to parse JSON: %v\n", err)
+		return
+	}
+
+	fileNameToHash := make(map[string][]string)
+	// fileHashToName := make(map[string]string)
+
+	for _, file := range files {
+		var fileMetadata DHTMetadata
+		data, err = globalDHT.GetValue(globalCtx, "/orcanet/"+file.Hash)
+		if err != nil {
+			updateFile(file, DirPath, MarketplaceFilesPath, true)
+		} else {
+			_ = json.Unmarshal(data, &fileMetadata)
+			updateFile(file, DirPath, MarketplaceFilesPath, false)
+			// if file is in dht, add it to the list of available files
+			fileNameToHash[file.Name] = append(fileNameToHash[file.Name], file.Hash)
+		}
+	}
+	fileNameToHashMap = fileNameToHash // for global use
+
+	// Log the map for debugging (optional)
+	for name, hashes := range fileNameToHash {
+		fmt.Printf("File: %s, Hashes: %v\n", name, hashes)
+	}
 }

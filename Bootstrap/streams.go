@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	dirPath              = filepath.Join("..", "utils")
-	marketplaceFilesPath = filepath.Join(dirPath, "marketplaceFiles.json")
+	DirPath              = filepath.Join("..", "utils")
+	MarketplaceFilesPath = filepath.Join(DirPath, "marketplaceFiles.json")
 	sem                  = make(chan struct{}, 5) //limit to 5 concurrent requests
 )
 
@@ -30,8 +30,8 @@ func sendMarketplaceFiles(host host.Host, targetID string) error {
 	defer fileMutex.Unlock()
 
 	// check if file containing all published files exists
-	if _, err := os.Stat(marketplaceFilesPath); os.IsNotExist(err) {
-		fmt.Printf("sendFile: file %s not found\n", marketplaceFilesPath)
+	if _, err := os.Stat(MarketplaceFilesPath); os.IsNotExist(err) {
+		fmt.Printf("sendFile: file %s not found\n", MarketplaceFilesPath)
 		return err
 	}
 
@@ -46,9 +46,9 @@ func sendMarketplaceFiles(host host.Host, targetID string) error {
 	defer fileStream.Close()
 
 	// open file for reading
-	file, err := os.Open(marketplaceFilesPath)
+	file, err := os.Open(MarketplaceFilesPath)
 	if err != nil {
-		fmt.Printf("error opening file %s: %v", marketplaceFilesPath, err)
+		fmt.Printf("error opening file %s: %v", MarketplaceFilesPath, err)
 		return err
 	}
 	defer file.Close()
@@ -78,6 +78,7 @@ func sendMarketplaceFiles(host host.Host, targetID string) error {
 }
 
 // receive and process request for all published nodes
+
 func receiveMarketplaceRequest(node host.Host) error {
 	fmt.Println("listening for marketplace requests")
 	node.SetStreamHandler("/sendRefreshRequest/p2p", func(s network.Stream) {
@@ -125,14 +126,16 @@ func receiveCloudNodeFiles(node host.Host) error {
 			return
 		}
 
-		var fileMetadata FileMetadata
-		err = json.Unmarshal(data, &fileMetadata)
+		// var fileMetadata FileMetadata
+		var metadata DHTMetadata
+		err = json.Unmarshal(data, &metadata)
 		if err != nil {
 			fmt.Printf("receiveCloudNodeFiles: failed to unmarshal file metadata: %v", err)
 			return
 		}
 
-		SaveOrUpdateFile(fileMetadata, dirPath, marketplaceFilesPath)
+		// update json file containing all dht files - and corresponding variables
+		updateFile(metadata, DirPath, MarketplaceFilesPath, false)
 	})
 	return nil
 }
