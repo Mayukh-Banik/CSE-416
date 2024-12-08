@@ -430,6 +430,12 @@ func (bs *BtcService) StartBtcwallet() string {
 		"--password=password",
 	)
 
+	// Handle environment-specific configurations
+	if runtime.GOOS == "darwin" {
+		// macOS-specific environment adjustments
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
 	// Standard output and error
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -454,17 +460,30 @@ func (bs *BtcService) StartBtcwallet() string {
 
 // StopBtcwallet is a function to stop the btcwallet process
 func (bs *BtcService) StopBtcwallet() string {
-	// check if btcwallet is running
+	// Check if btcwallet is running
 	if !isProcessRunning("btcwallet") {
 		fmt.Println("btcwallet is not running. Cannot stop.")
 		return "btcwallet is not running"
 	}
 
-	cmd := exec.Command("taskkill", "/IM", "btcwallet.exe", "/F")
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		// Use taskkill on Windows
+		cmd = exec.Command("taskkill", "/IM", "btcwallet.exe", "/F")
+	} else if runtime.GOOS == "darwin" {
+		// Use pkill on macOS
+		cmd = exec.Command("pkill", "-f", "btcwallet")
+	} else {
+		fmt.Printf("Unsupported OS: %s\n", runtime.GOOS)
+		return "Unsupported OS"
+	}
+
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
 
+	// Stop btcwallet process
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error stopping btcwallet: %v\n", err)
 		return fmt.Sprintf("Error stopping btcwallet: %s", output.String())

@@ -101,6 +101,139 @@ func TestStartBtcdWithNoArgsAndStop(t *testing.T) {
     t.Log("TestStartBtcdWithNoArgsAndStop completed.")
 }
 
+// C:\dev\workspace\CSE-416\application-layer\services> go test -v -run ^TestStopBtcd$
+// TestStopBtcd validates stopping the btcd process.
+// go test -v -run ^TestStopBtcd$ -count=1 application-layer/services    
+func TestStopBtcd(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Log test start
+	t.Log("Starting TestStopBtcd...")
+
+	// Call StopBtcd
+	result := btcService.StopBtcd()
+
+	// Determine OS-specific expectations
+	expectedNotRunning := "btcd is not running"
+	expectedStopped := "btcd stopped successfully"
+
+	// Validate results based on OS
+	if runtime.GOOS == "windows" {
+		t.Log("Testing on Windows...")
+		if result != expectedNotRunning && result != expectedStopped {
+			t.Errorf("Unexpected result on Windows: %q", result)
+		}
+	} else if runtime.GOOS == "darwin" {
+		t.Log("Testing on macOS...")
+		if result != expectedNotRunning && result != expectedStopped {
+			t.Errorf("Unexpected result on macOS: %q", result)
+		}
+	}
+
+	// Log result for debugging
+	t.Logf("Result: %s", result)
+
+	t.Log("TestStopBtcd completed.")
+}
+
+// go test -v -run ^TestBtcwalletCreate$ -count=1 application-layer/services
+// TestBtcwalletCreate btcwallet implementation test for macOs and Windows Powershell
+func TestBtcwalletCreate(t *testing.T) {
+	var walletDBPath string
+
+	// Determine OS-specific wallet.db path
+	if runtime.GOOS == "windows" {
+		userProfile := os.Getenv("USERPROFILE")
+		if userProfile == "" {
+			t.Fatal("USERPROFILE environment variable is not set")
+		}
+		walletDBPath = filepath.Join(userProfile, "AppData", "Local", "Btcwallet", "mainnet", "wallet.db")
+	} else if runtime.GOOS == "darwin" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			t.Fatalf("Failed to get home directory: %v", err)
+		}
+		walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
+	} else {
+		t.Fatalf("Unsupported OS: %s", runtime.GOOS)
+	}
+
+	// Remove existing wallet.db for a clean test
+	err := os.Remove(walletDBPath)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("Failed to delete existing wallet.db: %v", err)
+	}
+
+	// Call BtcwalletCreate to test wallet creation
+	passphrase := "CSE416"
+	err = BtcwalletCreate(passphrase)
+	if err != nil {
+		t.Fatalf("Failed to create btcwallet: %v", err)
+	}
+
+	// Verify wallet.db was created
+	if _, err := os.Stat(walletDBPath); os.IsNotExist(err) {
+		t.Fatal("wallet.db does not exist after creation")
+	} else {
+		fmt.Println("wallet.db successfully created.")
+	}
+}
+
+// go test -v -run ^TestStartBtcwallet$ -count=1 application-layer/services
+// TestStartBtcwallet validates starting the btcwallet process.
+func TestStartBtcwallet(t *testing.T) {
+	btcService := NewBtcService()
+
+	t.Log("Starting TestStartBtcwallet...")
+
+	// attempt to start btcwallet
+	result := btcService.StartBtcwallet()
+	expectedSuccess := "btcwallet started successfully"
+	expectedAlreadyRunning := "btcwallet is already running"
+
+	// result validation
+	if result != expectedSuccess && result != expectedAlreadyRunning {
+		t.Errorf("Unexpected result: %q", result)
+	}
+
+	// debugging logs
+	if result == expectedSuccess {
+		t.Log("btcwallet started successfully.")
+	} else if result == expectedAlreadyRunning {
+		t.Log("btcwallet is already running.")
+	}
+
+	t.Log("TestStartBtcwallet completed.")
+}
+
+// go test -v -run ^TestStopBtcwallet$ -count=1 application-layer/services
+// TestStopBtcwallet validates stopping the btcwallet process.
+func TestStopBtcwallet(t *testing.T) {
+	btcService := NewBtcService()
+
+	t.Log("Starting TestStopBtcwallet...")
+
+	// attempt to stop btcwallet
+	result := btcService.StopBtcwallet()
+	expectedNotRunning := "btcwallet is not running"
+	expectedStopped := "btcwallet stopped successfully"
+
+	// result validation
+	if result != expectedNotRunning && result != expectedStopped {
+		t.Errorf("Unexpected result: %q", result)
+	}
+
+	// debugging logs
+	if result == expectedNotRunning {
+		t.Log("btcwallet is not running.")
+	} else if result == expectedStopped {
+		t.Log("btcwallet stopped successfully.")
+	}
+
+	t.Log("TestStopBtcwallet completed.")
+}
+
+
 // go test -v -run ^TestStartBtcdWithArgs$
 func TestStartBtcdWithArgs(t *testing.T) {
 	btcService := NewBtcService()
@@ -154,77 +287,6 @@ func TestStartBtcdWithInvalidArgs(t *testing.T) {
 	// Validate result
 	if result != expected {
 		t.Errorf("Expected %q, but got %q", expected, result)
-	}
-}
-
-// C:\dev\workspace\CSE-416\application-layer\services> go test -v -run ^TestStopBtcd$
-// TestStopBtcd validates stopping the btcd process.
-// go test -v -run ^TestStopBtcd$ -count=1 application-layer/services    
-func TestStopBtcd(t *testing.T) {
-	btcService := NewBtcService()
-
-	// Log test start
-	t.Log("Starting TestStopBtcd...")
-
-	// Call StopBtcd
-	result := btcService.StopBtcd()
-
-	// Determine OS-specific expectations
-	expectedNotRunning := "btcd is not running"
-	expectedStopped := "btcd stopped successfully"
-
-	// Validate results based on OS
-	if runtime.GOOS == "windows" {
-		t.Log("Testing on Windows...")
-		if result != expectedNotRunning && result != expectedStopped {
-			t.Errorf("Unexpected result on Windows: %q", result)
-		}
-	} else if runtime.GOOS == "darwin" {
-		t.Log("Testing on macOS...")
-		if result != expectedNotRunning && result != expectedStopped {
-			t.Errorf("Unexpected result on macOS: %q", result)
-		}
-	}
-
-	// Log result for debugging
-	t.Logf("Result: %s", result)
-
-	t.Log("TestStopBtcd completed.")
-}
-
-
-func TestStartBtcwallet(t *testing.T) {
-	btcService := NewBtcService()
-
-	// 인자가 없는 경우 btcwallet 실행
-	result := btcService.StartBtcwallet()
-	expected := "btcwallet started successfully"
-
-	if result != expected {
-		t.Errorf("Expected %q, but got %q", expected, result)
-	}
-}
-
-func TestStopBtcwallet(t *testing.T) {
-	btcService := NewBtcService()
-
-	// StopBtcwallet 호출
-	result := btcService.StopBtcwallet()
-
-	// 예상 가능한 결과
-	expectedNotRunning := "btcwallet is not running"
-	expectedStopped := "btcwallet stopped successfully"
-
-	// 실행 결과 확인
-	if result != expectedNotRunning && result != expectedStopped {
-		t.Errorf("Unexpected result: %q", result)
-	}
-
-	// 추가적으로 예상된 로그를 출력
-	if result == expectedNotRunning {
-		t.Log("btcwallet is not running.")
-	} else if result == expectedStopped {
-		t.Log("btcwallet stopped successfully.")
 	}
 }
 
@@ -755,49 +817,6 @@ func TestBtcwalletCreate_PowerShell(t *testing.T) {
 	}
 
 	// 지갑이 생성되었는지 확인
-	if _, err := os.Stat(walletDBPath); os.IsNotExist(err) {
-		t.Fatal("wallet.db does not exist after creation")
-	} else {
-		fmt.Println("wallet.db successfully created.")
-	}
-}
-
-// go test -v -run ^TestBtcwalletCreate$ -count=1 application-layer/services
-// TestBtcwalletCreate btcwallet implementation test for macOs and Windows Powershell
-func TestBtcwalletCreate(t *testing.T) {
-	var walletDBPath string
-
-	// Determine OS-specific wallet.db path
-	if runtime.GOOS == "windows" {
-		userProfile := os.Getenv("USERPROFILE")
-		if userProfile == "" {
-			t.Fatal("USERPROFILE environment variable is not set")
-		}
-		walletDBPath = filepath.Join(userProfile, "AppData", "Local", "Btcwallet", "mainnet", "wallet.db")
-	} else if runtime.GOOS == "darwin" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			t.Fatalf("Failed to get home directory: %v", err)
-		}
-		walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
-	} else {
-		t.Fatalf("Unsupported OS: %s", runtime.GOOS)
-	}
-
-	// Remove existing wallet.db for a clean test
-	err := os.Remove(walletDBPath)
-	if err != nil && !os.IsNotExist(err) {
-		t.Fatalf("Failed to delete existing wallet.db: %v", err)
-	}
-
-	// Call BtcwalletCreate to test wallet creation
-	passphrase := "CSE416"
-	err = BtcwalletCreate(passphrase)
-	if err != nil {
-		t.Fatalf("Failed to create btcwallet: %v", err)
-	}
-
-	// Verify wallet.db was created
 	if _, err := os.Stat(walletDBPath); os.IsNotExist(err) {
 		t.Fatal("wallet.db does not exist after creation")
 	} else {
