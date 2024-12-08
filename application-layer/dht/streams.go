@@ -5,6 +5,7 @@ import (
 	"application-layer/utils"
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,9 +13,11 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var (
@@ -24,6 +27,7 @@ var (
 	FileMapMutex    = &sync.Mutex{}
 	dir             = filepath.Join("..", "squidcoinFiles")
 	RefreshResponse []models.FileMetadata
+	ProxyResponse   []models.Proxy
 
 	dirPath            = filepath.Join("..", "utils")
 	UploadedFilePath   = filepath.Join(dirPath, "files.json")
@@ -62,7 +66,8 @@ func sendDecline(transaction models.Transaction) {
 
 	transactionJson, err := json.Marshal(transaction)
 	if err != nil {
-		fmt.Errorf("sendDecline: error encoding metadata to data: %w", err)
+		log.Printf("sendDecline: error encoding metadata to data: %v", err)
+		return
 	}
 
 	// Send decline to the target peer
@@ -304,6 +309,64 @@ func sendRefreshResponse(node host.Host, targetID string) error {
 	}
 	return nil
 }
+func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// Convert string peerID to libp2p PeerID
+	peerIDObj, err := peer.Decode(peerID)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to decode PeerID %s: %v\n", peerID, err)
+		return
+	}
+
+	// Open a new stream to the peer
+	stream, err := Host.NewStream(context.Background(), peerIDObj, "/proxy/metadata/1.0.0")
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to create stream to peer %s: %v\n", peerID, err)
+		return
+	}
+	defer stream.Close()
+
+	// Write a request message to the stream (if needed)
+	request := models.RefreshRequest{
+		Message:     "Requesting proxy metadata",
+		RequesterID: Host.ID().String(),
+		TargetID:    peerID,
+	}
+
+	requestBytes, err := json.Marshal(request)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to marshal request for peer %s: %v\n", peerID, err)
+		return
+	}
+
+	_, err = stream.Write(requestBytes)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to send request to peer %s: %v\n", peerID, err)
+		return
+	}
+
+	// Read the response
+	responseBytes := make([]byte, 4096)
+	stream.SetReadDeadline(time.Now().Add(10 * time.Second))
+	n, err := stream.Read(responseBytes)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to read response from peer %s: %v\n", peerID, err)
+		return
+	}
+
+	// Unmarshal the response into a Proxy object
+	var proxy models.Proxy
+	err = json.Unmarshal(responseBytes[:n], &proxy)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to unmarshal response from peer %s: %v\n", peerID, err)
+		return
+	}
+
+	// Append the proxy metadata to ProxyResponse
+	ProxyResponse = append(ProxyResponse, proxy)
+	fmt.Printf("SendProxyRequest: Successfully received proxy metadata from peer %s\n", peerID)
+}
 
 // RECEIVING FUNCTIONS
 
@@ -379,7 +442,7 @@ func receiveDecline(node host.Host) {
 	})
 }
 
-func receiveFile(node host.Host) {
+func receiveFile(node host.Host) error {
 	fmt.Println("listening for file data")
 	// listen for streams on "/sendFile/p2p"
 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream) {
@@ -471,10 +534,16 @@ func receiveFile(node host.Host) {
 		fmt.Println("receiveFile: transaction", transaction)
 		utils.AddOrUpdateTransaction(transaction)
 
-		ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
+		// ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
+		err = UpdateFileInDHT(metadata)
+		if err != nil {
+			// is it a failure if the user receives the file but cannot be added to the dht?
+			fmt.Errorf("failed to update dht metadata")
+		}
 
 		sendSuccessConfirmation(transaction)
 	})
+	return nil
 }
 
 func receiveSuccessConfirmation(node host.Host) {
@@ -504,7 +573,7 @@ func receiveSuccessConfirmation(node host.Host) {
 	})
 }
 
-func receiveRefreshRequest(node host.Host) error {
+func receiveRefreshRequest(node host.Host) {
 	fmt.Println("listening for refresh requests")
 	node.SetStreamHandler("/sendRefreshRequest/p2p", func(s network.Stream) {
 		defer s.Close()
@@ -523,10 +592,13 @@ func receiveRefreshRequest(node host.Host) error {
 
 		var refreshReq models.RefreshRequest
 		err = json.Unmarshal(data, &refreshReq)
+		if err != nil {
+			fmt.Println("unable to marshal refresh request")
+			return
+		}
 
 		sendRefreshResponse(node, refreshReq.RequesterID)
 	})
-	return nil
 }
 
 func receiveRefreshResponse(node host.Host) {
@@ -558,10 +630,6 @@ func receiveRefreshResponse(node host.Host) {
 			log.Fatalf("Error unmarshaling received data: %v", err)
 		}
 
-		// for _,file := range fileData {
-		// 	RefreshResponse = append(RefreshResponse, file)
-
-		// }
 		Mutex.Lock()
 		RefreshResponse = append(RefreshResponse, fileData...)
 		Mutex.Unlock()

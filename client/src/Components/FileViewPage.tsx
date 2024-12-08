@@ -31,6 +31,7 @@ const FileViewPage: React.FC = () => {
   if (!fileId || !file) {
     return (
       <Box sx={{ padding: 3 }}>
+        <Sidebar/>
         <Typography variant="h5">File not found</Typography>
       </Box>
     );
