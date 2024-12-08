@@ -69,53 +69,35 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const theme = useTheme();
   const [loading, setLoading] = useState(false); // Loading state for file upload
 
-  // initial fetch of uploaded data
   useEffect(() => {
-    if (!initialFetch) {
-      const fetchFiles = async () => {
-        try {
-          console.log("Getting local user's uploaded files");
-          let fileType = "uploaded"
-          const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
-            method: "GET",
-          });
-          if (!response.ok) throw new Error("Failed to load uploaded file data");
-  
-          const data = await response.json();
-          console.log("Fetched data", data);
-  
-          setUploadedFiles(data); // Set the state with the loaded data
-          setInitialFetch(true); // Set initialFetch to true to prevent further calls
-        } catch (error) {
-          console.error("Error fetching uploaded files:", error);
-        }
-      };
-  
-      fetchFiles();
-    }
-  }, [initialFetch, setUploadedFiles, setInitialFetch]);
-  
-  // called every time page loads to refresh downloaded files
-  useEffect(()=> {
-    const fetchDownloadedFiles = async () => {
-      try {
-        console.log("Getting local user's downloaded files");
-        let fileType = "downloaded"
-        const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
-          method: "GET",
-        });
-        if (!response.ok) throw new Error("Failed to load downloaded file data");
-
-        const data = await response.json();
-        console.log("Fetched data", data);
-
-        setDownloadedFiles(data); // Set the state with the loaded data
-      } catch (error) {
-        console.error("Error fetching downloaded files:", error);
-      }
-    }; 
-    fetchDownloadedFiles();
+    const fetchAllFiles = async() => {
+      await fetchFiles("uploaded");
+      await fetchFiles("downloaded");
+      localStorage.setItem('filesFetched','true')
+    };
+    fetchAllFiles(); 
   }, [])
+
+  const fetchFiles = async (fileType: string) => {
+    try {
+      console.log(`Getting local user's ${fileType} files`);
+      const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
+        method: "GET",
+      });
+      if (!response.ok) throw new Error(`Failed to load ${fileType} file data`);
+
+      const data = await response.json();
+      console.log("Fetched data", data);
+
+      if (fileType === "uploaded") {
+        setUploadedFiles(data); // Set the state with the loaded data
+      } else {
+        setDownloadedFiles(data)
+      }
+    } catch (error) {
+      console.error("Error fetching uploaded files:", error);
+    }
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -495,7 +477,6 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
             </TableContainer>
           </Box>
         )}
-
 
         {uploadedFiles.length > 0 && (
           <Box sx={{ marginTop: 2 }}>

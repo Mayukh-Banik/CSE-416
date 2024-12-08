@@ -19,8 +19,9 @@ const MarketplacePage: React.FC = () => {
   const [fileHash, setFileHash] = useState('');
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [loadingRequest, setLoadingRequest] = useState(false)
-  const [loadingSearch, setLoadingSearch] = useState(false)
+  const [loadingRequest, setLoadingRequest] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [refresh, setRefresh] = useState(false);
 
   // const socket = new WebSocket("ws://localhost:8081/ws")
   // socket.onmessage = (event) => {
@@ -51,8 +52,13 @@ const MarketplacePage: React.FC = () => {
   
   
   const handleDownloadRequest = async (file: FileMetadata) => {
-    setSelectedFile(file);
+    if (refresh) {
+      await getFileByHash(file.Hash)
+    } else {
+      setSelectedFile(file)
+    }
     setOpen(true); // Open the modal for provider selection
+    setRefresh(false);
   };
 
   const handleProviderSelect = async (provider: string) => {
@@ -93,6 +99,7 @@ const MarketplacePage: React.FC = () => {
   };
 
   const handleRefresh = async () => {
+    setRefresh(true);
     resetStates();
     setLoadingSearch(true);
     console.log("Refreshing marketplace");
@@ -121,18 +128,6 @@ const MarketplacePage: React.FC = () => {
       setLoadingSearch(false);
     }
   };
-  
-
-  // const handleDownloadByHash = async () => {
-  //   console.log("HI");
-  //   const hash = prompt("Enter the file hash");
-  //   console.log('you entered:', hash)
-  //   if (hash == null || hash.length==0) return;
-  //   setFileHash(hash);
-  //   getFileByHash(hash);
-  //   setOpen(true);
-  // }
-
   
   // only works for complete file hashes
   const handleSearchRequest = async (searchTerm: string) => {
@@ -227,10 +222,6 @@ const MarketplacePage: React.FC = () => {
 
       {/* {loadingSearch && <LinearProgress sx={{ marginBottom: 2 }} />} */}
 
-      {/* <Button variant="contained" onClick={() => handleDownloadByHash()}>
-        Download by Hash
-      </Button> */}
-
       <TextField
         label="Search Files"
         variant="outlined"
@@ -253,7 +244,7 @@ const MarketplacePage: React.FC = () => {
             <TableRow>
               <TableCell>File Name</TableCell>
               <TableCell>File Size (KB)</TableCell>
-              <TableCell>Reputation</TableCell>
+              <TableCell>Rating</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell></TableCell>
             </TableRow>
@@ -322,7 +313,9 @@ const MarketplacePage: React.FC = () => {
                     width: '100%',
                   }}
                 >
-                  <span>{provider.PeerID.substring(0,7)}...{provider.PeerID.substring(provider.PeerID.length - 7)}</span> 
+                  <span style={{ wordBreak: 'break-all', whiteSpace: 'normal' }}>
+                    {provider.PeerID}
+                  </span>
                   <span>{provider.Fee} SQD/MB</span>
                 </Button>
               ))

@@ -66,7 +66,8 @@ func sendDecline(transaction models.Transaction) {
 
 	transactionJson, err := json.Marshal(transaction)
 	if err != nil {
-		fmt.Errorf("sendDecline: error encoding metadata to data: %w", err)
+		log.Printf("sendDecline: error encoding metadata to data: %v", err)
+		return
 	}
 
 	// Send decline to the target peer
@@ -441,7 +442,7 @@ func receiveDecline(node host.Host) {
 	})
 }
 
-func receiveFile(node host.Host) {
+func receiveFile(node host.Host) error {
 	fmt.Println("listening for file data")
 	// listen for streams on "/sendFile/p2p"
 	node.SetStreamHandler("/sendFile/p2p", func(s network.Stream) {
@@ -533,10 +534,16 @@ func receiveFile(node host.Host) {
 		fmt.Println("receiveFile: transaction", transaction)
 		utils.AddOrUpdateTransaction(transaction)
 
-		ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
+		// ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
+		err = UpdateFileInDHT(metadata)
+		if err != nil {
+			// is it a failure if the user receives the file but cannot be added to the dht?
+			fmt.Errorf("failed to update dht metadata")
+		}
 
 		sendSuccessConfirmation(transaction)
 	})
+	return nil
 }
 
 func receiveSuccessConfirmation(node host.Host) {
@@ -566,7 +573,7 @@ func receiveSuccessConfirmation(node host.Host) {
 	})
 }
 
-func receiveRefreshRequest(node host.Host) error {
+func receiveRefreshRequest(node host.Host) {
 	fmt.Println("listening for refresh requests")
 	node.SetStreamHandler("/sendRefreshRequest/p2p", func(s network.Stream) {
 		defer s.Close()
@@ -585,10 +592,13 @@ func receiveRefreshRequest(node host.Host) error {
 
 		var refreshReq models.RefreshRequest
 		err = json.Unmarshal(data, &refreshReq)
+		if err != nil {
+			fmt.Println("unable to marshal refresh request")
+			return
+		}
 
 		sendRefreshResponse(node, refreshReq.RequesterID)
 	})
-	return nil
 }
 
 func receiveRefreshResponse(node host.Host) {
@@ -620,10 +630,6 @@ func receiveRefreshResponse(node host.Host) {
 			log.Fatalf("Error unmarshaling received data: %v", err)
 		}
 
-		// for _,file := range fileData {
-		// 	RefreshResponse = append(RefreshResponse, file)
-
-		// }
 		Mutex.Lock()
 		RefreshResponse = append(RefreshResponse, fileData...)
 		Mutex.Unlock()
