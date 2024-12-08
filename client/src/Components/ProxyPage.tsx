@@ -1,8 +1,7 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from "./Sidebar";
 import useProxyHostsStyles from '../Stylesheets/ProxyPageStyles';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Box, TextField } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 
 interface ProxyHost {
   name: string;
@@ -14,6 +13,7 @@ interface ProxyHost {
   bandwidth: string;
   isEnabled: boolean;
   price: string;
+  isHost: boolean;
 }
 
 
@@ -34,21 +34,46 @@ const ProxyHosts: React.FC = () => {
     bandwidth: '',
     isEnabled: false,
     price: '',
+    isHost: false
   });
   const styles = useProxyHostsStyles();
-  const theme = useTheme();
-  
+
   const fetchData = async () => {
     try {
-      const response = await fetch(`http://localhost:8081/proxy-data/`);
+      const response = await fetch('http://localhost:8081/proxy-data/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+  
       if (!response.ok) {
-        throw new Error('Failed to fetch data');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const result = await response.json();
-      console.log(result)
-      setProxyHosts(result ||[]);
+  
+      const rawText = await response.text();
+      const cleanedText = rawText.replace(/^null\s*/, '').trim();
+      const result = JSON.parse(cleanedText);
+  
+      const proxyData = Array.isArray(result) ? result : [result];
+      const isEmptyProxy = (proxy: ProxyHost) => {
+        return !proxy.name && !proxy.location && !proxy.price && !proxy.Statistics.uptime && !proxy.bandwidth;
+      };
+      const nonEmptyProxies = proxyData.filter(proxy => !isEmptyProxy(proxy));
+  
+      setProxyHosts(nonEmptyProxies.map(proxy => ({
+        name: proxy.name ,
+        location: proxy.location || proxy.address ,
+        price: proxy.price ,
+        Statistics: { uptime: proxy.Statistics?.uptime  },
+        bandwidth: proxy.bandwidth ,
+        logs: proxy.logs,
+        isEnabled: false,
+        isHost: proxy.isHost || false,
+        peer_id: proxy.peer_id || ''
+      })));
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching or processing data:', error);
     }
   };
   const sendData = async () => {
@@ -58,31 +83,32 @@ const ProxyHosts: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newProxy),
       });
-  
+
       if (!response.ok) {
         throw new Error('Failed to add proxy');
       }
-  
+
       const result = await response.json();
+
       console.log('Proxy added successfully:', result);
     } catch (error) {
       console.error('Error adding proxy:', error);
       alert('There was an error adding the proxy. Please try again.');
     }
   };
-  
+
   useEffect(() => {
-    // Fetch public IP using an API like ipify or ipinfo
     const fetchIP = async () => {
       try {
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
-        setCurrentIP(data.ip); // Update the state with the user's public IP
+        setCurrentIP(data.ip);
       } catch (error) {
         console.error("Error fetching IP:", error);
       }
-    }; 
-    fetchIP()
+    };
+
+    fetchIP();
     fetchData();
   }, []);
 
@@ -96,7 +122,7 @@ const ProxyHosts: React.FC = () => {
     setConnectedProxy(host);
 
     // Update proxy history
-    const newHistoryEntry = { name: host.name,location: host.location, timestamp: new Date().toLocaleString() };
+    const newHistoryEntry = { name: host.name, location: host.location, timestamp: new Date().toLocaleString() };
     setProxyHistory([...proxyHistory, newHistoryEntry]);
 
     alert(`Connected to ${host.location}`);
@@ -111,17 +137,17 @@ const ProxyHosts: React.FC = () => {
 
     setProxyHosts([...proxyHosts, { ...newProxy, logs: [], isEnabled: false }]);
 
-    // Reset new proxy fields
     setNewProxy({
-      name:'',
+      name: '',
       location: '',
       logs: [],
       Statistics: { uptime: '' },
       bandwidth: '',
       isEnabled: false,
       price: '',
+      isHost: false,
     });
-    
+
 
     // Hide the form after adding
     setShowForm(false);
@@ -174,7 +200,7 @@ const ProxyHosts: React.FC = () => {
                   <Table>
                     <TableHead>
                       <TableRow>
-                      <TableCell>Name</TableCell>
+                        <TableCell>Name</TableCell>
                         <TableCell>Location</TableCell>
                         <TableCell>Connected At</TableCell>
                       </TableRow>
@@ -192,7 +218,7 @@ const ProxyHosts: React.FC = () => {
                                 const host = proxyHosts.find(h => h.location === entry.location);
                                 if (host) handleConnect(host);
                               }}
-                             >
+                            >
                               Connect
                             </Button>
                           </TableCell>
@@ -226,7 +252,7 @@ const ProxyHosts: React.FC = () => {
                 <Box sx={{ marginTop: 1 }} className={styles.form}>
                   <Typography variant="h6">Fill in your proxy details</Typography>
                   <Box sx={{ display: 'flex', gap: 2 }}>
-                  <TextField
+                    <TextField
                       label="Name"
                       variant="outlined"
                       value={newProxy.name}
@@ -267,7 +293,7 @@ const ProxyHosts: React.FC = () => {
                 <Table className={styles.table}>
                   <TableHead>
                     <TableRow>
-                    <TableCell>Name</TableCell>
+                      <TableCell>Name</TableCell>
                       <TableCell>Location</TableCell>
                       <TableCell>Price</TableCell>
                       <TableCell>Uptime</TableCell>

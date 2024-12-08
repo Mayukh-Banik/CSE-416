@@ -47,6 +47,7 @@ var (
 	DHT           *dht.IpfsDHT
 	ProviderStore providers.ProviderStore
 	Host          host.Host
+	// bootstrap_seed      = "BOOTSTRAP1"
 )
 
 func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {
@@ -376,13 +377,13 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) error {
 	// Marshal the updated metadata
 	dhtMetadataBytes, err := json.Marshal(currentMetadata)
 	if err != nil {
-		fmt.Errorf("failed to marshal updated DHTMetadata: %w\n", err)
+		return fmt.Errorf("failed to marshal updated DHTMetadata: %w", err)
 	}
 
 	// Begin providing ourselves as a provider for that file
 	err = ProvideKey(GlobalCtx, DHT, currentInfo.Hash)
 	if err != nil {
-		fmt.Errorf("failed to register updated file to dht: %w\n", err)
+		return fmt.Errorf("failed to register updated file to dht: %w", err)
 	}
 
 	// Store the updated metadata in the DHT
