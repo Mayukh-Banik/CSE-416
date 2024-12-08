@@ -3,8 +3,7 @@ module application-layer
 go 1.23.2
 
 require (
-	github.com/btcsuite/btcd v0.24.2
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/creack/pty v1.1.24
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/libp2p/go-libp2p v0.37.0
@@ -13,16 +12,6 @@ require (
 	github.com/multiformats/go-multiaddr v0.14.0
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/rs/cors v1.11.1
-)
-
-require (
-	github.com/btcsuite/btcd/btcec/v2 v2.1.3 // indirect
-	github.com/btcsuite/btcd/btcutil v1.1.5 // indirect
-	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
-	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
-	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
-	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
-	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 )
 
 require (

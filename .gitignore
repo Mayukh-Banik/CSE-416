@@ -20,3 +20,6 @@ utils/files.json
 
 /squidcoinFiles
 squidcoinFiles/
+
+/btcwallet.exe
+btcwallet/btcwallet.exe

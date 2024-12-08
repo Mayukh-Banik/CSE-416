@@ -31,7 +31,7 @@ require (
 	google.golang.org/grpc v1.59.0
 )
 
-replace github.com/btcsuite/btcd => /Users/dianne/Desktop/cse--416/CSE-416/btcd
+replace github.com/btcsuite/btcd => ../btcd
 
 replace github.com/btcsuite/btcd/btcec/v2 => github.com/btcsuite/btcd/btcec/v2 v2.2.2
 

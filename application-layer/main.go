@@ -7,7 +7,7 @@ import (
 	"application-layer/download"
 	"application-layer/files"
 	"application-layer/routes"
-	"application-layer/wallet"
+	"application-layer/services"
 	"application-layer/websocket"
 	"fmt"
 	"log"
@@ -31,23 +31,31 @@ func main() {
 		log.Fatal("RPC_USER and RPC_PASS environment variables are required")
 	}
 
-	// initialization
-	walletService, err := wallet.NewWalletService(rpcUser, rpcPass)
-	if err != nil {
-		log.Fatalf("Failed to initialize WalletService: %v", err)
-	}
-	userService := wallet.NewUserService()
-	walletController := controllers.NewWalletController(walletService)
-	authController := controllers.NewAuthController(userService, walletService)
+	// 서비스 초기화
+	authService := services.NewAuthService()
+	btcService := services.NewBtcService()
 
-	// 라우트 설정
-	mux := http.NewServeMux()
-	routes.RegisterRoutes(mux, authController, walletController)
+	// initialization
+	// walletService, err := wallet.NewWalletService(rpcUser, rpcPass)
+	// if err != nil {
+	// 	log.Fatalf("Failed to initialize WalletService: %v", err)
+	// }
+	// userService := wallet.NewUserService()
+	// walletController := controllers.NewWalletController(walletService)
+	// authController := controllers.NewAuthController(userService, walletService)
 
 	fmt.Println("Main server started")
 
 	fileRouter := files.InitFileRoutes()
 	downloadRouter := download.InitDownloadRoutes()
+	authController := controllers.NewAuthController(authService)
+	btcController := controllers.NewBtcController(btcService)
+
+	// 라우터 초기화
+	mux := http.NewServeMux()
+	routes.AuthRoutes(mux, authController)
+	routes.BtcRoutes(mux, btcController)
+
 	go dht_kad.StartDHTService()
 
 	// CORS handler
