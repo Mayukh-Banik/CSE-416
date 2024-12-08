@@ -3,7 +3,6 @@ module application-layer
 go 1.23.2
 
 require (
-	github.com/creack/pty v1.1.24
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/libp2p/go-libp2p v0.37.0
