@@ -15,12 +15,15 @@ import (
 	"time"
 )
 
+const CREATE_NO_WINDOW = 0x08000000
+
 // Setting the executable path as a global variable
 var (
-	btcdPath      = "../../btcd/btcd"
-	btcwalletPath = "../../btcwallet/btcwallet"
-	btcctlPath    = "../../btcd/cmd/btcctl/btcctl"
-	tempFilePath  string
+	btcwalletScriptPath = `C:\dev\workspace\CSE-416\btcwallet\btcwallet_create.ps1`
+	btcdPath            = "../../btcd/btcd"
+	btcwalletPath       = "../../btcwallet/btcwallet"
+	btcctlPath          = "../../btcd/cmd/btcctl/btcctl"
+	tempFilePath        string
 )
 
 type BtcService struct{}
@@ -367,8 +370,8 @@ func (bs *BtcService) Init() string {
 	// start btcd
 	btcdResult := bs.StartBtcd()
 	if btcdResult != "btcd started successfully" {
-		stopBtcd()
-		stopBtcwallet()
+		bs.StopBtcd()
+		bs.StopBtcwallet()
 		fmt.Println("Failed to start btcd.")
 		return btcdResult
 	}
@@ -376,8 +379,8 @@ func (bs *BtcService) Init() string {
 	// start btcwallet
 	btcwalletResult := bs.StartBtcwallet()
 	if btcwalletResult != "btcwallet started successfully" {
-		stopBtcd()
-		stopBtcwallet()
+		bs.StopBtcd()
+		bs.StopBtcwallet()
 		fmt.Println("Failed to start btcwallet.")
 		return btcwalletResult
 	}
@@ -548,6 +551,45 @@ func (bs *BtcService) StopMining() string {
 	return "Mining process stopped and restarted successfully"
 }
 
+// btcwalletCreate executes a PowerShell script to create a btcwallet.
+func btcwalletCreate(passphrase string) error {
+	// Configure PowerShell command with -WindowStyle Hidden
+	cmd := exec.Command("powershell",
+		"-NoProfile",
+		"-ExecutionPolicy", "Bypass",
+		"-WindowStyle", "Hidden",
+		"-File", btcwalletScriptPath,
+	)
+
+	// Add environment variable for the passphrase
+	cmd.Env = append(os.Environ(), "BTCWALLET_PASSPHRASE="+passphrase)
+
+	// Hide terminal window in Windows (I think this is not working)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: CREATE_NO_WINDOW,
+	}
+
+	// Hide terminal window in Windows
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// Execute the command
+	err := cmd.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start btcwallet process: %v", err)
+	}
+
+	// Since it runs in the background, return without waiting
+	// The console window will not appear as the application is in GUI mode.
+	// Logs can be recorded if needed.
+	fmt.Println("btcwallet process started in the background.")
+
+	return nil
+}
+
 // GetNewAddress is a function to generate a new address
 func (bs *BtcService) GetNewAddress() (string, error) {
 	// check if btcd and btcwallet are running
@@ -578,7 +620,7 @@ func (bs *BtcService) GetNewAddress() (string, error) {
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error generating new address: %v\n", err)
-		return "", fmt.Errorf("Error generating new address: %w", err)
+		return "", fmt.Errorf("error generating new address: %w", err)
 	}
 
 	// new address
@@ -618,7 +660,7 @@ func (bs *BtcService) UnlockWallet(passphrase string) (string, error) {
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error unlocking wallet: %v\n", err)
-		return "", fmt.Errorf("Error unlocking wallet: %w", err)
+		return "", fmt.Errorf("error unlocking wallet: %w", err)
 	}
 
 	result := strings.TrimSpace(output.String())
@@ -654,7 +696,7 @@ func (bs *BtcService) LockWallet() (string, error) {
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error locking wallet: %v\n", err)
-		return "", fmt.Errorf("Error locking wallet: %w", err)
+		return "", fmt.Errorf("error locking wallet: %w", err)
 	}
 
 	result := strings.TrimSpace(output.String())
@@ -663,13 +705,19 @@ func (bs *BtcService) LockWallet() (string, error) {
 }
 
 func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
+	// Step 0: Check if the wallet exists
+	walletDBPath := fmt.Sprintf(`%s\AppData\Local\Btcwallet\mainnet\wallet.db`, os.Getenv("USERPROFILE")) // Adjust path as needed
+	if _, err := os.Stat(walletDBPath); os.IsNotExist(err) {
+		fmt.Printf("Wallet does not exist at path: %s\n", walletDBPath)
+		return "Wallet does not exist", fmt.Errorf("wallet does not exist at path: %s", walletDBPath)
+	}
 	// Step 1: Start btcd with wallet address
 	btcdResult := bs.StartBtcd(walletAddress)
 	time.Sleep(time.Second) // 1 second
 	if btcdResult != "btcd started successfully" {
 		fmt.Printf("Failed to start btcd: %s\n", btcdResult)
 		bs.StopBtcd()
-		return "Failed to start btcd", fmt.Errorf("Failed to start btcd: %s", btcdResult)
+		return "Failed to start btcd", fmt.Errorf("failed to start btcd: %s", btcdResult)
 	}
 
 	// Step 2: Start btcwallet
@@ -679,7 +727,7 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 		fmt.Printf("Failed to start btcwallet: %s\n", btcwalletResult)
 		bs.StopBtcd()
 		bs.StopBtcwallet()
-		return "Failed to start btcwallet", fmt.Errorf("Failed to start btcwallet: %s", btcwalletResult)
+		return "Failed to start btcwallet", fmt.Errorf("failed to start btcwallet: %s", btcwalletResult)
 	}
 
 	// Step 4: Unlock the wallet
@@ -690,7 +738,7 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 		bs.StopBtcd()
 		time.Sleep(time.Second) // 1 second
 		bs.StopBtcwallet()
-		return "Failed to unlock wallet", fmt.Errorf("Failed to unlock wallet: %w", err)
+		return "Failed to unlock wallet", fmt.Errorf("failed to unlock wallet: %w", err)
 	}
 
 	// Step 5: Success
@@ -725,7 +773,7 @@ func (bs *BtcService) GetBalance() (string, error) {
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error fetching balance: %v\n", err)
-		return "", fmt.Errorf("Error fetching balance: %w", err)
+		return "", fmt.Errorf("error fetching balance: %w", err)
 	}
 
 	// Return balance
@@ -763,7 +811,7 @@ func (bs *BtcService) GetReceivedByAddress(walletAddress string) (string, error)
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error fetching received amount for address %s: %v\n", walletAddress, err)
-		return "", fmt.Errorf("Error fetching received amount for address %s: %w", walletAddress, err)
+		return "", fmt.Errorf("error fetching received amount for address %s: %w", walletAddress, err)
 	}
 
 	// Return received amount
@@ -794,7 +842,7 @@ func (bs *BtcService) GetBlockCount() (string, error) {
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error fetching block count: %v\n", err)
-		return "", fmt.Errorf("Error fetching block count: %w", err)
+		return "", fmt.Errorf("error fetching block count: %w", err)
 	}
 
 	// Return block count
@@ -832,14 +880,14 @@ func (bs *BtcService) ListReceivedByAddress() ([]map[string]interface{}, error) 
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error listing received addresses: %v\n", err)
-		return nil, fmt.Errorf("Error listing received addresses: %w", err)
+		return nil, fmt.Errorf("error listing received addresses: %w", err)
 	}
 
 	// Parse the output as JSON
 	var addresses []map[string]interface{}
 	if err := json.Unmarshal(output.Bytes(), &addresses); err != nil {
 		fmt.Printf("Error parsing address list: %v\n", err)
-		return nil, fmt.Errorf("Error parsing address list: %w", err)
+		return nil, fmt.Errorf("error parsing address list: %w", err)
 	}
 
 	// Log full result for debugging
@@ -876,19 +924,343 @@ func (bs *BtcService) ListUnspent() ([]map[string]interface{}, error) {
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error listing unspent transactions: %v\n", err)
-		return nil, fmt.Errorf("Error listing unspent transactions: %w", err)
+		return nil, fmt.Errorf("error listing unspent transactions: %w", err)
 	}
 
 	// Parse the output as JSON
 	var utxos []map[string]interface{}
 	if err := json.Unmarshal(output.Bytes(), &utxos); err != nil {
 		fmt.Printf("Error parsing UTXO list: %v\n", err)
-		return nil, fmt.Errorf("Error parsing UTXO list: %w", err)
+		return nil, fmt.Errorf("error parsing UTXO list: %w", err)
 	}
 
 	// Log full result for debugging
-	fmt.Printf("ㅇㅇList of unspent transactions: %v\n", utxos)
+	fmt.Printf("List of unspent transactions: %v\n", utxos)
 
 	// Return full result
 	return utxos, nil
+}
+
+// CreateRawTransaction 함수 수정
+func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float64) (string, error) {
+	// Step 1: Retrieve source address (mining address) from temp file
+	fmt.Println("Step 1: Retrieving source address from temp file...")
+	tempContent, err := ioutil.ReadFile(tempFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read temp file: %w", err)
+	}
+
+	fmt.Printf("Raw temp file content: %s\n", tempContent)
+
+	var tempData map[string]string
+	if err := json.Unmarshal(tempContent, &tempData); err != nil {
+		return "", fmt.Errorf("failed to parse temp file content: %w", err)
+	}
+
+	srcAddress, exists := tempData["miningaddr"]
+	if !exists || srcAddress == "" {
+		return "", fmt.Errorf("source address not found in temp file")
+	}
+
+	fmt.Printf("Source address retrieved: %s\n", srcAddress)
+
+	// Step 2: Get UTXOs from ListUnspent
+	fmt.Println("Step 2: Retrieving unspent transactions (UTXOs)...")
+	utxos, err := bs.ListUnspent()
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve unspent transactions: %w", err)
+	}
+
+	// Validate UTXOs
+	fmt.Println("Step 3: Validating UTXOs...")
+	var selectedUTXO map[string]interface{}
+	for _, utxo := range utxos {
+		utxoTxID, ok1 := utxo["txid"].(string)
+		utxoAddress, ok2 := utxo["address"].(string)
+		utxoAmount, ok3 := utxo["amount"].(float64)
+
+		if !ok1 || !ok2 || !ok3 {
+			continue // 잘못된 UTXO 형식 건너뛰기
+		}
+
+		// Match txid, source address, and check amount sufficiency
+		if utxoTxID == txid && utxoAddress == srcAddress && utxoAmount >= amount {
+			selectedUTXO = utxo
+			fmt.Printf("Matching UTXO found: txid=%s, amount=%.8f\n", utxoTxID, utxoAmount)
+			break
+		}
+	}
+
+	if selectedUTXO == nil {
+		return "", fmt.Errorf("no suitable UTXO found for txid %s and address %s with amount >= %.8f", txid, srcAddress, amount)
+	}
+
+	// Extract UTXO details
+	voutFloat, ok := selectedUTXO["vout"].(float64)
+	if !ok {
+		return "", fmt.Errorf("invalid vout type in UTXO")
+	}
+	vout := int(voutFloat)
+
+	srcAmount, ok := selectedUTXO["amount"].(float64)
+	if !ok {
+		return "", fmt.Errorf("invalid amount type in UTXO")
+	}
+
+	// Step 4: Construct raw transaction command
+	fmt.Println("Step 4: Constructing raw transaction command...")
+	rawTxCommandWin := []string{
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"createrawtransaction",
+		fmt.Sprintf(`[{"txid":"%s", "vout":%d}]`, txid, vout),
+		fmt.Sprintf(`{"%s": %.8f, "%s": %.8f}`, dst, amount, srcAddress, srcAmount-amount),
+	}
+
+	rawTxCommandMac := []string{
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"createrawtransaction",
+		fmt.Sprintf(`[{"txid":"%s", "vout":%d}]`, txid, vout),
+		fmt.Sprintf(`{"%s": %.8f, "%s": %.8f}`, dst, amount, srcAddress, srcAmount-amount),
+	}
+
+	// Determine OS-specific command
+	var rawTxCommand []string
+	if os.Getenv("OS") == "Windows_NT" {
+		rawTxCommand = rawTxCommandWin
+	} else {
+		rawTxCommand = rawTxCommandMac
+	}
+
+	fmt.Printf("Raw transaction command: %v\n", rawTxCommand)
+
+	// Step 5: Execute raw transaction command
+	fmt.Println("Step 5: Executing raw transaction command...")
+	cmd := exec.Command(btcctlPath, rawTxCommand...)
+	var output bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("[ERROR] Command execution failed: %v\n", err)
+		fmt.Printf("[ERROR] Stderr: %s\n", stderr.String())
+		fmt.Printf("[DEBUG] Raw command output: %s\n", output.String())
+		return "", fmt.Errorf("failed to create raw transaction: %w. Stderr: %s", err, stderr.String())
+	}
+
+	rawId := strings.TrimSpace(output.String())
+	fmt.Printf("Raw transaction created: %s\n", rawId)
+	return rawId, nil
+}
+
+// signRawTransaction 함수 수정
+func (bs *BtcService) signRawTransaction(rawId string) (string, bool, error) {
+	fmt.Printf("[DEBUG] Starting signRawTransaction with rawId: %s\n", rawId)
+
+	// Validate rawId
+	if rawId == "" {
+		return "", false, fmt.Errorf("rawId is empty")
+	}
+
+	// Construct the command
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"signrawtransaction",
+		rawId,
+	)
+
+	var output bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+
+	// Execute the command
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("[ERROR] Command execution failed: %v\n", err)
+		fmt.Printf("[ERROR] Stderr: %s\n", stderr.String())
+		fmt.Printf("[DEBUG] Raw command output: %s\n", output.String())
+		return "", false, fmt.Errorf("failed to sign raw transaction: %w. Stderr: %s", err, stderr.String())
+	}
+
+	fmt.Printf("[DEBUG] Command executed successfully. Raw output: %s\n", output.String())
+
+	// Parse the output JSON
+	var signedTx map[string]interface{}
+	if err := json.Unmarshal(output.Bytes(), &signedTx); err != nil {
+		fmt.Printf("[ERROR] Failed to parse JSON output: %v\n", err)
+		fmt.Printf("[DEBUG] Raw JSON output: %s\n", output.String())
+		return "", false, fmt.Errorf("failed to parse signed transaction: %w", err)
+	}
+
+	// Extract the 'hex' and 'complete' fields
+	hex, hexOk := signedTx["hex"].(string)
+	complete, completeOk := signedTx["complete"].(bool)
+
+	if !hexOk || !completeOk {
+		fmt.Printf("[ERROR] Unexpected output format. Parsed data: %v\n", signedTx)
+		return "", false, fmt.Errorf("unexpected output format: %s", output.String())
+	}
+
+	fmt.Printf("[DEBUG] Transaction signed successfully. Hex: %s, Complete: %v\n", hex, complete)
+	return hex, complete, nil
+}
+
+// sendRawTransaction 함수는 문제 없어 보입니다.
+func (bs *BtcService) sendRawTransaction(hex string) (string, error) {
+	// Use btcctlPath to construct the command
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"sendrawtransaction",
+		hex,
+	)
+
+	var output bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+
+	// Execute the command
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("[ERROR] Command execution failed: %v\n", err)
+		fmt.Printf("[ERROR] Stderr: %s\n", stderr.String())
+		fmt.Printf("[DEBUG] Raw command output: %s\n", output.String())
+		return "", fmt.Errorf("failed to send raw transaction: %w. Stderr: %s", err, stderr.String())
+	}
+
+	// Get the transaction ID from the output
+	txid := strings.TrimSpace(output.String())
+	fmt.Printf("Transaction sent successfully. TxID: %s\n", txid)
+
+	// Return the transaction ID
+	return txid, nil
+}
+
+// Transaction 함수 수정
+func (bs *BtcService) Transaction(passphrase, txid, dst string, amount float64) (string, error) {
+	fmt.Printf("[DEBUG] Starting transaction with passphrase: %s, txid: %s, dst: %s, amount: %.8f\n", passphrase, txid, dst, amount)
+
+	// Step 1: Store original balance in a temp file
+	fmt.Println("[DEBUG] Step 1: Retrieving original balance...")
+	originalBalanceStr, err := bs.GetBalance()
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to retrieve original balance: %v\n", err)
+		return "", fmt.Errorf("failed to retrieve original balance: %w", err)
+	}
+	fmt.Printf("[DEBUG] Original balance: %s\n", originalBalanceStr)
+
+	if err := updateTempFile("originalBalance", originalBalanceStr); err != nil {
+		fmt.Printf("[ERROR] Failed to store original balance: %v\n", err)
+		return "", fmt.Errorf("failed to store original balance: %w", err)
+	}
+
+	// Convert originalBalance to float64
+	originalBalance, err := strconv.ParseFloat(originalBalanceStr, 64)
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to parse original balance: %v\n", err)
+		return "", fmt.Errorf("failed to parse original balance: %w", err)
+	}
+
+	// Step 2: Create a raw transaction
+	fmt.Println("[DEBUG] Step 2: Creating raw transaction...")
+	rawId, err := bs.CreateRawTransaction(txid, dst, amount)
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to create raw transaction: %v\n", err)
+		return "", fmt.Errorf("failed to create raw transaction: %w", err)
+	}
+	fmt.Printf("[DEBUG] Raw transaction ID: %s\n", rawId)
+	time.Sleep(1 * time.Second)
+
+	// Step 3: Unlock the wallet
+	fmt.Println("[DEBUG] Step 3: Unlocking the wallet...")
+	if _, err := bs.UnlockWallet(passphrase); err != nil {
+		fmt.Printf("[ERROR] Failed to unlock wallet: %v\n", err)
+		return "", fmt.Errorf("failed to unlock wallet: %w", err)
+	}
+	time.Sleep(1 * time.Second)
+
+	// Step 4: Sign the raw transaction
+	fmt.Println("[DEBUG] Step 4: Signing raw transaction...")
+	hex, complete, err := bs.signRawTransaction(rawId)
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to sign raw transaction: %v\n", err)
+		return "", fmt.Errorf("failed to sign raw transaction: %w", err)
+	}
+	fmt.Printf("[DEBUG] Transaction signing complete. Hex: %s, Complete: %v\n", hex, complete)
+
+	if !complete {
+		fmt.Printf("[ERROR] Transaction signing incomplete\n")
+		return "", fmt.Errorf("transaction signing incomplete")
+	}
+	time.Sleep(1 * time.Second)
+
+	// Step 5: Send the raw transaction
+	fmt.Println("[DEBUG] Step 5: Sending raw transaction...")
+	txIdResult, err := bs.sendRawTransaction(hex)
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to send raw transaction: %v\n", err)
+		return "", fmt.Errorf("failed to send raw transaction: %w", err)
+	}
+	fmt.Printf("[DEBUG] Raw transaction sent successfully. TxID: %s\n", txIdResult)
+	time.Sleep(1 * time.Second)
+
+	// Step 6: Verify the transaction and balance
+	fmt.Println("[DEBUG] Step 6: Verifying transaction and balance...")
+	currentBalanceStr, err := bs.GetBalance()
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to retrieve current balance: %v\n", err)
+		return "", fmt.Errorf("failed to retrieve current balance: %w", err)
+	}
+
+	// Convert currentBalance to float64
+	currentBalance, err := strconv.ParseFloat(currentBalanceStr, 64)
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to parse current balance: %v\n", err)
+		return "", fmt.Errorf("failed to parse current balance: %w", err)
+	}
+
+	// Validate balance
+	expectedBalance := originalBalance - amount
+	if currentBalance != expectedBalance {
+		fmt.Printf("[ERROR] Balance mismatch: Expected %.8f, Got %.8f\n", expectedBalance, currentBalance)
+		return "", fmt.Errorf("balance mismatch after transaction")
+	}
+
+	fmt.Println("[DEBUG] Balance validation successful.")
+	time.Sleep(1 * time.Second)
+
+	// Step 7: Lock the wallet again (optional)
+	fmt.Println("[DEBUG] Step 7: Locking the wallet again...")
+	if _, err := bs.LockWallet(); err != nil {
+		fmt.Printf("[WARNING] Failed to lock wallet: %v\n", err)
+		// Continue even if locking fails
+	}
+	time.Sleep(1 * time.Second)
+
+	// Step 8: Delete temporary balance file
+	fmt.Println("[DEBUG] Step 8: Cleaning up temporary files...")
+	if err := deleteFromTempFile("originalBalance"); err != nil {
+		fmt.Printf("[WARNING] Failed to delete temp file: %v\n", err)
+	}
+	time.Sleep(1 * time.Second)
+
+	fmt.Println("[DEBUG] Transaction completed successfully.")
+	return txIdResult, nil
 }

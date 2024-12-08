@@ -23,3 +23,6 @@ squidcoinFiles/
 
 /btcwallet.exe
 btcwallet/btcwallet.exe
+
+/btcwallet_create.log
+btcwallet/btcwallet_create.log
