@@ -276,3 +276,132 @@ func TestLockWallet(t *testing.T) {
 	// 로그 출력
 	t.Logf("LockWallet Result: %s", result)
 }
+
+// go test -v -run ^TestLogin$
+func TestLogin(t *testing.T) {
+	btcService := NewBtcService()
+
+	// 초기화 호출
+	SetupTempFilePath()
+
+	// 테스트용 walletAddress와 passphrase
+	walletAddress := "1B5t2bk3BtCw88uveEFbvFERotX6adGY6w"
+	passphrase := "CSE416"
+
+	// Login 호출
+	result, err := btcService.Login(walletAddress, passphrase)
+	if err != nil {
+		t.Errorf("Login failed: %v", err)
+	}
+
+	// 결과 검증
+	expected := "Wallet unlocked successfully"
+	if result != expected {
+		t.Errorf("Expected %q, but got %q", expected, result)
+	}
+
+	// 로그 출력
+	t.Logf("Login Result: %s", result)
+}
+
+// go test -v -run ^TestGetBalance$
+func TestGetBalance(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Call GetBalance
+	balance, err := btcService.GetBalance()
+	if err != nil {
+		t.Errorf("Failed to get balance: %v", err)
+	}
+
+	// Log and Print balance
+	t.Logf("Wallet Balance: %s", balance)
+	fmt.Printf("Wallet Balance (from test): %s\n", balance)
+}
+
+// go test -v -run ^TestGetReceivedByAddress$
+func TestGetReceivedByAddress(t *testing.T) {
+	btcService := NewBtcService()
+
+	// 테스트용 walletAddress 설정
+	walletAddress := "1B5t2bk3BtCw88uveEFbvFERotX6adGY6w"
+
+	// Ensure btcd and btcwallet are running
+	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
+		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
+	}
+
+	// Call GetReceivedByAddress
+	receivedAmount, err := btcService.GetReceivedByAddress(walletAddress)
+	if err != nil {
+		t.Errorf("Failed to get received amount for address %s: %v", walletAddress, err)
+		return
+	}
+
+	// Log and Print received amount
+	t.Logf("Received amount for address %s: %s", walletAddress, receivedAmount)
+	fmt.Printf("Received amount for address %s (from test): %s\n", walletAddress, receivedAmount)
+}
+
+// go test -v -run ^TestGetBlockCount$
+func TestGetBlockCount(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Ensure btcd is running
+	if !isProcessRunning("btcd") {
+		t.Fatalf("btcd is not running. Please start btcd before testing")
+	}
+
+	// Call GetBlockCount
+	blockCount, err := btcService.GetBlockCount()
+	if err != nil {
+		t.Errorf("Failed to get block count: %v", err)
+		return
+	}
+
+	// Log and Print block count
+	t.Logf("Current block count: %s", blockCount)
+	fmt.Printf("Current block count (from test): %s\n", blockCount)
+}
+
+// go test -v -run ^TestListReceivedByAddress$
+func TestListReceivedByAddress(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Ensure btcd and btcwallet are running
+	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
+		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
+	}
+
+	// Call ListReceivedByAddress
+	addressList, err := btcService.ListReceivedByAddress()
+	if err != nil {
+		t.Errorf("Failed to list received addresses: %v", err)
+		return
+	}
+
+	// Log and Print address list
+	t.Logf("Received Addresses: %v", addressList)
+	fmt.Printf("Received Addresses (from test): %v\n", addressList)
+}
+
+// go test -v -run ^TestListUnspent$
+func TestListUnspent(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Ensure btcd and btcwallet are running
+	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
+		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
+	}
+
+	// Call ListUnspent
+	utxos, err := btcService.ListUnspent()
+	if err != nil {
+		t.Errorf("Failed to list unspent transactions: %v", err)
+		return
+	}
+
+	// Log and Print full result
+	t.Logf("List of unspent transactions: %v", utxos)
+	fmt.Printf("List of unspent transactions (from test): %v\n", utxos)
+}

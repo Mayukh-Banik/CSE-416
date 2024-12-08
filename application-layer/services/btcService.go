@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // Setting the executable path as a global variable
@@ -659,4 +660,235 @@ func (bs *BtcService) LockWallet() (string, error) {
 	result := strings.TrimSpace(output.String())
 	fmt.Println("Wallet locked successfully.")
 	return result, nil
+}
+
+func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
+	// Step 1: Start btcd with wallet address
+	btcdResult := bs.StartBtcd(walletAddress)
+	time.Sleep(time.Second) // 1 second
+	if btcdResult != "btcd started successfully" {
+		fmt.Printf("Failed to start btcd: %s\n", btcdResult)
+		bs.StopBtcd()
+		return "Failed to start btcd", fmt.Errorf("Failed to start btcd: %s", btcdResult)
+	}
+
+	// Step 2: Start btcwallet
+	btcwalletResult := bs.StartBtcwallet()
+	time.Sleep(time.Second) // 1 second
+	if btcwalletResult != "btcwallet started successfully" {
+		fmt.Printf("Failed to start btcwallet: %s\n", btcwalletResult)
+		bs.StopBtcd()
+		bs.StopBtcwallet()
+		return "Failed to start btcwallet", fmt.Errorf("Failed to start btcwallet: %s", btcwalletResult)
+	}
+
+	// Step 4: Unlock the wallet
+	unlockResult, err := bs.UnlockWallet(passphrase)
+	time.Sleep(time.Second) // 1 second
+	if err != nil {
+		fmt.Printf("Failed to unlock wallet: %v\n", err)
+		bs.StopBtcd()
+		time.Sleep(time.Second) // 1 second
+		bs.StopBtcwallet()
+		return "Failed to unlock wallet", fmt.Errorf("Failed to unlock wallet: %w", err)
+	}
+
+	// Step 5: Success
+	fmt.Println("Login successful. Wallet unlocked.")
+	return unlockResult, nil
+}
+
+func (bs *BtcService) GetBalance() (string, error) {
+	// Check if btcd and btcwallet are running
+	if !isProcessRunning("btcd") {
+		return "", fmt.Errorf("btcd is not running. Please start btcd before checking balance")
+	}
+
+	if !isProcessRunning("btcwallet") {
+		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before checking balance")
+	}
+
+	// Execute btcctl getbalance command
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"getbalance",
+	)
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error fetching balance: %v\n", err)
+		return "", fmt.Errorf("Error fetching balance: %w", err)
+	}
+
+	// Return balance
+	balance := strings.TrimSpace(output.String())
+	fmt.Printf("Wallet balance: %s\n", balance)
+	return balance, nil
+}
+
+func (bs *BtcService) GetReceivedByAddress(walletAddress string) (string, error) {
+	// Check if btcd and btcwallet are running
+	if !isProcessRunning("btcd") {
+		return "", fmt.Errorf("btcd is not running. Please start btcd before checking received amount")
+	}
+
+	if !isProcessRunning("btcwallet") {
+		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before checking received amount")
+	}
+
+	// Execute btcctl getreceivedbyaddress command
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"getreceivedbyaddress",
+		walletAddress,
+		"1", // Minimum confirmations set to 1
+	)
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error fetching received amount for address %s: %v\n", walletAddress, err)
+		return "", fmt.Errorf("Error fetching received amount for address %s: %w", walletAddress, err)
+	}
+
+	// Return received amount
+	receivedAmount := strings.TrimSpace(output.String())
+	fmt.Printf("Received amount for address %s: %s\n", walletAddress, receivedAmount)
+	return receivedAmount, nil
+}
+
+func (bs *BtcService) GetBlockCount() (string, error) {
+	// Check if btcd is running
+	if !isProcessRunning("btcd") {
+		return "", fmt.Errorf("btcd is not running. Please start btcd before checking block count")
+	}
+
+	// Execute btcctl getblockcount command
+	cmd := exec.Command(
+		btcctlPath,
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8334",
+		"--notls",
+		"getblockcount",
+	)
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error fetching block count: %v\n", err)
+		return "", fmt.Errorf("Error fetching block count: %w", err)
+	}
+
+	// Return block count
+	blockCount := strings.TrimSpace(output.String())
+	fmt.Printf("Current block count: %s\n", blockCount)
+	return blockCount, nil
+}
+
+func (bs *BtcService) ListReceivedByAddress() ([]map[string]interface{}, error) {
+	// Check if btcd and btcwallet are running
+	if !isProcessRunning("btcd") {
+		return nil, fmt.Errorf("btcd is not running. Please start btcd before listing addresses")
+	}
+
+	if !isProcessRunning("btcwallet") {
+		return nil, fmt.Errorf("btcwallet is not running. Please start btcwallet before listing addresses")
+	}
+
+	// Execute btcctl listreceivedbyaddress command
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"listreceivedbyaddress",
+		"0",    // Include addresses with 0 confirmations
+		"true", // Include empty addresses
+	)
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error listing received addresses: %v\n", err)
+		return nil, fmt.Errorf("Error listing received addresses: %w", err)
+	}
+
+	// Parse the output as JSON
+	var addresses []map[string]interface{}
+	if err := json.Unmarshal(output.Bytes(), &addresses); err != nil {
+		fmt.Printf("Error parsing address list: %v\n", err)
+		return nil, fmt.Errorf("Error parsing address list: %w", err)
+	}
+
+	// Log full result for debugging
+	fmt.Printf("ㅇㅇFull list of received addresses: %v\n", addresses)
+
+	// Return full result
+	return addresses, nil
+}
+
+func (bs *BtcService) ListUnspent() ([]map[string]interface{}, error) {
+	// Check if btcd and btcwallet are running
+	if !isProcessRunning("btcd") {
+		return nil, fmt.Errorf("btcd is not running. Please start btcd before listing unspent transactions")
+	}
+
+	if !isProcessRunning("btcwallet") {
+		return nil, fmt.Errorf("btcwallet is not running. Please start btcwallet before listing unspent transactions")
+	}
+
+	// Execute btcctl listunspent command
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"listunspent",
+	)
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error listing unspent transactions: %v\n", err)
+		return nil, fmt.Errorf("Error listing unspent transactions: %w", err)
+	}
+
+	// Parse the output as JSON
+	var utxos []map[string]interface{}
+	if err := json.Unmarshal(output.Bytes(), &utxos); err != nil {
+		fmt.Printf("Error parsing UTXO list: %v\n", err)
+		return nil, fmt.Errorf("Error parsing UTXO list: %w", err)
+	}
+
+	// Log full result for debugging
+	fmt.Printf("ㅇㅇList of unspent transactions: %v\n", utxos)
+
+	// Return full result
+	return utxos, nil
 }
