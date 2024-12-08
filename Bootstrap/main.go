@@ -417,10 +417,12 @@ func jsonToMap() {
 
 	// check if dir and file exist
 	if _, err := os.Stat(DirPath); os.IsNotExist(err) {
+		fmt.Println("utils folder does not exist")
 		return
 	}
 
 	if _, err := os.Stat(MarketplaceFilesPath); os.IsNotExist(err) {
+		fmt.Println("marketplaceFiles.json does not exist")
 		return
 	}
 
