@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofrs/flock"
@@ -36,6 +37,7 @@ var (
 	bootstrap_seed = "immacry"
 
 	fileNameToHashMap (map[string][]string)
+	mapMutex          sync.Mutex
 	// fileHashToName map[string]string
 )
 
@@ -403,8 +405,8 @@ func startFileCheck() {
 func jsonToMap() {
 	fmt.Println("in jsonToMap")
 	// thread safe operation
-	fileMutex.Lock()
-	defer fileMutex.Unlock()
+	mapMutex.Lock()
+	defer mapMutex.Unlock()
 
 	lock := flock.New(MarketplaceFilesPath + ".lock")
 	defer lock.Unlock()
@@ -438,22 +440,58 @@ func jsonToMap() {
 		fmt.Printf("Failed to parse JSON: %v\n", err)
 		return
 	}
-
+	fmt.Println(files)
 	fileNameToHash := make(map[string][]string)
 	// fileHashToName := make(map[string]string)
 
+	// for _, file := range files {
+	// 	var fileMetadata DHTMetadata
+	// 	data, err = globalDHT.GetValue(globalCtx, "/orcanet/"+file.Hash)
+	// 	if err != nil {
+	// 		fmt.Printf("Error fetching value from DHT for hash %s: %v\n", file.Hash, err)
+	// 		fmt.Println("file not found in DHT - removing from marketplaceFiles.json")
+	// 		updateFile(file, DirPath, MarketplaceFilesPath, true)
+	// 		continue
+	// 	} else {
+	// 		fmt.Println("file found in DHT - updating marketplaceFiles.json")
+	// 		_ = json.Unmarshal(data, &fileMetadata)
+	// 		updateFile(file, DirPath, MarketplaceFilesPath, false)
+	// 		fileNameToHash[file.Name] = append(fileNameToHash[file.Name], file.Hash)
+	// 	}
+	// }
+
 	for _, file := range files {
 		var fileMetadata DHTMetadata
-		data, err = globalDHT.GetValue(globalCtx, "/orcanet/"+file.Hash)
+		fmt.Printf("Processing file: %s with hash: %s\n", file.Name, file.Hash)
+
+		data, err := globalDHT.GetValue(globalCtx, "/orcanet/"+file.Hash)
 		if err != nil {
+			fmt.Printf("Error fetching value from DHT for hash %s: %v\n", file.Hash, err)
+			fmt.Println("File not found in DHT - removing from marketplaceFiles.json")
 			updateFile(file, DirPath, MarketplaceFilesPath, true)
-		} else {
-			_ = json.Unmarshal(data, &fileMetadata)
-			updateFile(file, DirPath, MarketplaceFilesPath, false)
-			// if file is in dht, add it to the list of available files
-			fileNameToHash[file.Name] = append(fileNameToHash[file.Name], file.Hash)
+			continue
 		}
+
+		fmt.Printf("Data received from DHT for hash %s: %s\n", file.Hash, string(data))
+		if err := json.Unmarshal(data, &fileMetadata); err != nil {
+			fmt.Printf("Failed to unmarshal data for hash %s: %v\n", file.Hash, err)
+			continue
+		}
+
+		fmt.Println("File found in DHT - updating marketplaceFiles.json")
+		if err := updateFile(file, DirPath, MarketplaceFilesPath, false); err != nil {
+			fmt.Printf("Failed to update file %s in marketplaceFiles.json: %v\n", file.Name, err)
+			continue
+		}
+
+		if _, exists := fileNameToHash[file.Name]; !exists {
+			fileNameToHash[file.Name] = []string{}
+		}
+		fileNameToHash[file.Name] = append(fileNameToHash[file.Name], file.Hash)
+		fmt.Printf("Updated fileNameToHash: %v\n", fileNameToHash)
 	}
+
+	fmt.Println("done iterating files")
 	fileNameToHashMap = fileNameToHash // for global use
 
 	// Log the map for debugging (optional)

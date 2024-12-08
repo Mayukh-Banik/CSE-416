@@ -13,17 +13,46 @@ var fileMutex sync.Mutex
 
 // use for user uploaded files and user downlaoded files
 func updateFile(newFileData DHTMetadata, dirPath string, filePath string, isDelete bool) error {
-	// make thread-safe in case multiple nodes send to cloud node
-	fileMutex.Lock()
-	defer fileMutex.Unlock()
+	fmt.Println("updating file", newFileData)
 
+	if _, err := os.Stat(filePath + ".lock"); err == nil {
+		fmt.Println("Stale lock file found. Attempting to remove:", filePath+".lock")
+		if err := os.Remove(filePath + ".lock"); err != nil {
+			return fmt.Errorf("failed to remove stale lock file: %v", err)
+		}
+		fmt.Println("Successfully removed stale lock file")
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("unexpected error checking lock file existence: %v", err)
+	}
+
+	fmt.Println("after removing possible lock")
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered from panic: %v\n", r)
+		}
+	}()
+
+	// make thread-safe in case multiple nodes send to cloud node
+	fmt.Println("Attempting to acquire mutex lock")
+	fileMutex.Lock()
+	fmt.Println("Mutex lock acquired")
+	defer fileMutex.Unlock()
+	fmt.Println("after fileMutex.lock()")
+
+	fmt.Println("Initializing flock lock on:", filePath+".lock")
 	lock := flock.New(filePath + ".lock")
+	fmt.Println("Flock initialized")
 	defer lock.Unlock()
+	fmt.Println("after flock")
 
 	locked, err := lock.TryLock()
-	if err != nil || !locked {
-		return fmt.Errorf("failed to get file lock: %v", err)
+	if err != nil {
+		return fmt.Errorf("error while attempting to lock file: %v", err)
 	}
+	if !locked {
+		return fmt.Errorf("file is already locked by another process: %s", filePath+".lock")
+	}
+	fmt.Println("File lock acquired")
 
 	// check if directory and file exist
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
@@ -34,7 +63,7 @@ func updateFile(newFileData DHTMetadata, dirPath string, filePath string, isDele
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		if err := os.WriteFile(filePath, []byte("[]"), 0644); err != nil {
-			return fmt.Errorf("failed to create files.json: %v", err)
+			return fmt.Errorf("failed to create marketplaceFiles.json: %v", err)
 		}
 	}
 
@@ -53,7 +82,7 @@ func updateFile(newFileData DHTMetadata, dirPath string, filePath string, isDele
 
 	if fileNameToHashMap == nil {
 		fileNameToHashMap = make(map[string][]string)
-	}	
+	}
 
 	if isDelete {
 		// Remove from fileNameToHashMap
