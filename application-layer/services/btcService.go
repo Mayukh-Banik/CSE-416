@@ -14,7 +14,7 @@ import (
 	"syscall"
 )
 
-// 글로벌 변수로 실행 파일 경로 설정
+// Setting the executable path as a global variable
 var (
 	btcdPath      = "../../btcd/btcd"
 	btcwalletPath = "../../btcwallet/btcwallet"
@@ -24,8 +24,8 @@ var (
 
 type BtcService struct{}
 
+// this function is used to check the contents of a directory for development purposes
 func CheckDirectoryContents(parentDir string) string {
-	// 경로 확인
 	// parentDir := "../../btcd"
 	_, err := utils.CheckDirectoryContents(parentDir)
 	if err != nil {
@@ -35,7 +35,6 @@ func CheckDirectoryContents(parentDir string) string {
 	return "successed to check directory"
 }
 
-// init 함수 이름을 변경한 초기화 함수
 func SetupTempFilePath() {
 	if os.Getenv("OS") == "Windows_NT" {
 		tempFilePath = filepath.Join(os.Getenv("TEMP"), "btc_temp.json")
@@ -46,28 +45,28 @@ func SetupTempFilePath() {
 }
 
 func deleteFromTempFile(key string) error {
-	// 파일 읽기
+	// Read files
 	content, err := ioutil.ReadFile(tempFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to read temp file: %w", err)
 	}
 
-	// JSON 파싱
+	// Parsing JSON
 	var data map[string]string
 	if err := json.Unmarshal(content, &data); err != nil {
 		return fmt.Errorf("failed to unmarshal temp file content: %w", err)
 	}
 
-	// 키 삭제
+	// Delete data
 	delete(data, key)
 
-	// JSON 직렬화
+	// JSON serialisation
 	updatedContent, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal updated data: %w", err)
 	}
 
-	// 파일 쓰기
+	// Write to file
 	if err := ioutil.WriteFile(tempFilePath, updatedContent, 0644); err != nil {
 		return fmt.Errorf("failed to write updated temp file: %w", err)
 	}
@@ -75,11 +74,11 @@ func deleteFromTempFile(key string) error {
 	return nil
 }
 
-// 임시 파일 읽기 및 업데이트 함수
+// updateTempFile is a helper function to update the temp file with a new key-value pair
 func updateTempFile(key, value string) error {
 	var data map[string]string
 
-	// 임시 파일 읽기
+	// Read file
 	content, err := ioutil.ReadFile(tempFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -93,10 +92,10 @@ func updateTempFile(key, value string) error {
 		}
 	}
 
-	// 데이터 업데이트
+	// Update data
 	data[key] = value
 
-	// 파일 쓰기
+	// JSON serialisation
 	newContent, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal updated data: %w", err)
@@ -109,7 +108,7 @@ func updateTempFile(key, value string) error {
 	return nil
 }
 
-// isProcessRunning는 특정 이름의 프로세스가 실행 중인지 확인하는 함수입니다.
+// isProcessRunning is a helper function to check if a process is running
 func isProcessRunning(processName string) bool {
 	cmd := exec.Command("powershell", "-Command", fmt.Sprintf("Get-Process | Where-Object {$_.Name -like '%s'}", processName))
 	var output bytes.Buffer
@@ -127,9 +126,37 @@ func NewBtcService() *BtcService {
 	return &BtcService{}
 }
 
-// StartBtcd는 btcd를 시작하고 실행 여부를 확인하는 함수입니다.
+// getMiningAddressFromTemp is a helper function to retrieve the mining address from the temp file
+func getMiningAddressFromTemp() (string, error) {
+	// Read temp file
+	content, err := ioutil.ReadFile(tempFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read temp file: %w", err)
+	}
+
+	// Parsing JSON
+	var data map[string]string
+	if err := json.Unmarshal(content, &data); err != nil {
+		return "", fmt.Errorf("failed to unmarshal temp file content: %w", err)
+	}
+
+	// Retrieve mining address
+	miningAddress, exists := data["miningaddr"]
+	if !exists || miningAddress == "" {
+		return "", fmt.Errorf("mining address not found in temp file")
+	}
+
+	return miningAddress, nil
+}
+
+// startBtcd is a function to start the btcd process
+// it takes an optional wallet address as an argument
+// if no argument is provided, btcd is started without a mining address
+// if an argument is provided, btcd is started with the mining address
+// if more than one argument is provided, an error is returned
+// cannot start another instance of btcd if it is already running
 func (bs *BtcService) StartBtcd(walletAddress ...string) string {
-	// btcd 실행 여부 확인
+	// Check if btcd is already running
 	if isProcessRunning("btcd") {
 		fmt.Println("btcd is already running. Cannot start another instance.")
 		return "btcd is already running"
@@ -137,7 +164,7 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 
 	var cmd *exec.Cmd
 
-	// 인자가 0개인 경우 기본 실행
+	// no argument provided
 	if len(walletAddress) == 0 {
 		cmd = exec.Command(
 			btcdPath,
@@ -146,7 +173,7 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 			"--notls",
 		)
 	} else if len(walletAddress) == 1 {
-		// 인자가 1개인 경우 실행
+		// one argument provided
 		cmd = exec.Command(
 			btcdPath,
 			"--rpcuser=user",
@@ -155,21 +182,21 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 			fmt.Sprintf("--miningaddr=%s", walletAddress[0]),
 		)
 	} else {
-		// 인자가 1개 초과인 경우 오류 반환
+		// more than one argument provided
 		fmt.Println("Invalid number of arguments. Only 0 or 1 argument is allowed.")
 		return "Invalid number of arguments"
 	}
 
-	// Detached mode 설정
+	// Detached mode
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP, // Windows에서 프로세스를 독립적으로 실행
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP, // need additional implementation for mac
 	}
 
-	// 표준 출력과 에러 연결
+	// Standard output and error
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	// btcd 프로세스 실행
+	// Start btcd process
 	if err := cmd.Start(); err != nil {
 		fmt.Printf("Error starting btcd: %v\n", err)
 		return "Error starting btcd"
@@ -177,7 +204,7 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 
 	fmt.Printf("btcd started with PID: %d\n", cmd.Process.Pid)
 
-	// 실행된 btcd 프로세스 확인
+	// Check if btcd process is running
 	if !isProcessRunning("btcd") {
 		fmt.Println("btcd process not found after starting.")
 		return "btcd process not found"
@@ -185,16 +212,16 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 
 	fmt.Println("btcd is running")
 
-	// 실행 성공 시 임시 파일 업데이트
-
+	// Update temp file with mining address
 	if len(walletAddress) == 0 {
-		// 마이닝 주소 삭제
+		// clear mining address from temp file
 		if err := deleteFromTempFile("miningaddr"); err != nil {
 			fmt.Printf("Failed to delete miningaddr from temp file: %v\n", err)
 			return "btcd started but failed to clear mining address from temp file"
 		}
 		fmt.Println("Mining address cleared from temporary file.")
 	} else if len(walletAddress) == 1 {
+		// update temp file with mining address
 		if err := updateTempFile("miningaddr", walletAddress[0]); err != nil {
 			fmt.Printf("Failed to update temp file: %v\n", err)
 			return "btcd started but failed to update temp file"
@@ -205,15 +232,56 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 	return "btcd started successfully"
 }
 
-// StopBtcd는 btcd 프로세스를 종료하는 함수입니다.
+// StartBtcwallet is a function to start the btcwallet process
+func (bs *BtcService) StartBtcwallet() string {
+	// Check if btcwallet is already running
+	if isProcessRunning("btcwallet") {
+		fmt.Println("btcwallet is already running. Cannot start another instance.")
+		return "btcwallet is already running"
+	}
+
+	// btcwallet command
+	cmd := exec.Command(
+		btcwalletPath,
+		"--btcdusername=user",
+		"--btcdpassword=password",
+		"--rpcconnect=127.0.0.1:8334",
+		"--noclienttls",
+		"--noservertls",
+		"--username=user",
+		"--password=password",
+	)
+
+	// Standard output and error
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Start btcwallet process
+	if err := cmd.Start(); err != nil {
+		fmt.Printf("Error starting btcwallet: %v\n", err)
+		return "Error starting btcwallet"
+	}
+
+	fmt.Printf("btcwallet started with PID: %d\n", cmd.Process.Pid)
+
+	// Check if btcwallet process is running
+	if !isProcessRunning("btcwallet") {
+		fmt.Println("btcwallet process not found after starting.")
+		return "btcwallet process not found"
+	}
+
+	fmt.Println("btcwallet is running")
+	return "btcwallet started successfully"
+}
+
+// StopBtcd is a function to stop the btcd process
 func (bs *BtcService) StopBtcd() string {
-	// btcd 실행 여부 확인
+	// check if btcd is running
 	checkProcessCmd := exec.Command("powershell", "-Command", "Get-Process | Where-Object {$_.Name -eq 'btcd'}")
 	var checkOutput bytes.Buffer
 	checkProcessCmd.Stdout = &checkOutput
 	checkProcessCmd.Stderr = &checkOutput
 
-	// 실행 여부를 확인하고 출력
 	fmt.Println("Checking for running btcd process...")
 	err := checkProcessCmd.Run()
 	fmt.Printf("Check Process Output: %s\n", checkOutput.String())
@@ -222,7 +290,7 @@ func (bs *BtcService) StopBtcd() string {
 		return "btcd is not running"
 	}
 
-	// btcd 프로세스 종료
+	// stop btcd process
 	fmt.Println("Stopping btcd process...")
 	cmd := exec.Command("taskkill", "/IM", "btcd.exe", "/F")
 	var output bytes.Buffer
@@ -240,51 +308,9 @@ func (bs *BtcService) StopBtcd() string {
 	return "btcd stopped successfully"
 }
 
-// StartBtcwallet는 btcwallet 프로세스를 시작하는 함수입니다.
-func (bs *BtcService) StartBtcwallet() string {
-	// btcwallet 실행 여부 확인
-	if isProcessRunning("btcwallet") {
-		fmt.Println("btcwallet is already running. Cannot start another instance.")
-		return "btcwallet is already running"
-	}
-
-	// btcwallet 실행 커맨드
-	cmd := exec.Command(
-		btcwalletPath,
-		"--btcdusername=user",
-		"--btcdpassword=password",
-		"--rpcconnect=127.0.0.1:8334",
-		"--noclienttls",
-		"--noservertls",
-		"--username=user",
-		"--password=password",
-	)
-
-	// 표준 출력과 에러 연결
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	// btcwallet 프로세스 실행
-	if err := cmd.Start(); err != nil {
-		fmt.Printf("Error starting btcwallet: %v\n", err)
-		return "Error starting btcwallet"
-	}
-
-	fmt.Printf("btcwallet started with PID: %d\n", cmd.Process.Pid)
-
-	// 실행된 btcwallet 프로세스 확인
-	if !isProcessRunning("btcwallet") {
-		fmt.Println("btcwallet process not found after starting.")
-		return "btcwallet process not found"
-	}
-
-	fmt.Println("btcwallet is running")
-	return "btcwallet started successfully"
-}
-
-// StopBtcwallet는 btcwallet 프로세스를 종료하는 함수입니다.
+// StopBtcwallet is a function to stop the btcwallet process
 func (bs *BtcService) StopBtcwallet() string {
-	// btcwallet 실행 여부 확인
+	// check if btcwallet is running
 	if !isProcessRunning("btcwallet") {
 		fmt.Println("btcwallet is not running. Cannot stop.")
 		return "btcwallet is not running"
@@ -305,18 +331,18 @@ func (bs *BtcService) StopBtcwallet() string {
 }
 
 func initializeTempFile() error {
-	// 초기 데이터
+	// initial data
 	initialData := map[string]string{
 		"status": "initialized",
 	}
 
-	// JSON 직렬화
+	// JSON serialisation
 	dataBytes, err := json.MarshalIndent(initialData, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal initial data: %w", err)
 	}
 
-	// 임시 파일 쓰기
+	// Write to file
 	err = ioutil.WriteFile(tempFilePath, dataBytes, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write to temp file: %w", err)
@@ -325,11 +351,11 @@ func initializeTempFile() error {
 	return nil
 }
 
-// Init은 btcd와 btcwallet을 시작하고 TA 서버에 연결한 뒤 종료하는 초기화 함수입니다.
+// Init is an initialisation function that starts btcd and btcwallet, connects to the TA server, and exits.
 func (bs *BtcService) Init() string {
 	SetupTempFilePath()
 
-	// 임시 파일 초기화
+	// initialize temp file
 	err := initializeTempFile()
 	if err != nil {
 		fmt.Printf("Failed to initialize temp file: %v\n", err)
@@ -337,7 +363,7 @@ func (bs *BtcService) Init() string {
 	}
 	fmt.Println("Temporary file initialized successfully.")
 
-	// 1. btcd 시작
+	// start btcd
 	btcdResult := bs.StartBtcd()
 	if btcdResult != "btcd started successfully" {
 		stopBtcd()
@@ -346,7 +372,7 @@ func (bs *BtcService) Init() string {
 		return btcdResult
 	}
 
-	// 2. btcwallet 시작
+	// start btcwallet
 	btcwalletResult := bs.StartBtcwallet()
 	if btcwalletResult != "btcwallet started successfully" {
 		stopBtcd()
@@ -355,7 +381,7 @@ func (bs *BtcService) Init() string {
 		return btcwalletResult
 	}
 
-	// 3. TA 서버 연결 (btcctl 명령 실행)
+	// connect to TA server
 	cmd := exec.Command(
 		btcctlPath,
 		"--rpcuser=user",
@@ -378,14 +404,13 @@ func (bs *BtcService) Init() string {
 
 	fmt.Println("Connected to TA server successfully.")
 
-	// 4. btcd 종료
+	// stop btcd and btcwallet
 	stopBtcdResult := bs.StopBtcd()
 	if stopBtcdResult != "btcd stopped successfully" {
 		fmt.Println("Failed to stop btcd.")
 		return stopBtcdResult
 	}
 
-	// 5. btcwallet 종료
 	stopBtcwalletResult := bs.StopBtcwallet()
 	if stopBtcwalletResult != "btcwallet stopped successfully" {
 		fmt.Println("Failed to stop btcwallet.")
@@ -396,9 +421,9 @@ func (bs *BtcService) Init() string {
 	return "Initialization and cleanup completed successfully"
 }
 
-// getMiningStatus는 마이닝이 활성화되어 있는지 확인하는 함수입니다.
+// getMiningStatus is a function to check the mining status
 func (bs *BtcService) GetMiningStatus() (bool, error) {
-	// btcctl 명령 실행
+	// btcctl command
 	cmd := exec.Command(
 		btcctlPath,
 		"--rpcuser=user",
@@ -412,26 +437,26 @@ func (bs *BtcService) GetMiningStatus() (bool, error) {
 	cmd.Stdout = &output
 	cmd.Stderr = &output
 
-	// 명령 실행
+	// execute command
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error executing btcctl getgenerate: %v\n", err)
 		return false, fmt.Errorf("error executing btcctl getgenerate: %w", err)
 	}
 
-	// 출력 결과 분석
+	// get result
 	result := output.String()
 	fmt.Printf("getgenerate output: %s\n", result)
 
-	// 결과에 따라 true 또는 false 반환
+	// check if mining is active
 	if result == "true\n" {
 		return true, nil
 	}
 	return false, nil
 }
 
-// StartMining는 지정된 수의 블록을 생성하는 함수입니다.
+// StartMining is a function to start mining
 func (bs *BtcService) StartMining(numBlock int) string {
-	// 현재 마이닝 상태 확인
+	// check if mining is already running
 	isMining, err := bs.GetMiningStatus()
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
@@ -443,7 +468,7 @@ func (bs *BtcService) StartMining(numBlock int) string {
 		return "mining is running"
 	}
 
-	// btcctl 명령 실행
+	// start mining
 	cmd := exec.Command(
 		btcctlPath,
 		"--wallet",
@@ -452,14 +477,14 @@ func (bs *BtcService) StartMining(numBlock int) string {
 		"--rpcserver=127.0.0.1:8332",
 		"--notls",
 		"generate",
-		strconv.Itoa(numBlock), // numBlock을 문자열로 변환
+		strconv.Itoa(numBlock),
 	)
 
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
 
-	// 명령 실행
+	// execute command
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error starting mining: %v\n", err)
 		return fmt.Sprintf("Error starting mining: %s", err.Error())
@@ -469,43 +494,22 @@ func (bs *BtcService) StartMining(numBlock int) string {
 	return "mining started successfully"
 }
 
-func getMiningAddressFromTemp() (string, error) {
-	// 파일 읽기
-	content, err := ioutil.ReadFile(tempFilePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read temp file: %w", err)
-	}
-
-	// JSON 파싱
-	var data map[string]string
-	if err := json.Unmarshal(content, &data); err != nil {
-		return "", fmt.Errorf("failed to unmarshal temp file content: %w", err)
-	}
-
-	// 마이닝 주소 가져오기
-	miningAddress, exists := data["miningaddr"]
-	if !exists || miningAddress == "" {
-		return "", fmt.Errorf("mining address not found in temp file")
-	}
-
-	return miningAddress, nil
-}
-
+// StopMining is a function to stop mining
 func (bs *BtcService) StopMining() string {
-	// 1. 마이닝 상태 확인
+	// check if mining is running
 	isMining, err := bs.GetMiningStatus()
 	if err != nil {
 		fmt.Printf("Failed to check mining status: %v\n", err)
 		return "Error checking mining status"
 	}
 
-	// 2. 마이닝이 활성화되지 않은 경우
+	// if mining is not running, no action needed
 	if !isMining {
 		fmt.Println("Mining is not active. No action needed.")
 		return "Mining is not active"
 	}
 
-	// 3. 임시 파일에서 마이닝 주소 가져오기
+	// get mining address from temp file
 	miningAddress, err := getMiningAddressFromTemp()
 	if err != nil {
 		fmt.Printf("Failed to retrieve mining address: %v\n", err)
@@ -513,7 +517,7 @@ func (bs *BtcService) StopMining() string {
 	}
 	fmt.Printf("Retrieved mining address: %s\n", miningAddress)
 
-	// 4. btcd 및 btcwallet 중지
+	// stop btcd and btcwallet
 	stopBtcdResult := bs.StopBtcd()
 	if stopBtcdResult != "btcd stopped successfully" {
 		fmt.Printf("Failed to stop btcd: %s\n", stopBtcdResult)
@@ -526,7 +530,7 @@ func (bs *BtcService) StopMining() string {
 		return stopBtcwalletResult
 	}
 
-	// 5. btcd 및 btcwallet 재시작
+	// restart btcd and btcwallet with mining address
 	startBtcdResult := bs.StartBtcd(miningAddress)
 	if startBtcdResult != "btcd started successfully" {
 		fmt.Printf("Failed to restart btcd with mining address: %s\n", startBtcdResult)
@@ -539,27 +543,25 @@ func (bs *BtcService) StopMining() string {
 		return startBtcwalletResult
 	}
 
-	// 6. 작업 완료 메시지
 	fmt.Println("Mining process stopped and restarted successfully.")
 	return "Mining process stopped and restarted successfully"
 }
 
+// GetNewAddress is a function to generate a new address
 func (bs *BtcService) GetNewAddress() (string, error) {
-	// btcd와 btcwallet이 실행 중인지 확인
+	// check if btcd and btcwallet are running
 	btcdRunning := isProcessRunning("btcd")
 	btcwalletRunning := isProcessRunning("btcwallet")
 
-	// btcd가 실행 중인지 확인
+	// check if btcd and btcwallet are running
 	if !btcdRunning {
 		return "", fmt.Errorf("btcd is not running. Please start btcd before calling this function")
 	}
-
-	// btcwallet이 실행 중인지 확인
 	if !btcwalletRunning {
 		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before calling this function")
 	}
 
-	// 3. 새 주소 생성
+	// get new address
 	cmd := exec.Command(
 		btcctlPath,
 		"--rpcuser=user",
@@ -578,10 +580,83 @@ func (bs *BtcService) GetNewAddress() (string, error) {
 		return "", fmt.Errorf("Error generating new address: %w", err)
 	}
 
-	// 생성된 주소
+	// new address
 	newAddress := strings.TrimSpace(output.String())
 	fmt.Printf("Generated new address: %s\n", newAddress)
 
-	// 최종적으로 새 주소 반환
 	return newAddress, nil
+}
+
+// UnlockWallet is a function to unlock the wallet
+func (bs *BtcService) UnlockWallet(passphrase string) (string, error) {
+	// check if btcd and btcwallet are running
+	if !isProcessRunning("btcd") {
+		return "", fmt.Errorf("btcd is not running. Please start btcd before unlocking the wallet")
+	}
+
+	if !isProcessRunning("btcwallet") {
+		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before unlocking the wallet")
+	}
+
+	// unlock wallet command for 600 seconds
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"walletpassphrase",
+		passphrase,
+		"600", // unlock for 600 seconds
+	)
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error unlocking wallet: %v\n", err)
+		return "", fmt.Errorf("Error unlocking wallet: %w", err)
+	}
+
+	result := strings.TrimSpace(output.String())
+	fmt.Println("Wallet unlocked successfully.")
+	return result, nil
+}
+
+// LockWallet is a function to lock the wallet
+func (bs *BtcService) LockWallet() (string, error) {
+	// check if btcd and btcwallet are running
+	if !isProcessRunning("btcd") {
+		return "", fmt.Errorf("btcd is not running. Please start btcd before locking the wallet")
+	}
+
+	if !isProcessRunning("btcwallet") {
+		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before locking the wallet")
+	}
+
+	// lock wallet command
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"walletlock",
+	)
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error locking wallet: %v\n", err)
+		return "", fmt.Errorf("Error locking wallet: %w", err)
+	}
+
+	result := strings.TrimSpace(output.String())
+	fmt.Println("Wallet locked successfully.")
+	return result, nil
 }
