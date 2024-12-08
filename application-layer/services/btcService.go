@@ -16,6 +16,14 @@ import (
 	"runtime"
 )
 
+// NewBtcService creates a new instance of BtcService
+
+func NewBtcService() *BtcService {
+	SetupTempFilePath() // Ensure temp file is set up
+    return &BtcService{}
+
+}
+
 const CREATE_NO_WINDOW = 0x08000000
 
 // Setting the executable path as a global variable
@@ -40,6 +48,27 @@ func CheckDirectoryContents(parentDir string) string {
 	return "successed to check directory"
 }
 
+func initializeTempFile() error {
+	// initial data
+	initialData := map[string]string{
+		"status": "initialized",
+	}
+
+	// JSON serialisation
+	dataBytes, err := json.MarshalIndent(initialData, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal initial data: %w", err)
+	}
+
+	// Write to file
+	err = ioutil.WriteFile(tempFilePath, dataBytes, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write to temp file: %w", err)
+	}
+
+	return nil
+}
+
 func SetupTempFilePath() {
 	if os.Getenv("OS") == "Windows_NT" {
 		tempFilePath = filepath.Join(os.Getenv("TEMP"), "btc_temp.json")
@@ -47,6 +76,16 @@ func SetupTempFilePath() {
 		tempFilePath = "/tmp/btcd_temp.json"
 	}
 	fmt.Printf("Temporary file path set to: %s\n", tempFilePath)
+
+	// Check if the file exists, and initialize it if it doesn't
+	if _, err := os.Stat(tempFilePath); os.IsNotExist(err) {
+		fmt.Println("Temp file not found. Initializing...")
+		if err := initializeTempFile(); err != nil {
+			fmt.Printf("Failed to initialize temp file: %v\n", err)
+		} else {
+			fmt.Println("Temp file initialized successfully.")
+		}
+	}
 }
 
 func deleteFromTempFile(key string) error {
@@ -115,20 +154,37 @@ func updateTempFile(key, value string) error {
 
 // isProcessRunning is a helper function to check if a process is running
 func isProcessRunning(processName string) bool {
-	cmd := exec.Command("powershell", "-Command", fmt.Sprintf("Get-Process | Where-Object {$_.Name -like '%s'}", processName))
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		// Windows: Use PowerShell to check processes
+		cmd = exec.Command("powershell", "-Command", fmt.Sprintf("Get-Process | Where-Object {$_.Name -eq '%s'}", processName))
+	} else if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+		// macOS/Linux: Use pgrep to check processes
+		cmd = exec.Command("pgrep", "-f", processName) // Use -f to match full command
+	} else {
+		fmt.Printf("Unsupported OS: %s\n", runtime.GOOS)
+		return false
+	}
+
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
 
-	if err := cmd.Run(); err != nil {
-		return false
+	err := cmd.Run()
+	if err != nil {
+		// Log error for debugging
+		fmt.Printf("Error checking process: %v\n", err)
+		if output.String() == "" {
+			return false
+		}
 	}
 
-	return output.String() != ""
-}
+	// Log output for debugging
+	fmt.Printf("isProcessRunning output: %s\n", output.String())
 
-func NewBtcService() *BtcService {
-	return &BtcService{}
+	// Return true if output is not empty
+	return strings.TrimSpace(output.String()) != ""
 }
 
 // getMiningAddressFromTemp is a helper function to retrieve the mining address from the temp file
@@ -194,9 +250,10 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 
 	// Detached mode with OS-specific handling
 	if runtime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			// CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
-		}
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+	} else if runtime.GOOS == "darwin" {
+		// macOS specific adjustments
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
 	}
 
 	// Standard output and error
@@ -237,6 +294,51 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 	}
 
 	return "btcd started successfully"
+}
+
+// StopBtcd stops the btcd process.
+// go test -v -run ^TestStopBtcd$ -count=1 application-layer/services
+// use -count=1 to avoid caching
+func (bs *BtcService) StopBtcd() string {
+	var checkProcessCmd *exec.Cmd
+	var killCmd *exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		// Check if btcd is running
+		checkProcessCmd = exec.Command("powershell", "-Command", "Get-Process | Where-Object {$_.Name -eq 'btcd'}")
+		killCmd = exec.Command("taskkill", "/IM", "btcd.exe", "/F")
+	} else if runtime.GOOS == "darwin" {
+		// macOS implementation
+		checkProcessCmd = exec.Command("pgrep", "btcd")
+		killCmd = exec.Command("pkill", "-f", "btcd") // Use -f for full path match
+	}
+
+	// Check if btcd is running
+	var checkOutput bytes.Buffer
+	checkProcessCmd.Stdout = &checkOutput
+	checkProcessCmd.Stderr = &checkOutput
+
+	fmt.Println("Checking for running btcd process...")
+	err := checkProcessCmd.Run()
+	if err != nil || checkOutput.String() == "" {
+		fmt.Println("btcd is not running. Cannot stop.")
+		return "btcd is not running"
+	}
+
+	// Stop btcd process
+	fmt.Println("Stopping btcd process...")
+	var killOutput bytes.Buffer
+	killCmd.Stdout = &killOutput
+	killCmd.Stderr = &killOutput
+
+	err = killCmd.Run()
+	if err != nil {
+		fmt.Printf("Error stopping btcd: %v\n", err)
+		return fmt.Sprintf("Error stopping btcd: %s", killOutput.String())
+	}
+
+	fmt.Println("btcd stopped successfully")
+	return "btcd stopped successfully"
 }
 
 // StartBtcwallet is a function to start the btcwallet process
@@ -281,40 +383,6 @@ func (bs *BtcService) StartBtcwallet() string {
 	return "btcwallet started successfully"
 }
 
-// StopBtcd is a function to stop the btcd process
-func (bs *BtcService) StopBtcd() string {
-	// check if btcd is running
-	checkProcessCmd := exec.Command("powershell", "-Command", "Get-Process | Where-Object {$_.Name -eq 'btcd'}")
-	var checkOutput bytes.Buffer
-	checkProcessCmd.Stdout = &checkOutput
-	checkProcessCmd.Stderr = &checkOutput
-
-	fmt.Println("Checking for running btcd process...")
-	err := checkProcessCmd.Run()
-	fmt.Printf("Check Process Output: %s\n", checkOutput.String())
-	if err != nil || checkOutput.String() == "" {
-		fmt.Println("btcd is not running. Cannot stop.")
-		return "btcd is not running"
-	}
-
-	// stop btcd process
-	fmt.Println("Stopping btcd process...")
-	cmd := exec.Command("taskkill", "/IM", "btcd.exe", "/F")
-	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
-
-	err = cmd.Run()
-	fmt.Printf("Taskkill Output: %s\n", output.String())
-	if err != nil {
-		fmt.Printf("Error stopping btcd: %v\n", err)
-		return fmt.Sprintf("Error stopping btcd: %s", output.String())
-	}
-
-	fmt.Println("btcd stopped successfully")
-	return "btcd stopped successfully"
-}
-
 // StopBtcwallet is a function to stop the btcwallet process
 func (bs *BtcService) StopBtcwallet() string {
 	// check if btcwallet is running
@@ -337,26 +405,6 @@ func (bs *BtcService) StopBtcwallet() string {
 	return "btcwallet stopped successfully"
 }
 
-func initializeTempFile() error {
-	// initial data
-	initialData := map[string]string{
-		"status": "initialized",
-	}
-
-	// JSON serialisation
-	dataBytes, err := json.MarshalIndent(initialData, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal initial data: %w", err)
-	}
-
-	// Write to file
-	err = ioutil.WriteFile(tempFilePath, dataBytes, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write to temp file: %w", err)
-	}
-
-	return nil
-}
 
 // Init is an initialisation function that starts btcd and btcwallet, connects to the TA server, and exits.
 func (bs *BtcService) Init() string {

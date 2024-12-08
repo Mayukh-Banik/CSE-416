@@ -7,41 +7,96 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"runtime"
 )
+
+
 
 // Get-Process | Where-Object {$_.Name -like "btc*"}
 
 // C:\dev\workspace\CSE-416\application-layer\services> go test -v -run ^TestStopBtcd$
 // go test -v -run ^TestStartBtcdWithNoArgs$
+// go test -v -run ^TestStartBtcdWithNoArgs$ -count=1 application-layer/services
+// TestStartBtcdWithNoArgs validates starting btcd without arguments.
 func TestStartBtcdWithNoArgs(t *testing.T) {
-
 	btcService := NewBtcService()
-	// 초기화 호출
-	btcService.Init()
 
-	fmt.Println("Starting TestStartBtcdWithNoArgs...") // 테스트 시작 메시지 출력
+	// Log test start
+	t.Log("Starting TestStartBtcdWithNoArgs...")
 
+	// Call StartBtcd with no arguments
 	result := btcService.StartBtcd()
 	expectedSuccess := "btcd started successfully"
 	expectedFailure := "Error starting btcd"
 	expectedAlreadyRunning := "btcd is already running"
 
-	fmt.Printf("Test Result: %s\n", result) // 실행 결과 출력
+	// Log result for debugging
+	t.Logf("Test Result: %s", result)
 
+	// Validate results based on OS
 	if result != expectedSuccess && result != expectedFailure && result != expectedAlreadyRunning {
 		t.Errorf("Unexpected result: %q", result)
 	}
 
+	// Additional logging based on results
 	if result == expectedSuccess {
 		t.Log("btcd started successfully with no arguments.")
-		fmt.Println("btcd started successfully.") // 추가 출력
 	} else if result == expectedFailure {
-		fmt.Println("btcd failed to start.")
+		t.Log("btcd failed to start.")
 	} else if result == expectedAlreadyRunning {
-		fmt.Println("btcd is already running.")
+		t.Log("btcd is already running.")
 	}
 
-	fmt.Println("TestStartBtcdWithNoArgs completed.") // 테스트 종료 메시지 출력
+	t.Log("TestStartBtcdWithNoArgs completed.")
+}
+
+func TestStartBtcdWithNoArgsAndStop(t *testing.T) {
+    btcService := NewBtcService()
+
+    // Log test start
+    t.Log("Starting TestStartBtcdWithNoArgsAndStop...")
+
+    // Call StartBtcd with no arguments
+    result := btcService.StartBtcd()
+    expectedSuccess := "btcd started successfully"
+    expectedFailure := "Error starting btcd"
+    expectedAlreadyRunning := "btcd is already running"
+
+    // Log result for debugging
+    t.Logf("Test Result: %s", result)
+
+    // Validate results based on OS
+    if result != expectedSuccess && result != expectedFailure && result != expectedAlreadyRunning {
+        t.Errorf("Unexpected result: %q", result)
+    }
+
+    // Additional logging based on results
+    if result == expectedSuccess {
+        t.Log("btcd started successfully with no arguments.")
+    } else if result == expectedFailure {
+        t.Log("btcd failed to start.")
+    } else if result == expectedAlreadyRunning {
+        t.Log("btcd is already running.")
+    }
+
+    // Stop btcd process (teardown)
+    t.Log("Stopping btcd process...")
+    stopResult := btcService.StopBtcd()
+    t.Logf("Stop Result: %s", stopResult)
+
+    // Validate stop results
+    expectedStopSuccess := "btcd stopped successfully"
+    expectedNotRunning := "btcd is not running"
+
+    if stopResult != expectedStopSuccess && stopResult != expectedNotRunning {
+        t.Errorf("Unexpected stop result: %q", stopResult)
+    } else if stopResult == expectedStopSuccess {
+        t.Log("btcd stopped successfully.")
+    } else if stopResult == expectedNotRunning {
+        t.Log("btcd was not running.")
+    }
+
+    t.Log("TestStartBtcdWithNoArgsAndStop completed.")
 }
 
 // go test -v -run ^TestStartBtcdWithArgs$
@@ -86,16 +141,54 @@ func TestStartBtcdWithArgs2(t *testing.T) {
 }
 
 // go test -v -run ^TestStartBtcdWithInvalidArgs$
+// TestStartBtcdWithInvalidArgs validates behavior for invalid arguments.
 func TestStartBtcdWithInvalidArgs(t *testing.T) {
 	btcService := NewBtcService()
 
+	// Call StartBtcd with invalid arguments
 	result := btcService.StartBtcd("1ExampleWalletAddress", "AnotherArgument")
 	expected := "Invalid number of arguments"
 
+	// Validate result
 	if result != expected {
 		t.Errorf("Expected %q, but got %q", expected, result)
 	}
 }
+
+// C:\dev\workspace\CSE-416\application-layer\services> go test -v -run ^TestStopBtcd$
+// TestStopBtcd validates stopping the btcd process.
+func TestStopBtcd(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Log test start
+	t.Log("Starting TestStopBtcd...")
+
+	// Call StopBtcd
+	result := btcService.StopBtcd()
+
+	// Determine OS-specific expectations
+	expectedNotRunning := "btcd is not running"
+	expectedStopped := "btcd stopped successfully"
+
+	// Validate results based on OS
+	if runtime.GOOS == "windows" {
+		t.Log("Testing on Windows...")
+		if result != expectedNotRunning && result != expectedStopped {
+			t.Errorf("Unexpected result on Windows: %q", result)
+		}
+	} else if runtime.GOOS == "darwin" {
+		t.Log("Testing on macOS...")
+		if result != expectedNotRunning && result != expectedStopped {
+			t.Errorf("Unexpected result on macOS: %q", result)
+		}
+	}
+
+	// Log result for debugging
+	t.Logf("Result: %s", result)
+
+	t.Log("TestStopBtcd completed.")
+}
+
 
 func TestStartBtcwallet(t *testing.T) {
 	btcService := NewBtcService()
@@ -109,21 +202,6 @@ func TestStartBtcwallet(t *testing.T) {
 	}
 }
 
-// C:\dev\workspace\CSE-416\application-layer\services> go test -v -run ^TestStopBtcd$
-func TestStopBtcd(t *testing.T) {
-	btcService := NewBtcService()
-
-	result := btcService.StopBtcd()
-	t.Logf("Result: %s", result)
-	if result != "btcd is not running" {
-		t.Errorf("Expected 'btcd is not running', but got %q", result)
-	}
-
-	t.Logf("Result: %s", result)
-	if result != "btcd stopped successfully" {
-		t.Errorf("Expected 'btcd stopped successfully', but got %q", result)
-	}
-}
 func TestStopBtcwallet(t *testing.T) {
 	btcService := NewBtcService()
 
