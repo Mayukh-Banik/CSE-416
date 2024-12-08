@@ -386,6 +386,7 @@ func makeReservation(node host.Host) {
 func startFileCheck() {
 	fmt.Println("Performing initial DHT file availability check...")
 	jsonToMap()
+	fmt.Println("fileNameToHashMap: ", fileNameToHashMap)
 
 	ticker := time.NewTicker(12 * time.Hour)
 	defer ticker.Stop()

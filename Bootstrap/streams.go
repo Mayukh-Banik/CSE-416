@@ -89,7 +89,7 @@ func receiveMarketplaceRequest(node host.Host) error {
 
 		buf := bufio.NewReader(s)
 		data, err := io.ReadAll(buf) //read in requester id
-
+		fmt.Println("receiveMarketplaceRequest: received request from", string(data))
 		if err != nil {
 			if err == io.EOF {
 				log.Printf("Stream closed by peer :%s", s.Conn().RemotePeer())
@@ -98,7 +98,7 @@ func receiveMarketplaceRequest(node host.Host) error {
 			}
 			return
 		}
-
+		fmt.Println("receiveMarketplaceRequest: now entering sendMarketplaceFiles")
 		sendMarketplaceFiles(node, string(data))
 	})
 	return nil
