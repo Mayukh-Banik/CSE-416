@@ -32,7 +32,6 @@ func main() {
 	}
 
 	// 서비스 초기화
-	authService := services.NewAuthService()
 	btcService := services.NewBtcService()
 
 	// initialization
@@ -48,12 +47,10 @@ func main() {
 
 	fileRouter := files.InitFileRoutes()
 	downloadRouter := download.InitDownloadRoutes()
-	authController := controllers.NewAuthController(authService)
 	btcController := controllers.NewBtcController(btcService)
 
 	// 라우터 초기화
 	mux := http.NewServeMux()
-	routes.AuthRoutes(mux, authController)
 	routes.BtcRoutes(mux, btcController)
 
 	go dht_kad.StartDHTService()
