@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 	"runtime"
+	"github.com/creack/pty"
 )
 
 // NewBtcService creates a new instance of BtcService
@@ -341,6 +342,74 @@ func (bs *BtcService) StopBtcd() string {
 	return "btcd stopped successfully"
 }
 
+// btcwalletCreate executes a PowerShell script to create a btcwallet.
+func BtcwalletCreate(passphrase string) error {
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		// Use PowerShell script on Windows
+		cmd = exec.Command("powershell",
+			"-NoProfile",
+			"-ExecutionPolicy", "Bypass",
+			"-WindowStyle", "Hidden",
+			"-File", btcwalletScriptPath,
+		)
+		cmd.Env = append(os.Environ(), "BTCWALLET_PASSPHRASE="+passphrase)
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+	} else if runtime.GOOS == "darwin" {
+		// Use ./btcwallet directly on macOS
+		cmd = exec.Command(btcwalletPath, "--create")
+
+		// Create a pseudo-terminal
+		ptmx, err := pty.Start(cmd)
+		if err != nil {
+			return fmt.Errorf("failed to create pty: %v", err)
+		}
+		defer ptmx.Close()
+
+		// Simulate user inputs
+		go func() {
+			fmt.Fprintf(ptmx, "%s\n", passphrase) // Enter passphrase
+			fmt.Fprintf(ptmx, "%s\n", passphrase) // Confirm passphrase
+			fmt.Fprintf(ptmx, "no\n")             // No encryption for public data
+			fmt.Fprintf(ptmx, "no\n")             // No existing wallet seed
+			fmt.Fprintf(ptmx, "OK\n")             // Confirm seed saved
+		}()
+
+		// Capture output for debugging
+		var output bytes.Buffer
+		go func() {
+			output.ReadFrom(ptmx)
+		}()
+
+		// Wait for the command to finish
+		err = cmd.Wait()
+		if err != nil {
+			return fmt.Errorf("failed to execute btcwallet: %v\noutput: %s", err, output.String())
+		}
+
+		fmt.Printf("btcwallet output:\n%s\n", output.String())
+		return nil
+	} else {
+		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+	}
+
+	// Capture output for debugging
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// Run the command and capture errors
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to execute btcwallet: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+
+	fmt.Printf("btcwallet output:\n%s\n", stdout.String())
+	return nil
+}
+
+
 // StartBtcwallet is a function to start the btcwallet process
 func (bs *BtcService) StartBtcwallet() string {
 	// Check if btcwallet is already running
@@ -600,45 +669,6 @@ func (bs *BtcService) StopMining() string {
 
 	fmt.Println("Mining process stopped and restarted successfully.")
 	return "Mining process stopped and restarted successfully"
-}
-
-// btcwalletCreate executes a PowerShell script to create a btcwallet.
-func BtcwalletCreate(passphrase string) error {
-	// Configure PowerShell command with -WindowStyle Hidden
-	cmd := exec.Command("powershell",
-		"-NoProfile",
-		"-ExecutionPolicy", "Bypass",
-		"-WindowStyle", "Hidden",
-		"-File", btcwalletScriptPath,
-	)
-
-	// Add environment variable for the passphrase
-	cmd.Env = append(os.Environ(), "BTCWALLET_PASSPHRASE="+passphrase)
-
-	// Hide terminal window in Windows (I think this is not working)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		// HideWindow:    true,
-		// CreationFlags: CREATE_NO_WINDOW,
-	}
-
-	// Hide terminal window in Windows
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	// Execute the command
-	err := cmd.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start btcwallet process: %v", err)
-	}
-
-	// Since it runs in the background, return without waiting
-	// The console window will not appear as the application is in GUI mode.
-	// Logs can be recorded if needed.
-	fmt.Println("btcwallet process started in the background.")
-
-	return nil
 }
 
 // GetNewAddress is a function to generate a new address

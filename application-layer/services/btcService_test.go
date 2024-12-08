@@ -50,6 +50,8 @@ func TestStartBtcdWithNoArgs(t *testing.T) {
 	t.Log("TestStartBtcdWithNoArgs completed.")
 }
 
+//go test -v -run ^TestStartBtcdWithNoArgsAndStop$ -count=1 application-layer/services
+// TestStartBtcdWithNoArgsAndStop validates starting and stopping btcd without arguments.
 func TestStartBtcdWithNoArgsAndStop(t *testing.T) {
     btcService := NewBtcService()
 
@@ -157,6 +159,7 @@ func TestStartBtcdWithInvalidArgs(t *testing.T) {
 
 // C:\dev\workspace\CSE-416\application-layer\services> go test -v -run ^TestStopBtcd$
 // TestStopBtcd validates stopping the btcd process.
+// go test -v -run ^TestStopBtcd$ -count=1 application-layer/services    
 func TestStopBtcd(t *testing.T) {
 	btcService := NewBtcService()
 
@@ -758,3 +761,49 @@ func TestBtcwalletCreate_PowerShell(t *testing.T) {
 		fmt.Println("wallet.db successfully created.")
 	}
 }
+
+// go test -v -run ^TestBtcwalletCreate$ -count=1 application-layer/services
+// TestBtcwalletCreate btcwallet implementation test for macOs and Windows Powershell
+func TestBtcwalletCreate(t *testing.T) {
+	var walletDBPath string
+
+	// Determine OS-specific wallet.db path
+	if runtime.GOOS == "windows" {
+		userProfile := os.Getenv("USERPROFILE")
+		if userProfile == "" {
+			t.Fatal("USERPROFILE environment variable is not set")
+		}
+		walletDBPath = filepath.Join(userProfile, "AppData", "Local", "Btcwallet", "mainnet", "wallet.db")
+	} else if runtime.GOOS == "darwin" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			t.Fatalf("Failed to get home directory: %v", err)
+		}
+		walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
+	} else {
+		t.Fatalf("Unsupported OS: %s", runtime.GOOS)
+	}
+
+	// Remove existing wallet.db for a clean test
+	err := os.Remove(walletDBPath)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("Failed to delete existing wallet.db: %v", err)
+	}
+
+	// Call BtcwalletCreate to test wallet creation
+	passphrase := "CSE416"
+	err = BtcwalletCreate(passphrase)
+	if err != nil {
+		t.Fatalf("Failed to create btcwallet: %v", err)
+	}
+
+	// Verify wallet.db was created
+	if _, err := os.Stat(walletDBPath); os.IsNotExist(err) {
+		t.Fatal("wallet.db does not exist after creation")
+	} else {
+		fmt.Println("wallet.db successfully created.")
+	}
+}
+
+
+

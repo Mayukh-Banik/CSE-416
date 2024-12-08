@@ -13,6 +13,8 @@ require (
 	github.com/rs/cors v1.11.1
 )
 
+require github.com/creack/pty v1.1.24 // indirect
+
 require (
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
