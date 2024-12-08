@@ -51,6 +51,10 @@ func updateFile(newFileData DHTMetadata, dirPath string, filePath string, isDele
 		return fmt.Errorf("failed to parse JSON: %v", err)
 	}
 
+	if fileNameToHashMap == nil {
+		fileNameToHashMap = make(map[string][]string)
+	}	
+
 	if isDelete {
 		// Remove from fileNameToHashMap
 		if hashes, exists := fileNameToHashMap[newFileData.Name]; exists {

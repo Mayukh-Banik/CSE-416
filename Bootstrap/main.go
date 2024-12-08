@@ -384,6 +384,9 @@ func makeReservation(node host.Host) {
 
 // updates file availability every 12 hours
 func startFileCheck() {
+	fmt.Println("Performing initial DHT file availability check...")
+	jsonToMap()
+
 	ticker := time.NewTicker(12 * time.Hour)
 	defer ticker.Stop()
 
