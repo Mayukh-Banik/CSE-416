@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 	"runtime"
+	"time"
 )
 
 
@@ -233,6 +234,29 @@ func TestStopBtcwallet(t *testing.T) {
 	t.Log("TestStopBtcwallet completed.")
 }
 
+// go test -v -run ^TestInit$ -count=1 application-layer/services
+// TestInit validates the initialization of the BtcService.
+func TestInit(t *testing.T) {
+	btcService := NewBtcService()
+
+	// call Init function
+	result := btcService.Init()
+
+	// Small delay to allow process state updates
+	time.Sleep(500 * time.Millisecond)
+
+	expected := "Initialization and cleanup completed successfully"
+
+	// results validation
+	if result != expected {
+		t.Errorf("Expected %q, but got %q", expected, result)
+	}
+
+	// debugging log
+	t.Logf("Init function result: %s", result)
+}
+
+
 
 // go test -v -run ^TestStartBtcdWithArgs$
 func TestStartBtcdWithArgs(t *testing.T) {
@@ -288,25 +312,6 @@ func TestStartBtcdWithInvalidArgs(t *testing.T) {
 	if result != expected {
 		t.Errorf("Expected %q, but got %q", expected, result)
 	}
-}
-
-// go test -v -run ^TestInit$
-func TestInit(t *testing.T) {
-	btcService := NewBtcService()
-
-	// Init 호출
-	result := btcService.Init()
-
-	// 예상 결과
-	expected := "Initialization and cleanup completed successfully"
-
-	// 결과 검증
-	if result != expected {
-		t.Errorf("Expected %q, but got %q", expected, result)
-	}
-
-	// 추가 로그
-	t.Logf("Init function result: %s", result)
 }
 
 // go test -v -run ^TestGetMiningStatus$

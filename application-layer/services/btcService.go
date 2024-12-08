@@ -298,8 +298,6 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 }
 
 // StopBtcd stops the btcd process.
-// go test -v -run ^TestStopBtcd$ -count=1 application-layer/services
-// use -count=1 to avoid caching
 func (bs *BtcService) StopBtcd() string {
 	var checkProcessCmd *exec.Cmd
 	var killCmd *exec.Cmd
@@ -409,7 +407,6 @@ func BtcwalletCreate(passphrase string) error {
 	return nil
 }
 
-
 // StartBtcwallet is a function to start the btcwallet process
 func (bs *BtcService) StartBtcwallet() string {
 	// Check if btcwallet is already running
@@ -493,12 +490,12 @@ func (bs *BtcService) StopBtcwallet() string {
 	return "btcwallet stopped successfully"
 }
 
-
 // Init is an initialisation function that starts btcd and btcwallet, connects to the TA server, and exits.
 func (bs *BtcService) Init() string {
+	// Set up the temporary file path based on OS
 	SetupTempFilePath()
 
-	// initialize temp file
+	// Initialize the temp file
 	err := initializeTempFile()
 	if err != nil {
 		fmt.Printf("Failed to initialize temp file: %v\n", err)
@@ -506,7 +503,7 @@ func (bs *BtcService) Init() string {
 	}
 	fmt.Println("Temporary file initialized successfully.")
 
-	// start btcd
+	// Start btcd
 	btcdResult := bs.StartBtcd()
 	if btcdResult != "btcd started successfully" {
 		bs.StopBtcd()
@@ -515,7 +512,10 @@ func (bs *BtcService) Init() string {
 		return btcdResult
 	}
 
-	// start btcwallet
+	// Add a brief sleep to allow btcd to stabilize
+	time.Sleep(1 * time.Second)
+
+	// Start btcwallet
 	btcwalletResult := bs.StartBtcwallet()
 	if btcwalletResult != "btcwallet started successfully" {
 		bs.StopBtcd()
@@ -524,7 +524,10 @@ func (bs *BtcService) Init() string {
 		return btcwalletResult
 	}
 
-	// connect to TA server
+	// brief sleep to allow btcwallet to stabilize
+	time.Sleep(1 * time.Second)
+
+	// Connect to TA server
 	cmd := exec.Command(
 		btcctlPath,
 		"--rpcuser=user",
@@ -536,10 +539,16 @@ func (bs *BtcService) Init() string {
 		"add",
 	)
 
+	// Configure environment for MacOS compatibility
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
 
+	// Run the command to connect to the TA server
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error connecting to TA server: %v\n", err)
 		return fmt.Sprintf("Error connecting to TA server: %s", output.String())
@@ -547,18 +556,33 @@ func (bs *BtcService) Init() string {
 
 	fmt.Println("Connected to TA server successfully.")
 
-	// stop btcd and btcwallet
-	stopBtcdResult := bs.StopBtcd()
-	if stopBtcdResult != "btcd stopped successfully" {
-		fmt.Println("Failed to stop btcd.")
-		return stopBtcdResult
-	}
+	// sleep to ensure btcd and btcwallet states are stable before stopping
+	time.Sleep(1 * time.Second)
 
 	stopBtcwalletResult := bs.StopBtcwallet()
 	if stopBtcwalletResult != "btcwallet stopped successfully" {
 		fmt.Println("Failed to stop btcwallet.")
 		return stopBtcwalletResult
 	}
+
+	// sleep before stopping btcwallet
+	time.Sleep(1 * time.Millisecond)
+
+	// Stop btcd and btcwallet for cleanup
+	stopBtcdResult := bs.StopBtcd()
+	if stopBtcdResult != "btcd stopped successfully" {
+		fmt.Println("Failed to stop btcd.")
+		return stopBtcdResult
+	}
+
+	// // sleep before stopping btcwallet
+	// time.Sleep(1 * time.Millisecond)
+
+	// stopBtcwalletResult := bs.StopBtcwallet()
+	// if stopBtcwalletResult != "btcwallet stopped successfully" {
+	// 	fmt.Println("Failed to stop btcwallet.")
+	// 	return stopBtcwalletResult
+	// }
 
 	fmt.Println("Initialization and cleanup completed successfully.")
 	return "Initialization and cleanup completed successfully"
