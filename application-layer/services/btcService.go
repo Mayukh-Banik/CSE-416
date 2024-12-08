@@ -13,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"runtime"
 )
 
 const CREATE_NO_WINDOW = 0x08000000
@@ -191,9 +192,11 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 		return "Invalid number of arguments"
 	}
 
-	// Detached mode
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP, // need additional implementation for mac
+	// Detached mode with OS-specific handling
+	if runtime.GOOS == "windows" {
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			// CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
+		}
 	}
 
 	// Standard output and error
@@ -566,8 +569,8 @@ func BtcwalletCreate(passphrase string) error {
 
 	// Hide terminal window in Windows (I think this is not working)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: CREATE_NO_WINDOW,
+		// HideWindow:    true,
+		// CreationFlags: CREATE_NO_WINDOW,
 	}
 
 	// Hide terminal window in Windows
