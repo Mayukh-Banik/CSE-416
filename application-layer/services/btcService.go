@@ -552,7 +552,7 @@ func (bs *BtcService) StopMining() string {
 }
 
 // btcwalletCreate executes a PowerShell script to create a btcwallet.
-func btcwalletCreate(passphrase string) error {
+func BtcwalletCreate(passphrase string) error {
 	// Configure PowerShell command with -WindowStyle Hidden
 	cmd := exec.Command("powershell",
 		"-NoProfile",

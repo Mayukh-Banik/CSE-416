@@ -566,7 +566,7 @@ func TestBtcwalletCreate_PowerShell(t *testing.T) {
 	}
 
 	// btcwallet 생성 함수 호출
-	err = btcwalletCreate("CSE416")
+	err = BtcwalletCreate("CSE416")
 	if err != nil {
 		t.Fatalf("Failed to create btcwallet via PowerShell: %v", err)
 	}
