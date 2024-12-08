@@ -401,6 +401,7 @@ func startFileCheck() {
 
 // on start up: maps file name to hash (for searching operation) and file hash to file name
 func jsonToMap() {
+	fmt.Println("in jsonToMap")
 	// thread safe operation
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
