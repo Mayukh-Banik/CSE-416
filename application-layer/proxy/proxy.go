@@ -23,15 +23,32 @@ import (
 )
 
 var (
-	node_id             = ""
-	peer_id             = ""
-	relay_node_addr     = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
-	bootstrap_node_addr = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
-	globalCtx           context.Context
-	Peer_Addresses      []ma.Multiaddr
-	isHost              = true
-	fileMutex           sync.Mutex
+	node_id        = ""
+	peer_id        = ""
+	globalCtx      context.Context
+	Peer_Addresses []ma.Multiaddr
+	isHost         = true
+	fileMutex      sync.Mutex
 )
+
+const (
+	bootstrapNode   = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+	proxyKeyPrefix  = "/orcanet/proxy/"
+	Cloud_node_addr = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+	Cloud_node_id   = "12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+)
+
+type ProxyService struct {
+	dht  *dht.IpfsDHT
+	host host.Host
+}
+
+func NewProxyService(dht *dht.IpfsDHT, host host.Host) *ProxyService {
+	return &ProxyService{
+		dht:  dht,
+		host: host,
+	}
+}
 
 func getProxyFromDHT(dht *dht.IpfsDHT, peerID peer.ID) (string, error) {
 	ctx := context.Background()
@@ -42,18 +59,17 @@ func getProxyFromDHT(dht *dht.IpfsDHT, peerID peer.ID) (string, error) {
 	}
 	return string(value), nil
 }
+
 func getKnownProxyKeys() []string {
 	var keys []string
 	prefix := "/orcanet/proxy/"
 
 	// Get the known peers from the DHT
 	peers := dht_kad.DHT.Host().Peerstore().Peers()
-	fmt.Println("Known peers:", peers)
 
 	// Add the current node (itself) to the list of peers
 	currentNodeID := dht_kad.DHT.Host().ID()
 	peers = append(peers, currentNodeID)
-	fmt.Println("Including current node:", currentNodeID)
 
 	// Iterate through all peers, including the current node
 	for _, peerID := range peers {
@@ -105,7 +121,6 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 			mu.Lock()
 			proxies = append(proxies, proxy)
 			mu.Unlock()
-			log.Printf("Debug: Successfully added proxy for key: %s", k)
 		}(key)
 	}
 
@@ -128,13 +143,11 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 	}()
 
 	<-done
-	log.Printf("Debug: getAllProxiesFromDHT function completed. Found %d proxies", len(proxies))
 	return proxies, nil
 }
 
 func pollPeerAddresses(node host.Host) {
 	if isHost {
-		fmt.Println("In host part")
 		httpHostToClient(node)
 	}
 	for {
@@ -165,7 +178,6 @@ func pollPeerAddresses(node host.Host) {
 }
 
 func getAdjacentNodeProxiesMetadata(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Trying to get adjacent node proxies in backend")
 
 	// Retrieve connected peers
 	adjacentNodes := dht_kad.Host.Network().Peers()
@@ -177,7 +189,7 @@ func getAdjacentNodeProxiesMetadata(w http.ResponseWriter, r *http.Request) {
 	// Iterate over peers and request proxy metadata
 	for _, peer := range adjacentNodes {
 		peerID := peer.String()
-		if peerID != relay_node_addr && peerID != bootstrap_node_addr && peerID != dht_kad.PeerID && nodeSupportRefreshStreams(peer) {
+		if peerID != dht_kad.Bootstrap_node_addr && peerID != dht_kad.PeerID && nodeSupportRefreshStreams(peer) {
 			sendWG.Add(1)
 			responseWG.Add(1)
 			go func(peerID string) {
@@ -194,8 +206,6 @@ func getAdjacentNodeProxiesMetadata(w http.ResponseWriter, r *http.Request) {
 	// Introduce a short delay if necessary for processing
 	<-time.After(3 * time.Second)
 
-	fmt.Println("getAdjacentNodeProxiesMetadata: received everyone's proxy metadata: ", dht_kad.RefreshResponse)
-
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -205,7 +215,6 @@ func getAdjacentNodeProxiesMetadata(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
 
-	fmt.Println("getAdjacentNodeProxiesMetadata: response sent to frontend")
 }
 
 func nodeSupportRefreshStreams(peerID peer.ID) bool {
@@ -226,7 +235,7 @@ func nodeSupportRefreshStreams(peerID peer.ID) bool {
 }
 
 func handlePeerExchange(node host.Host) {
-	relayInfo, _ := peer.AddrInfoFromString(relay_node_addr)
+	bootstrap_node_info, _ := peer.AddrInfoFromString(dht_kad.Bootstrap_node_addr)
 	node.SetStreamHandler("/orcanet/p2p", func(s network.Stream) {
 		defer s.Close()
 
@@ -248,8 +257,8 @@ func handlePeerExchange(node host.Host) {
 				fmt.Println("Peer:")
 				if peerMap, ok := peer.(map[string]interface{}); ok {
 					if peerID, ok := peerMap["peer_id"].(string); ok {
-						if string(peerID) != string(relayInfo.ID) {
-							dht_kad.ConnectToPeerUsingRelay(node, peerID)
+						if string(peerID) != string(bootstrap_node_info.ID) {
+							dht_kad.ConnectToPeer(node, peerID)
 						}
 					}
 				}
@@ -261,9 +270,9 @@ func handlePeerExchange(node host.Host) {
 // Retrieveing proxies data, and adding yourself as host
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
-	go dht_kad.ConnectToPeer(node, relay_node_addr)
+	go dht_kad.ConnectToPeer(node, dht_kad.Bootstrap_node_addr)
+	go dht_kad.ConnectToPeer(node, Cloud_node_addr)
 	globalCtx = context.Background()
-	go dht_kad.ConnectToPeer(node, bootstrap_node_addr)
 	if r.Method == "POST" {
 		isHost = true
 		var newProxy models.Proxy
@@ -300,7 +309,7 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Debug: Connecting to relay node")
+	log.Printf("Debug: Connecting to bootstrap node")
 	getAdjacentNodeProxiesMetadata(w, r)
 
 	go pollPeerAddresses(node)
@@ -390,12 +399,12 @@ func clientHTTPRequestToHost(node host.Host, targetpeerid string, req *http.Requ
 	fmt.Println("In client http request to host")
 	var ctx = context.Background()
 	targetPeerID := strings.TrimSpace(targetpeerid)
-	relayAddr, err := ma.NewMultiaddr(relay_node_addr)
+	bootstrapAddr, err := ma.NewMultiaddr(dht_kad.Bootstrap_node_addr)
 	if err != nil {
-		log.Printf("Failed to create relay multiaddr: %v", err)
+		log.Printf("Failed to create bootstrapAddr multiaddr: %v", err)
 		return
 	}
-	peerMultiaddr := relayAddr.Encapsulate(ma.StringCast("/p2p-circuit/p2p/" + targetPeerID))
+	peerMultiaddr := bootstrapAddr.Encapsulate(ma.StringCast("/p2p-circuit/p2p/" + targetPeerID))
 
 	peerinfo, err := peer.AddrInfoFromP2pAddr(peerMultiaddr)
 	if err != nil {
