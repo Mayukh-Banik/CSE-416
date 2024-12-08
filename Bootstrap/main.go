@@ -33,7 +33,7 @@ var (
 	globalCtx      context.Context
 	globalDHT      *dht.IpfsDHT
 	relay_addr     = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
-	bootstrap_addr = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+	bootstrap_addr = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
 	bootstrap_seed = "immacry"
 
 	fileNameToHashMap (map[string][]string)
