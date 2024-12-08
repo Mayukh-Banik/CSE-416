@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 )
@@ -31,7 +32,6 @@ func main() {
 		log.Fatal("RPC_USER and RPC_PASS environment variables are required")
 	}
 
-	// 서비스 초기화
 	btcService := services.NewBtcService()
 
 	// initialization
@@ -47,11 +47,11 @@ func main() {
 
 	fileRouter := files.InitFileRoutes()
 	downloadRouter := download.InitDownloadRoutes()
+
 	btcController := controllers.NewBtcController(btcService)
 
-	// 라우터 초기화
-	mux := http.NewServeMux()
-	routes.BtcRoutes(mux, btcController)
+	router := mux.NewRouter()
+	routes.RegisterBtcRoutes(router, btcController)
 
 	go dht_kad.StartDHTService()
 
@@ -69,7 +69,7 @@ func main() {
 	http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
 
 	port := ":8080"
-	handler := c.Handler(mux)
+	handler := c.Handler(router)
 	fmt.Printf("Starting server for file routes and DHT on port %s...\n", port)
 	log.Fatal(http.ListenAndServe(port, handler))
 }
