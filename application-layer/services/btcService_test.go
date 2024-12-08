@@ -509,8 +509,110 @@ func TestCreateRawTransactionWithValidation(t *testing.T) {
 	t.Log("Transaction validation successful.")
 }
 
+// go test -v -run ^TestCreateRawTransaction$
+func TestCreateRawTransaction(t *testing.T) {
+	// BTC 서비스 초기화
+	btcService := NewBtcService()
+
+	SetupTempFilePath()
+
+	// 테스트 인자 설정
+	txid := "cf38e31e633110e35a0fd91c16807904a4e38d2acbfd5d5a985d36a7240fe702"
+	dst := "1G23RBEZVhePDeTP5gq4be3jEec5mBWorw"
+	amount := 20.0
+
+	// 함수 호출
+	rawTx, err := btcService.CreateRawTransaction(txid, dst, amount)
+	if err != nil {
+		t.Fatalf("Failed to create raw transaction: %v", err)
+	}
+
+	// 결과 검증
+	if rawTx == "" {
+		t.Errorf("Expected a valid raw transaction, but got an empty string")
+	}
+
+	t.Logf("Raw transaction created successfully: %s", rawTx)
+}
+
+func TestUnlockWallet2(t *testing.T) {
+	btcService := NewBtcService()
+
+	// 테스트용 passphrase 설정
+	passphrase := "CSE416"
+
+	// btcd와 btcwallet이 실행 중인지 확인
+	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
+		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
+	}
+
+	// UnlockWallet 호출
+	result, err := btcService.UnlockWallet(passphrase)
+	if err != nil {
+		t.Errorf("Failed to unlock wallet: %v", err)
+	}
+
+	// 결과 검증
+	expected := "" // btcctl 명령어는 일반적으로 출력이 없으므로 빈 문자열 예상
+	if result != expected {
+		t.Errorf("Expected %q, but got %q", expected, result)
+	}
+
+	// 로그 출력
+	t.Logf("UnlockWallet Result: %s", result)
+}
+
+// go test -v -run ^TestSignRawTransaction$
+func TestSignRawTransaction(t *testing.T) {
+	// BTC 서비스 초기화
+	btcService := NewBtcService()
+
+	// 테스트용 Raw Transaction ID
+	rawId := "010000000102e70f24a7365d985a5dfdcb2a8de3a4047980161cd90f5ae31031631ee338cf0000000000ffffffff0280e2eeb2000000001976a9146e9d847156b018b35e6275c150cb2788b24c90a188ac00943577000000001976a914a4bc51f8084fffa6a7432568cf46f1353a0666ca88ac00000000"
+
+	// 함수 호출
+	hex, complete, err := btcService.signRawTransaction(rawId)
+	if err != nil {
+		t.Fatalf("Failed to sign raw transaction: %v", err)
+	}
+
+	// 결과 검증
+	if hex == "" {
+		t.Errorf("Expected a valid signed transaction hex, but got an empty string")
+	}
+	if !complete {
+		t.Errorf("Expected the transaction to be complete, but got incomplete")
+	}
+
+	t.Logf("Signed transaction hex: %s", hex)
+	t.Logf("Transaction complete status: %v", complete)
+}
+
+// go test -v -run ^TestSendRawTransaction$
+func TestSendRawTransaction(t *testing.T) {
+	// BTC 서비스 초기화
+	btcService := NewBtcService()
+
+	// 테스트용 Signed Transaction Hex
+	signedTxHex := "010000000171f1ebd5a5a021005107273671642181aaa9457710636efa7b7362b56f5de3f9000000006a47304402200f53775acd4fe46ae4c52fd09b39408798cca6d6e5e709cba17b76451ae282d802204872576f48be483a16bfb5d1272bae4478f34be8d24f20bad5121d6c08af764201210387d22a806b62c919e5f461f6038f583e40bcc591eb2e4e562802ce9e56b9dea2ffffffff02c0512677000000001976a9146e9d847156b018b35e6275c150cb2788b24c90a188ac00943577000000001976a914a4bc51f8084fffa6a7432568cf46f1353a0666ca88ac00000000"
+
+	// 함수 호출
+	txid, err := btcService.sendRawTransaction(signedTxHex)
+	if err != nil {
+		t.Fatalf("Failed to send raw transaction: %v", err)
+	}
+
+	// 결과 검증
+	if txid == "" {
+		t.Errorf("Expected a valid transaction ID, but got an empty string")
+	}
+
+	t.Logf("Transaction ID: %s", txid)
+}
+
 // go test -v -run ^TestTransaction$
 func TestTransaction(t *testing.T) {
+
 	// Initialize BtcService
 	btcService := NewBtcService()
 
@@ -519,9 +621,9 @@ func TestTransaction(t *testing.T) {
 
 	// Test parameters
 	passphrase := "CSE416"
-	txid := "3a085fd6c155d244c98dc9ca720242a7bb438fd543e6c51578a7424987ad508b"
+	txid := "5dfcbcd73fb25f65c335fef7fe63701d1b0ddb743b2d80c84209515f82f67d0a"
 	dst := "1G23RBEZVhePDeTP5gq4be3jEec5mBWorw"
-	amount := 1.2
+	amount := 5.0
 
 	// Step 1: Call the Transaction function
 	fmt.Println("Starting transaction...")
