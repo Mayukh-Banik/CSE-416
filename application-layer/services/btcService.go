@@ -30,10 +30,10 @@ const CREATE_NO_WINDOW = 0x08000000
 
 // Setting the executable path as a global variable
 var (
-	btcwalletScriptPath = `../../btcwallet/btcwallet_create.ps1`
-	btcdPath            = "../../btcd/btcd"
-	btcwalletPath       = "../../btcwallet/btcwallet"
-	btcctlPath          = "../../btcd/cmd/btcctl/btcctl"
+	btcwalletScriptPath = `../btcwallet/btcwallet_create.ps1`
+	btcdPath            = "../btcd/btcd"
+	btcwalletPath       = "../btcwallet/btcwallet"
+	btcctlPath          = "../btcd/cmd/btcctl/btcctl"
 	tempFilePath        string
 )
 
@@ -453,13 +453,13 @@ func (bs *BtcService) BtcwalletCreate(passphrase string) error {
 		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
 
-	// Check if the wallet database exists and delete it
+	// Check if the wallet database exists
 	if _, err := os.Stat(walletDBPath); err == nil {
-		err = os.Remove(walletDBPath)
-		if err != nil {
-			return fmt.Errorf("failed to remove existing wallet database: %v", err)
-		}
-		fmt.Println("Existing wallet database removed successfully.")
+		// Wallet database already exists
+		return fmt.Errorf("wallet already exists at %s", walletDBPath)
+	} else if !os.IsNotExist(err) {
+		// Other errors while checking for the wallet file
+		return fmt.Errorf("failed to check wallet database: %v", err)
 	}
 
 	// Create a new wallet
