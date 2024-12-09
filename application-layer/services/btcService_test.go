@@ -17,7 +17,11 @@ import (
 // go test -v -run ^TestStartBtcdWithNoArgs$
 // go test -v -run ^TestStartBtcdWithNoArgs$ -count=1 application-layer/services
 // TestStartBtcdWithNoArgs validates starting btcd without arguments.
-func TestStartBtcdWithNoArgs(t *testing.T) {
+func TestStartBtcdWithNoArgs(t *testing.T) {    
+    cwd, _ := os.Getwd()
+    fmt.Printf("Current working directory: %s\n", cwd)
+
+
 	btcService := NewBtcService()
 
 	// Log test start

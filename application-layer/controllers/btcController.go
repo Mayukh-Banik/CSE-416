@@ -92,28 +92,75 @@ func (bc *BtcController) SignupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // placeholder for login handler
-func (bc *BtcController) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	var params struct {
-		WalletAddress string `json:"walletAddress"`
-		Passphrase    string `json:"passphrase"`
-	}
+// func (bc *BtcController) LoginHandler(w http.ResponseWriter, r *http.Request) {
+// 	var params struct {
+// 		WalletAddress string `json:"walletAddress"`
+// 		Passphrase    string `json:"passphrase"`
+// 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+// 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+// 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+// 		return
+// 	}
+
+// 	result, err := bc.Service.Login(params.WalletAddress, params.Passphrase)
+// 	if err != nil {
+// 		respondWithError(w, http.StatusInternalServerError, err.Error())
+// 		return
+// 	}
+
+// 	resp := Response{
+// 		Status:  "success",
+// 		Message: result,
+// 	}
+// 	respondWithJSON(w, http.StatusOK, resp)
+// }
+
+// LoginRequest represents the structure of the login request payload.
+type LoginRequest struct {
+	WalletAddress string `json:"wallet_address"`
+	Passphrase    string `json:"passphrase"`
+}
+
+// LoginResponse represents the structure of the login response payload.
+type LoginResponse struct {
+	Message string `json:"message"`
+}
+
+// LoginHandler handles the login process for users.
+func (bc *BtcController) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("LoginHandler called")
+
+	// Decode the incoming JSON request payload.
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	result, err := bc.Service.Login(params.WalletAddress, params.Passphrase)
+	// Validate the input fields.
+	if req.WalletAddress == "" {
+		respondWithError(w, http.StatusBadRequest, "Wallet address is required")
+		return
+	}
+	if req.Passphrase == "" {
+		respondWithError(w, http.StatusBadRequest, "Passphrase is required")
+		return
+	}
+
+	// Call the Login method of BtcService to attempt a login.
+	result, err := bc.Service.Login(req.WalletAddress, req.Passphrase)
 	if err != nil {
+		// Respond with an error if login fails.
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	resp := Response{
-		Status:  "success",
+	// Respond with a success message if login is successful.
+	response := LoginResponse{
 		Message: result,
 	}
-	respondWithJSON(w, http.StatusOK, resp)
+	respondWithJSON(w, http.StatusOK, response)
 }
 
 func (bc *BtcController) TransactionHandler(w http.ResponseWriter, r *http.Request) {

@@ -29,6 +29,15 @@ func NewBtcService() *BtcService {
 const CREATE_NO_WINDOW = 0x08000000
 
 // Setting the executable path as a global variable
+// var (
+// 	btcwalletScriptPath = `../btcwallet/btcwallet_create.ps1`
+// 	btcdPath            = "../../btcd/btcd"
+// 	btcwalletPath       = "../../btcwallet/btcwallet"
+// 	btcctlPath          = "../../btcd/cmd/btcctl/btcctl"
+// 	tempFilePath        string
+// )
+
+// Setting the executable path as a global variable
 var (
 	btcwalletScriptPath = `../btcwallet/btcwallet_create.ps1`
 	btcdPath            = "../btcd/btcd"
@@ -36,6 +45,7 @@ var (
 	btcctlPath          = "../btcd/cmd/btcctl/btcctl"
 	tempFilePath        string
 )
+
 
 type BtcService struct{}
 
@@ -249,6 +259,8 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 		fmt.Println("Invalid number of arguments. Only 0 or 1 argument is allowed.")
 		return "Invalid number of arguments"
 	}
+
+
 
 	// Detached mode with OS-specific handling
 	if runtime.GOOS == "windows" {
@@ -1047,8 +1059,8 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	time.Sleep(2 * time.Second) // Wait for btcwallet initialization
 	if btcwalletResult != "btcwallet started successfully" {
 		fmt.Printf("Failed to start btcwallet: %s\n", btcwalletResult)
-		bs.StopBtcd()
 		bs.StopBtcwallet()
+		bs.StopBtcd()
 		return "Failed to start btcwallet", fmt.Errorf("failed to start btcwallet: %s", btcwalletResult)
 	}
 
@@ -1057,16 +1069,40 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	time.Sleep(2 * time.Second) // Allow sufficient time for wallet unlock
 	if err != nil {
 		fmt.Printf("Failed to unlock wallet: %v\n", err)
-		bs.StopBtcd()
-		time.Sleep(2 * time.Second) // Wait before stopping btcwallet
 		bs.StopBtcwallet()
+		time.Sleep(2 * time.Second) // Wait before stopping btcwallet
+		bs.StopBtcd()
 		return "Failed to unlock wallet", fmt.Errorf("failed to unlock wallet: %w", err)
 	}
+
+	// Step 4: Stop btcwallet
+	btcwalletStopResult := bs.StopBtcwallet()
+	if btcwalletStopResult != "btcwallet stopped successfully" {
+		fmt.Printf("Failed to stop btcwallet: %s\n", btcwalletStopResult)
+		bs.StopBtcd() // Stop btcd to ensure no orphaned processes
+		return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
+	}
+	fmt.Println("btcwallet stopped successfully.")
+
+	// Allow time before stopping btcd
+	time.Sleep(1 * time.Second)
+
+	// Step 5: Stop btcd
+	btcdStopResult := bs.StopBtcd()
+	if btcdStopResult != "btcd stopped successfully" {
+		fmt.Printf("Failed to stop btcd: %s\n", btcdStopResult)
+		return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
+	}
+	fmt.Println("btcd stopped successfully.")
+
 
 	// Step 4: Success
 	fmt.Println("Login successful. Wallet unlocked.")
 	return unlockResult, nil
 }
+
+
+
 
 // GetBalance is a function to get the wallet balance
 func (bs *BtcService) GetBalance() (string, error) {

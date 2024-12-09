@@ -4,12 +4,16 @@ package routes
 import (
 	"application-layer/controllers"
 
+	"fmt"
 	"github.com/gorilla/mux"
 )
 
 // RegisterBtcRoutes 함수는 모든 BtcController의 핸들러를 라우터에 등록합니다.
 func RegisterBtcRoutes(router *mux.Router, controller *controllers.BtcController) {
 	btcRouter := router.PathPrefix("/api/btc").Subrouter() // /api/btc 경로를 기준으로 묶음
+
+	// Debug log
+	fmt.Println("Registering BTC routes...")
 
 	// POST 요청 핸들러
 	// btcRouter.HandleFunc("/init", controller.InitHandler).Methods("POST")
