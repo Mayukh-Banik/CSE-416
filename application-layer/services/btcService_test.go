@@ -309,6 +309,61 @@ func TestLockWallet(t *testing.T) {
 	t.Logf("LockWallet Result: %s", result)
 }
 
+// go test -v -run ^TestGetNewAddress$ -count=1 application-layer/services
+// TestGetNewAddress validates getting a new address.
+func TestGetNewAddress(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Ensure btcd and btcwallet are running
+	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
+		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
+	}
+
+	// Call GetNewAddress
+	newAddress, err := btcService.GetNewAddress()
+	if err != nil {
+		t.Fatalf("Failed to get new address: %v", err)
+	}
+
+	// Validate the generated address
+	if newAddress == "" {
+		t.Fatalf("Generated address is empty")
+	}
+
+	// Log and print the result
+	t.Logf("Generated new address: %s", newAddress)
+	fmt.Printf("Generated new address (from test): %s\n", newAddress)
+}
+
+// go test -v -run ^TestListReceivedByAddress$ -count=1 application-layer/services
+// TestListReceivedByAddress validates listing received addresses.
+func TestListReceivedByAddress(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Ensure btcd and btcwallet are running
+	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
+		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
+	}
+
+	// Call ListReceivedByAddress
+	addressList, err := btcService.ListReceivedByAddress()
+	if err != nil {
+		t.Errorf("Failed to list received addresses: %v", err)
+		return
+	}
+
+	// Validate that addresses are returned
+	if len(addressList) == 0 {
+		t.Fatalf("No addresses received from ListReceivedByAddress")
+	}
+
+	// Log and print the result
+	t.Logf("Received Addresses: %v", addressList)
+	fmt.Printf("Received Addresses (from test): %v\n", addressList)
+}
+
+
+
 
 
 
@@ -438,20 +493,6 @@ func TestStopMining(t *testing.T) {
 	t.Logf("StopMining function result: %s", result)
 }
 
-// go test -v -run ^TestGetNewAddress$
-func TestGetNewAddress(t *testing.T) {
-	btcService := NewBtcService()
-
-	// GetNewAddress 호출
-	newAddress, err := btcService.GetNewAddress()
-	if err != nil {
-		t.Fatalf("Failed to get new address: %v", err)
-	}
-
-	// 생성된 주소 출력
-	t.Logf("Generated new address: %s", newAddress)
-}
-
 // go test -v -run ^TestLogin$
 func TestLogin(t *testing.T) {
 	btcService := NewBtcService()
@@ -537,27 +578,6 @@ func TestGetBlockCount(t *testing.T) {
 	// Log and Print block count
 	t.Logf("Current block count: %s", blockCount)
 	fmt.Printf("Current block count (from test): %s\n", blockCount)
-}
-
-// go test -v -run ^TestListReceivedByAddress$
-func TestListReceivedByAddress(t *testing.T) {
-	btcService := NewBtcService()
-
-	// Ensure btcd and btcwallet are running
-	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
-		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
-	}
-
-	// Call ListReceivedByAddress
-	addressList, err := btcService.ListReceivedByAddress()
-	if err != nil {
-		t.Errorf("Failed to list received addresses: %v", err)
-		return
-	}
-
-	// Log and Print address list
-	t.Logf("Received Addresses: %v", addressList)
-	fmt.Printf("Received Addresses (from test): %v\n", addressList)
 }
 
 // go test -v -run ^TestListUnspent$

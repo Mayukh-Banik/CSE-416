@@ -667,6 +667,101 @@ func (bs *BtcService) LockWallet() (string, error) {
 	return result, nil
 }
 
+// GetNewAddress generates a new Bitcoin address from the wallet.
+func (bs *BtcService) GetNewAddress() (string, error) {
+	// Check if btcd and btcwallet are running
+	if !isProcessRunning("btcd") {
+		return "", fmt.Errorf("btcd is not running. Please start btcd before calling this function")
+	}
+	if !isProcessRunning("btcwallet") {
+		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before calling this function")
+	}
+
+	// Create command to generate a new address
+	cmd := exec.Command(
+		btcctlPath,
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"getnewaddress",
+	)
+
+	// Add macOS-specific PATH configuration
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
+	// Capture output
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	// Run the command
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error generating new address: %v\n", err)
+		return "", fmt.Errorf("error generating new address: %w", err)
+	}
+
+	// Parse the result
+	newAddress := strings.TrimSpace(output.String())
+	fmt.Printf("Generated new address: %s\n", newAddress)
+
+	return newAddress, nil
+}
+
+// ListReceivedByAddress is a function to list all received addresses
+func (bs *BtcService) ListReceivedByAddress() ([]map[string]interface{}, error) {
+	// Check if btcd and btcwallet are running
+	if !isProcessRunning("btcd") {
+		return nil, fmt.Errorf("btcd is not running. Please start btcd before listing addresses")
+	}
+
+	if !isProcessRunning("btcwallet") {
+		return nil, fmt.Errorf("btcwallet is not running. Please start btcwallet before listing addresses")
+	}
+
+	// Execute btcctl listreceivedbyaddress command
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"listreceivedbyaddress",
+		"0",    // Include addresses with 0 confirmations
+		"true", // Include empty addresses
+	)
+
+	// Add macOS-specific PATH configuration
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error listing received addresses: %v\n", err)
+		return nil, fmt.Errorf("error listing received addresses: %w", err)
+	}
+
+	// Parse the output as JSON
+	var addresses []map[string]interface{}
+	if err := json.Unmarshal(output.Bytes(), &addresses); err != nil {
+		fmt.Printf("Error parsing address list: %v\n", err)
+		return nil, fmt.Errorf("error parsing address list: %w", err)
+	}
+
+	// Log full result for debugging
+	fmt.Printf("ㅇㅇFull list of received addresses: %v\n", addresses)
+
+	// Return full result
+	return addresses, nil
+}
+
 // getMiningStatus is a function to check the mining status
 func (bs *BtcService) GetMiningStatus() (bool, error) {
 	// btcctl command
@@ -791,46 +886,6 @@ func (bs *BtcService) StopMining() string {
 
 	fmt.Println("Mining process stopped and restarted successfully.")
 	return "Mining process stopped and restarted successfully"
-}
-
-// GetNewAddress is a function to generate a new address
-func (bs *BtcService) GetNewAddress() (string, error) {
-	// check if btcd and btcwallet are running
-	btcdRunning := isProcessRunning("btcd")
-	btcwalletRunning := isProcessRunning("btcwallet")
-
-	// check if btcd and btcwallet are running
-	if !btcdRunning {
-		return "", fmt.Errorf("btcd is not running. Please start btcd before calling this function")
-	}
-	if !btcwalletRunning {
-		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before calling this function")
-	}
-
-	// get new address
-	cmd := exec.Command(
-		btcctlPath,
-		"--rpcuser=user",
-		"--rpcpass=password",
-		"--rpcserver=127.0.0.1:8332",
-		"--notls",
-		"getnewaddress",
-	)
-
-	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
-
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error generating new address: %v\n", err)
-		return "", fmt.Errorf("error generating new address: %w", err)
-	}
-
-	// new address
-	newAddress := strings.TrimSpace(output.String())
-	fmt.Printf("Generated new address: %s\n", newAddress)
-
-	return newAddress, nil
 }
 
 func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
@@ -978,52 +1033,6 @@ func (bs *BtcService) GetBlockCount() (string, error) {
 	blockCount := strings.TrimSpace(output.String())
 	fmt.Printf("Current block count: %s\n", blockCount)
 	return blockCount, nil
-}
-
-func (bs *BtcService) ListReceivedByAddress() ([]map[string]interface{}, error) {
-	// Check if btcd and btcwallet are running
-	if !isProcessRunning("btcd") {
-		return nil, fmt.Errorf("btcd is not running. Please start btcd before listing addresses")
-	}
-
-	if !isProcessRunning("btcwallet") {
-		return nil, fmt.Errorf("btcwallet is not running. Please start btcwallet before listing addresses")
-	}
-
-	// Execute btcctl listreceivedbyaddress command
-	cmd := exec.Command(
-		btcctlPath,
-		"--wallet",
-		"--rpcuser=user",
-		"--rpcpass=password",
-		"--rpcserver=127.0.0.1:8332",
-		"--notls",
-		"listreceivedbyaddress",
-		"0",    // Include addresses with 0 confirmations
-		"true", // Include empty addresses
-	)
-
-	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
-
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error listing received addresses: %v\n", err)
-		return nil, fmt.Errorf("error listing received addresses: %w", err)
-	}
-
-	// Parse the output as JSON
-	var addresses []map[string]interface{}
-	if err := json.Unmarshal(output.Bytes(), &addresses); err != nil {
-		fmt.Printf("Error parsing address list: %v\n", err)
-		return nil, fmt.Errorf("error parsing address list: %w", err)
-	}
-
-	// Log full result for debugging
-	fmt.Printf("ㅇㅇFull list of received addresses: %v\n", addresses)
-
-	// Return full result
-	return addresses, nil
 }
 
 func (bs *BtcService) ListUnspent() ([]map[string]interface{}, error) {
