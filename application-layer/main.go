@@ -32,7 +32,9 @@ func main() {
 	// Combine both routers on the same port
 	http.Handle("/files/", c.Handler(fileRouter))        // File routes under /files
 	http.Handle("/download/", c.Handler(downloadRouter)) // Download routes under /download
-	http.Handle("/proxy-data/", c.Handler(proxyRouter))  // Download routes under /download
+	http.Handle("/proxy-data/", c.Handler(proxyRouter))
+	http.Handle("/connect-proxy/", c.Handler(proxyRouter))
+
 	http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
 
 	port := ":8081"

@@ -46,27 +46,27 @@ const ProxyHosts: React.FC = () => {
           'Content-Type': 'application/json',
         },
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-  
+
       const rawText = await response.text();
       const cleanedText = rawText.replace(/^null\s*/, '').trim();
       const result = JSON.parse(cleanedText);
-      console.log("Parsed reult",result)
+      console.log("Parsed reult", result)
       const proxyData = Array.isArray(result) ? result : [result];
       const isEmptyProxy = (proxy: ProxyHost) => {
         return !proxy.name && !proxy.location && !proxy.price && !proxy.Statistics.uptime && !proxy.bandwidth;
       };
       const nonEmptyProxies = proxyData.filter(proxy => !isEmptyProxy(proxy));
-  
+
       setProxyHosts(nonEmptyProxies.map(proxy => ({
-        name: proxy.name ,
-        location: proxy.location || proxy.address ,
-        price: proxy.price ,
-        Statistics: { uptime: proxy.Statistics?.uptime  },
-        bandwidth: proxy.bandwidth ,
+        name: proxy.name,
+        location: proxy.location || proxy.address,
+        price: proxy.price,
+        Statistics: { uptime: proxy.Statistics?.uptime },
+        bandwidth: proxy.bandwidth,
         logs: proxy.logs,
         isEnabled: false,
         isHost: proxy.isHost || false,
@@ -120,12 +120,39 @@ const ProxyHosts: React.FC = () => {
 
     setProxyHosts(updatedHosts);
     setConnectedProxy(host);
+    console.log("ATTEMPTING TO CONNTECT")
+    notifyConnectionToBackend(host);
+
 
     // Update proxy history
     const newHistoryEntry = { name: host.name, location: host.location, timestamp: new Date().toLocaleString() };
     setProxyHistory([...proxyHistory, newHistoryEntry]);
 
     alert(`Connected to ${host.location}`);
+  };
+
+  const notifyConnectionToBackend = async (host: ProxyHost) => {
+    console.log("Attempting to connect...");
+    console.log(host); // Check if the host data is passed correctly
+    try {
+      const response = await fetch('http://localhost:8081/connect-proxy/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hostName: host.name,
+          hostLocation: host.location,
+          timestamp: new Date().toLocaleString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to notify backend about the connection');
+      }
+
+      console.log(`Successfully notified backend about the connection to ${host.location}`);
+    } catch (error) {
+      console.error('Error notifying backend:', error);
+    }
   };
 
   const handleAddProxy = async () => {

@@ -347,6 +347,98 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
+
+}
+
+// handleConnectMethod handles the CONNECT HTTP method for tunneling.
+func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
+	// Log the incoming request method and URL
+	log.Printf("Received %s request to %s", r.Method, r.URL)
+
+	// Check if the request method is POST
+	if r.Method == "POST" {
+		log.Println("Processing POST request")
+
+		// Parse the destination from the CONNECT request
+		node := dht_kad.Host
+		destination := r.URL.Host
+
+		// Check if the destination is empty and log the error if so
+		if destination == "" {
+			log.Println("Destination not specified")
+			http.Error(w, "Destination not specified", http.StatusBadRequest)
+			return
+		}
+		log.Printf("Destination: %s", destination)
+
+		// Ensure the destination is reachable via the DHT or peer network
+		peerAddr := "/p2p-circuit/p2p/" + destination
+		log.Printf("Constructed peer address: %s", peerAddr)
+
+		// Try to create a Multiaddr for the peer
+		maddr, err := ma.NewMultiaddr(peerAddr)
+		if err != nil {
+			log.Printf("Invalid peer address: %v", err)
+			http.Error(w, fmt.Sprintf("Invalid peer address: %v", err), http.StatusBadRequest)
+			return
+		}
+		log.Printf("Multiaddr created: %s", maddr)
+
+		// Attempt to get peer information from the Multiaddr
+		peerInfo, err := peer.AddrInfoFromP2pAddr(maddr)
+		if err != nil {
+			log.Printf("Failed to get peer info: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to get peer info: %v", err), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("Peer info: %+v", peerInfo)
+
+		// Attempt to connect to the destination peer
+		log.Println("Attempting to connect to the peer...")
+		err = node.Connect(globalCtx, *peerInfo)
+		if err != nil {
+			log.Printf("Failed to connect to peer: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to connect to peer: %v", err), http.StatusInternalServerError)
+			return
+		}
+		log.Println("Successfully connected to the peer.")
+
+		// Respond with 200 OK to indicate the connection has been established
+		w.WriteHeader(http.StatusOK)
+
+		// Now relay data between client and peer asynchronously
+		log.Println("Relaying data between client and peer...")
+		go tunnelDataBetweenClientAndPeer(node, peerInfo.ID, r.Body, w)
+	} else {
+		// If the method is not POST, log it and return method not allowed
+		log.Printf("Unsupported request method: %s", r.Method)
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// tunnelDataBetweenClientAndPeer relays data between the client and the destination peer.
+func tunnelDataBetweenClientAndPeer(node host.Host, peerID peer.ID, clientReader io.Reader, w http.ResponseWriter) {
+	// Open a stream to the connected peer (destination)
+	stream, err := node.NewStream(globalCtx, peerID, "/http-temp-protocol")
+	if err != nil {
+		log.Printf("Failed to open stream to peer %s: %v", peerID, err)
+		return
+	}
+	defer stream.Close()
+
+	// Relay data from client to peer
+	go func() {
+		_, err := io.Copy(stream, clientReader) // Read data from client (r.Body) and write to the peer stream
+		if err != nil {
+			log.Printf("Failed to forward data from client to peer: %v", err)
+		}
+	}()
+
+	// Relay data from peer to client
+	_, err = io.Copy(w, stream) // Read data from peer stream and write to the client (http.ResponseWriter)
+	if err != nil {
+		log.Printf("Failed to forward data from peer to client: %v", err)
+	}
 }
 
 func saveProxyToDHT(proxy models.Proxy) error {
