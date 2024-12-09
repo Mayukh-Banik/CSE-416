@@ -30,10 +30,10 @@ const CREATE_NO_WINDOW = 0x08000000
 
 // Setting the executable path as a global variable
 var (
-	btcwalletScriptPath = `C:\dev\workspace\CSE-416\btcwallet\btcwallet_create.ps1`
-	btcdPath            = "../../btcd/btcd"
-	btcwalletPath       = "../../btcwallet/btcwallet"
-	btcctlPath          = "../../btcd/cmd/btcctl/btcctl"
+	btcwalletScriptPath = `../btcwallet/btcwallet_create.ps1`
+	btcdPath            = "../btcd/btcd"
+	btcwalletPath       = "../btcwallet/btcwallet"
+	btcctlPath          = "../btcd/cmd/btcctl/btcctl"
 	tempFilePath        string
 )
 
@@ -183,7 +183,7 @@ func isProcessRunning(processName string) bool {
 	}
 
 	// Log output for debugging
-	fmt.Printf("isProcessRunning output: %s\n", output.String())
+	// fmt.Printf("isProcessRunning output: %s\n", output.String())
 
 	// Return true if output is not empty
 	return strings.TrimSpace(output.String()) != ""
@@ -385,13 +385,13 @@ func (bs *BtcService) BtcwalletCreate(passphrase string) error {
 		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
 
-	// Check if the wallet database exists and delete it
+	// Check if the wallet database exists
 	if _, err := os.Stat(walletDBPath); err == nil {
-		err = os.Remove(walletDBPath)
-		if err != nil {
-			return fmt.Errorf("failed to remove existing wallet database: %v", err)
-		}
-		fmt.Println("Existing wallet database removed successfully.")
+		// Wallet database already exists
+		return fmt.Errorf("wallet already exists at %s", walletDBPath)
+	} else if !os.IsNotExist(err) {
+		// Other errors while checking for the wallet file
+		return fmt.Errorf("failed to check wallet database: %v", err)
 	}
 
 	// Create a new wallet
@@ -558,7 +558,7 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 	err := bs.BtcwalletCreate(passphrase)
 	if err != nil {
 		bs.StopBtcd() // Ensure btcd is stopped in case of failure
-		return "", fmt.Errorf("failed to create btcwallet: %w", err)
+		return "", fmt.Errorf("%w", err)
 	}
 	fmt.Println("Wallet created successfully.")
 
@@ -607,7 +607,7 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 	return newAddress, nil
 }
 
-// Init is a function to initialize the service	
+// Init is a function to initialize the service
 func (bs *BtcService) Init() string {
 	SetupTempFilePath()
 
@@ -1350,7 +1350,6 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 	fmt.Printf("Raw transaction created: %s\n", rawId)
 	return rawId, nil
 }
-
 
 // signRawTransaction is a function to sign a raw transaction
 func (bs *BtcService) signRawTransaction(rawId string) (string, bool, error) {

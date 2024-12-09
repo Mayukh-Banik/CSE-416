@@ -1,4 +1,3 @@
-// SignUpPage.tsx
 import React, { useState } from "react";
 import {
   Button,
@@ -15,6 +14,8 @@ import {
   DialogContentText,
   DialogActions,
   TextField,
+  CircularProgress,
+  Backdrop,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -26,9 +27,10 @@ const SignUpPage: React.FC = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [privateKey, setPrivateKey] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false); // Dialog 상태
-  const [passphrase, setPassphrase] = useState<string>(""); // 패스프레이즈 상태
-  const [error, setError] = useState<string | null>(null); // 에러 상태
+  const [isDialogOpen, setIsDialogOpen] = useState(false); 
+  const [passphrase, setPassphrase] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -36,36 +38,76 @@ const SignUpPage: React.FC = () => {
     navigate("/login");
   };
 
-  // "Generate Wallet" 버튼 클릭 시 다이얼로그 열기
+  const checkWalletExistence = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/api/wallet/check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ passphrase }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.exists;
+      } else {
+        console.error("Failed to check wallet existence.");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error checking wallet existence:", error);
+      return false;
+    }
+  };
+
+  // button click handler for "Generate Wallet" button
   const handleGenerateWalletClick = () => {
     setIsDialogOpen(true);
   };
 
-  // 패스프레이즈 제출 핸들러
+  // hadler for "Create Wallet" button click
   const handlePassphraseSubmit = async () => {
+    if (!passphrase) {
+      setError("Passphrase is required.");
+      return;
+    }
+
+    setIsLoading(true); // show loading spinner
+
     try {
+      const walletExists = await checkWalletExistence();
+
+      if (walletExists) {
+        alert("이미 지갑이 존재합니다. 로그인 페이지로 이동합니다.");
+        setIsDialogOpen(false);
+        navigate("/login"); // send user to login page
+        return;
+      }
+
       const response = await fetch("http://localhost:8080/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ passphrase }), // 사용자가 입력한 패스프레이즈 전송
+        body: JSON.stringify({ passphrase }), // send passphrase to server
       });
 
-      console.log("서버 응답 상태:", response.status); // 응답 상태 로그
+      console.log("서버 응답 상태:", response.status); // response status log
 
       if (response.ok) {
         const data = await response.json();
-        if (data.message === "Wallet already exists.") {
-          alert("이미 지갑이 존재합니다.");
-          setIsDialogOpen(false);
-          // 필요 시 추가적인 로그인 로직을 여기에 추가할 수 있습니다.
-        } else if (data.message === "Wallet successfully created.") {
-          setWalletAddress(data.address);
-          setPrivateKey(data.private_key);
+        console.log("서버 응답 데이터:", data); // response data log
+
+        const { address, private_key, message } = data;
+
+        if (message === "Wallet successfully created.") {
+          setWalletAddress(address);
+          setPrivateKey(private_key);
           setIsSubmitted(true);
           setIsDialogOpen(false);
           setPassphrase("");
+          setError(null);
         }
       } else {
         const errorData = await response.json();
@@ -73,9 +115,10 @@ const SignUpPage: React.FC = () => {
         alert("Failed to signup: " + (errorData.message || "Unknown error"));
       }
     } catch (error) {
-      // console.error("Error during signup:", error);
       setError("Error during signup");
       alert("Error during signup: " + error);
+    } finally {
+      setIsLoading(false); // hide loading spinner
     }
   };
 
@@ -92,14 +135,16 @@ const SignUpPage: React.FC = () => {
       const file = new Blob([privateKey], { type: "text/plain" });
       element.href = URL.createObjectURL(file);
       element.download = "privateKey.txt";
-      document.body.appendChild(element); // FireFox를 위해 필요
+      document.body.appendChild(element); // Required for this to work in FireFox
       element.click();
+      document.body.removeChild(element); // Cleanup
     }
   };
 
   const handleCloseDialog = () => {
-    setIsDialogOpen(false); // 다이얼로그 닫기
+    setIsDialogOpen(false); // close dialog
     setPassphrase("");
+    setError(null);
   };
 
   return (
@@ -131,7 +176,7 @@ const SignUpPage: React.FC = () => {
           </Typography>
         )}
 
-        {!isSubmitted ? (
+        {!isSubmitted && (
           <Button
             variant="contained"
             color="primary"
@@ -146,11 +191,14 @@ const SignUpPage: React.FC = () => {
                 backgroundColor: "#1976d2",
               },
             }}
-            onClick={handleGenerateWalletClick} // 수정된 핸들러 사용
+            onClick={handleGenerateWalletClick}
+            disabled={isLoading}
           >
             Generate Wallet
           </Button>
-        ) : (
+        )}
+
+        {isSubmitted && (
           <Box sx={{ mt: 4, width: "100%" }}>
             <Paper
               elevation={4}
@@ -254,7 +302,6 @@ const SignUpPage: React.FC = () => {
               </Button>
             </Paper>
 
-            {/* Continue to Account Button */}
             <Button
               variant="contained"
               color="success"
@@ -266,7 +313,6 @@ const SignUpPage: React.FC = () => {
                 borderRadius: "8px",
                 boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
               }}
-              // onClick={handleContinueToAccount}
             >
               Continue to Account
             </Button>
@@ -286,7 +332,6 @@ const SignUpPage: React.FC = () => {
           </Link>
         </Typography>
 
-        {/* 패스프레이즈 입력 다이얼로그 */}
         <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
           <DialogTitle>Enter Passphrase</DialogTitle>
           <DialogContent>
@@ -304,15 +349,39 @@ const SignUpPage: React.FC = () => {
               variant="standard"
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
+              error={!!error}
+              helperText={error}
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCloseDialog}>Cancel</Button>
-            <Button onClick={handlePassphraseSubmit} disabled={!passphrase}>
+            <Button onClick={handleCloseDialog} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handlePassphraseSubmit} disabled={!passphrase || isLoading}>
               Create Wallet
             </Button>
           </DialogActions>
         </Dialog>
+
+        {isLoading && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 9999,
+            }}
+          >
+            <img src="/images/loading.gif" alt="Loading" />
+          </div>
+        )}
+
       </Container>
     </>
   );

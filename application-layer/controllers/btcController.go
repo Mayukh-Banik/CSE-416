@@ -7,12 +7,11 @@ import (
 	"net/http"
 )
 
-// BtcController는 비트코인 관련 핸들러를 제공하는 구조체입니다.
 type BtcController struct {
 	Service *services.BtcService
 }
 
-// Response는 일반적인 API 응답 구조체입니다.
+// Response is a generic response structure
 type Response struct {
 	Status  string      `json:"status"`
 	Message string      `json:"message,omitempty"`
@@ -24,12 +23,10 @@ func NewBtcController(service *services.BtcService) *BtcController {
 	return &BtcController{Service: service}
 }
 
-// SignupRequest는 회원가입 요청의 구조체입니다.
 type SignupRequest struct {
 	Passphrase string `json:"passphrase"`
 }
 
-// SignupResponse는 회원가입 응답의 구조체입니다.
 type SignupResponse struct {
 	Address    string `json:"address,omitempty"`
 	PrivateKey string `json:"private_key,omitempty"`
@@ -57,9 +54,9 @@ func respondWithError(w http.ResponseWriter, status int, message string) {
 	respondWithJSON(w, status, resp)
 }
 
-// SignupHandler는 회원가입 요청을 처리합니다.
+// generate wallet button
 func (bc *BtcController) SignupHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("SignupHandler called") // 디버깅을 위한 로그 추가
+	fmt.Println("SignupHandler called")
 
 	var req SignupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -67,37 +64,24 @@ func (bc *BtcController) SignupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 패스프레이즈가 제공되지 않은 경우 에러 반환
+	// check if passphrase is empty
 	if req.Passphrase == "" {
 		respondWithError(w, http.StatusBadRequest, "Passphrase is required")
 		return
 	}
 
-	// 지갑 생성 시도
-	err := bc.Service.BtcwalletCreate(req.Passphrase)
+	// create wallet
+	newAddress, err := bc.Service.CreateWallet(req.Passphrase)
 	if err != nil {
-		if err.Error() == "wallet already exists" {
-			response := SignupResponse{
-				Message: "Wallet already exists.",
-			}
-			respondWithJSON(w, http.StatusOK, response)
-			return
-		}
-		respondWithError(w, http.StatusInternalServerError, "Failed to create wallet: "+err.Error())
+		// respond with error
+		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// 새로운 주소 생성
-	newAddress, err := bc.Service.GetNewAddress()
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Failed to get new address: "+err.Error())
-		return
-	}
+	// generate private key (replace with actual private key generation logic)
+	privateKey := "generated-private-key"
 
-	// Private Key 생성 로직 추가 (예시)
-	privateKey := "generated-private-key" // 실제 Private Key 생성 로직으로 대체하세요.
-
-	// 응답 생성
+	// generate response
 	response := SignupResponse{
 		Address:    newAddress,
 		PrivateKey: privateKey,
@@ -107,7 +91,7 @@ func (bc *BtcController) SignupHandler(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, response)
 }
 
-// LoginHandler 핸들러 함수
+// placeholder for login handler
 func (bc *BtcController) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var params struct {
 		WalletAddress string `json:"walletAddress"`

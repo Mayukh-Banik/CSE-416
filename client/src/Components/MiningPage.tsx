@@ -10,9 +10,13 @@ import {
     Grid,
     Card,
     CardContent,
+    TextField,
 } from "@mui/material";
 import { styled, useTheme } from "@mui/material/styles";
 import Sidebar from "./Sidebar";
+import { useNavigate } from "react-router-dom";
+
+const refreshInterval = 5000; // 5 seconds
 
 // Styled components
 const MiningContainer = styled(Box)(({ theme }) => ({
@@ -25,9 +29,7 @@ const MiningContainer = styled(Box)(({ theme }) => ({
 
 // Define MiningStatus interface
 interface MiningStatus {
-    minedBlocks: number;
-    lastMinedBlock: string;
-    isMining: boolean;
+    mining: boolean;
 }
 
 const drawerWidth = 300;
@@ -35,77 +37,163 @@ const collapsedDrawerWidth = 100;
 
 const MiningPage: React.FC = () => {
     const theme = useTheme();
-    const [isMining, setIsMining] = useState(false);
-    const [miningStatus, setMiningStatus] = useState<MiningStatus>({
-        minedBlocks: 0,
-        lastMinedBlock: "",
-        isMining: false,
-    });
+    const navigate = useNavigate();
+    const [isMining, setIsMining] = useState<boolean>(false);
+
+    const [balance, setBalance] = useState<string>("0 SQC");
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [numBlocks, setNumBlocks] = useState<number>(1);
 
-    const API_BASE_URL = "http://localhost:8081"; 
+    const API_BASE_URL = "http://localhost:8080/api/btc"; 
+
+
+    useEffect(() => {
+        console.log("Mining status changed:", isMining);
+        if (!isMining) {
+            setIsLoading(false); // Unloading when mining stops
+        }
+    }, [isMining]);
+
 
     // Fetch mining status periodically
     useEffect(() => {
         const fetchMiningStatus = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/mining-status`);
-                if (!response.ok) throw new Error("Failed to fetch mining status");
-                const data: MiningStatus = await response.json();
-                setMiningStatus(data);
-                setIsMining(data.isMining);
+                const response = await fetch(`${API_BASE_URL}/getminingstatus`, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to fetch mining status");
+                }
+
+                const data = await response.json();
+
+                
+                setIsMining((prevStatus) => {
+                    if (prevStatus !== data.data.mining) {
+                        console.log("Mining status changed:", data.data.mining);
+                        setIsLoading(false);
+                    }
+                    return data.data.mining; 
+                });
             } catch (err) {
+                console.error("Error fetching mining status:", err);
+                setError(err instanceof Error ? err.message : "An unknown error occurred.");
+                setIsLoading(false); 
+            }
+        };
+
+        fetchMiningStatus(); 
+        const interval = setInterval(fetchMiningStatus, refreshInterval + 1000);
+
+        return () => clearInterval(interval); 
+    }, []);
+
+    // Fetch balance periodically
+    useEffect(() => {
+        const fetchBalance = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/balance`, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to fetch balance");
+                }
+
+                const data = await response.json();
+                setBalance(data.data.balance || "0 SQC");
+            } catch (err) {
+                console.error("Error fetching balance:", err);
                 setError(err instanceof Error ? err.message : "An unknown error occurred.");
             }
         };
 
-        fetchMiningStatus();
-        const interval = setInterval(fetchMiningStatus, 10000); // Set to 10 seconds for efficiency
-        return () => clearInterval(interval);
+        fetchBalance(); 
+
+        const interval = setInterval(fetchBalance, refreshInterval); 
+        return () => clearInterval(interval); 
     }, []);
 
     // Start mining
     const handleStartMining = async () => {
+        if (numBlocks <= 0) {
+            setError("Number of blocks must be greater than 0");
+            return;
+        }
+
+        console.log("Start Mining: Button clicked");
+        setIsLoading(true);
+
         try {
-            const response = await fetch(`${API_BASE_URL}/api/start-mining`, {
+
+            const response = await fetch(`${API_BASE_URL}/startmining`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
+                body: JSON.stringify({ numBlock: numBlocks }),
             });
+
             if (!response.ok) {
                 const errorData = await response.json();
+                console.error("Server Error:", errorData);
                 throw new Error(errorData.message || "Failed to start mining");
             }
-            const data: MiningStatus = await response.json();
-            setSuccess("Mining started");
-            setMiningStatus(data);
-            setIsMining(data.isMining);
+
+            const data = await response.json();
+            console.log("Mining started successfully:", data);
+            setSuccess(data.message || "Mining started successfully");
         } catch (error) {
+            console.error("Error starting mining:", error); 
+            setIsMining(false); 
             setError(error instanceof Error ? error.message : "An unknown error occurred.");
+        } finally {
+            console.log("Start Mining: Finished"); 
+            setIsLoading(false); 
         }
     };
 
     // Stop mining
     const handleStopMining = async () => {
+        console.log("Stop Mining: Button clicked"); 
+        setIsLoading(true);
+
         try {
-            const response = await fetch(`${API_BASE_URL}/api/stop-mining`, {
+
+            const response = await fetch(`${API_BASE_URL}/stopmining`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
             });
+
             if (!response.ok) {
                 const errorData = await response.json();
+                console.error("Server Error:", errorData); 
                 throw new Error(errorData.message || "Failed to stop mining");
             }
-            const data: MiningStatus = await response.json();
-            setSuccess("Mining stopped");
-            setMiningStatus(data);
-            setIsMining(data.isMining);
+
+            const data = await response.json();
+            console.log("Mining stopped successfully:", data);
+            setSuccess(data.message || "Mining stopped successfully");
         } catch (error) {
+            console.error("Error stopping mining:", error);
             setError(error instanceof Error ? error.message : "An unknown error occurred.");
+        } finally {
+            console.log("Stop Mining: Finished"); 
+            setIsLoading(false); 
         }
     };
 
@@ -144,15 +232,33 @@ const MiningPage: React.FC = () => {
                                 <Typography variant="h6" gutterBottom>
                                     ~ SquidCoins ~
                                 </Typography>
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={isMining ? handleStopMining : handleStartMining}
-                                    sx={{ mb: 2 }}
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 2,
+                                        marginTop: 2,
+                                    }}
                                 >
-                                    {isMining ? "Stop Mining" : "Start Mining"}
-                                </Button>
-                                {isMining && <CircularProgress />}
+                                    <TextField
+                                        type="number"
+                                        label="Blocks to Mine"
+                                        value={numBlocks}
+                                        onChange={(e) => setNumBlocks(Number(e.target.value))}
+                                        sx={{ width: 150 }}
+                                        disabled={isMining || isLoading} 
+                                        inputProps={{ min: 1 }}
+                                    />
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        onClick={isMining ? handleStopMining : handleStartMining}
+                                        disabled={isLoading}
+                                        sx={{ height: '56px' }}
+                                    >
+                                        {isLoading ? (<CircularProgress size={24} />) : isMining ? ("Stop Mining") : ("Start Mining")}
+                                    </Button>
+                                </Box>
                             </Box>
                         </Paper>
                     </Grid>
@@ -161,41 +267,34 @@ const MiningPage: React.FC = () => {
                     <Grid item xs={12} md={6}>
                         <Card>
                             <CardContent>
-                                <Typography variant="h6" gutterBottom>
-                                    Current Mining Status
-                                </Typography>
-                                <Typography variant="body1">
-                                    {isMining ? "Mining in Progress" : "Idle"}
-                                </Typography>
-                                <Typography variant="body2" color="textSecondary">
-                                    Last Mined Block: {miningStatus.lastMinedBlock || "N/A"}
-                                </Typography>
+                                <Typography variant="h6">Current Mining Status</Typography>
+                                <Typography variant="body1">{isMining ? "Mining in Progress" : "Idle"}</Typography>
                             </CardContent>
                         </Card>
                     </Grid>
 
-                    {/* Mined Blocks */}
+                    {/* Mined Blocks - Placeholder */}
                     <Grid item xs={12} md={6}>
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>
                                     Mined Blocks
                                 </Typography>
-                                <Typography variant="h4">{miningStatus.minedBlocks}</Typography>
+                                <Typography variant="body1" color="textSecondary">
+                                    Coming Soon...
+                                </Typography>
                             </CardContent>
                         </Card>
                     </Grid>
 
-                    {/* Additional Information or Charts */}
+                    {/* Balance */}
                     <Grid item xs={12}>
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>
                                     Balance
                                 </Typography>
-                                <Typography variant="body1">
-                                    100 SQC
-                                </Typography>
+                                <Typography variant="body1">{balance}</Typography>
                             </CardContent>
                         </Card>
                     </Grid>

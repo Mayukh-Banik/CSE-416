@@ -4,7 +4,6 @@
     "private": true,
     "homepage": "./",
     "dependencies": {
-        "18": "^0.0.0",
         "@electron-toolkit/preload": "^3.0.0",
         "@emotion/react": "^11.13.5",
         "@emotion/styled": "^11.13.5",
@@ -48,7 +47,6 @@
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "react-router-dom": "^6.26.2",
-        "react-scripts": "^5.0.1",
         "stream-browserify": "^3.0.0",
         "stream-http": "^3.2.0",
         "tiny-secp256k1": "^2.2.3",
@@ -57,11 +55,11 @@
     },
     "scripts": {
         "clean": "rimraf dist build client/build",
-        "start": "react-app-rewired start",
-        "build": "set DISABLE_ESLINT_PLUGIN=true && react-app-rewired build",
+        "start": "DISABLE_ESLINT_PLUGIN=true react-app-rewired start",
+        "build": "DISABLE_ESLINT_PLUGIN=true react-app-rewired build",
         "test": "react-app-rewired test",
         "eject": "react-scripts eject",
-        "run-build": "set DISABLE_ESLINT_PLUGIN=true && react-app-rewired build && electron ./main.js",
+        "run-build": "DISABLE_ESLINT_PLUGIN=true react-app-rewired build && electron ./main.js",
         "dev": "nodemon"
     },
     "eslintConfig": {
@@ -83,6 +81,7 @@
         ]
     },
     "devDependencies": {
+        "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
         "@testing-library/jest-dom": "^6.5.0",
         "@testing-library/react": "^16.0.1",
         "@types/jsonwebtoken": "^9.0.7",
@@ -91,13 +90,21 @@
         "@types/react-router-dom": "^5.3.3",
         "@typescript-eslint/eslint-plugin": "^5.62.0",
         "@typescript-eslint/parser": "^5.62.0",
+        "customize-cra": "^1.0.0",
         "eslint": "^8.57.1",
         "eslint-config-react-app": "^7.0.1",
+        "eslint-plugin-import": "^2.31.0",
+        "eslint-plugin-jsx-a11y": "^6.10.2",
+        "eslint-plugin-react": "^7.37.2",
         "jest": "^29.7.0",
         "nodemon": "^3.1.7",
-        "react-app-rewired": "^2.2.1"
+        "react-app-rewired": "^2.2.1",
+        "react-refresh": "^0.11.0",
+        "react-scripts": "^5.0.1"
     },
     "eslintIgnore": [
+        "node_modules/",
+        "build/",
         "../"
     ]
 }
