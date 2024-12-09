@@ -16,12 +16,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multihash"
 )
 
 var (
@@ -33,7 +35,9 @@ var (
 )
 
 const (
-	bootstrapNode   = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
+	// bootstrapNode   = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
+	bootstrapNode = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+
 	proxyKeyPrefix  = "/orcanet/proxy/"
 	Cloud_node_addr = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
 	Cloud_node_id   = "12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
@@ -86,6 +90,7 @@ func pollPeerAddresses(node host.Host) {
 
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
+
 	go dht_kad.ConnectToPeer(node, dht_kad.Bootstrap_node_addr)
 	// go dht_kad.ConnectToPeer(node, Cloud_node_addr)
 	globalCtx = context.Background()
@@ -130,34 +135,27 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	go pollPeerAddresses(node)
 
 	if r.Method == "GET" {
-		ctx := context.Background()
-		proxies, err := getAllProxiesFromDHT(dht_kad.DHT, ctx)
-		fmt.Println("Retrieved Proxies:")
-		for _, proxy := range proxies {
-			fmt.Printf("Peer ID: %s\n", proxy.PeerID)
-			fmt.Printf("Addresses: %v\n", proxy.Address)
-			fmt.Println("----------------------------")
-		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		peerIDs, err := discoverProxies(ctx, dht_kad.DHT)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error retrieving proxies: %v", err), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Error discovering proxies: %v", err), http.StatusInternalServerError)
 			return
+		}
+
+		var proxies []models.Proxy
+		for _, peerID := range peerIDs {
+			proxy, err := getProxyFromDHT(dht_kad.DHT, peerID, models.Proxy{})
+			if err != nil {
+				log.Printf("Error retrieving proxy for peer %s: %v", peerID, err)
+				continue
+			}
+			proxies = append(proxies, proxy...)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-
-		// Ensure proxyInfo is wrapped in an array if it's not already
-		var responseData []models.Proxy
-		if len(proxies) == 0 {
-			responseData = []models.Proxy{}
-		} else {
-			responseData = proxies
-		}
-
-		if err := json.NewEncoder(w).Encode(responseData); err != nil {
-			http.Error(w, fmt.Sprintf("Error encoding proxy data: %v", err), http.StatusInternalServerError)
-			return
-		}
-
+		json.NewEncoder(w).Encode(proxies)
 	}
 }
 func getProxyFromDHT(dht *dht.IpfsDHT, peerID peer.ID, proxy models.Proxy) ([]models.Proxy, error) {
@@ -179,103 +177,45 @@ func getProxyFromDHT(dht *dht.IpfsDHT, peerID peer.ID, proxy models.Proxy) ([]mo
 
 	return []models.Proxy{storedProxy}, nil
 }
-func discoverPeers(dhtInstance *dht.IpfsDHT) ([]peer.ID, error) {
+
+func advertiseProxy(ctx context.Context, dht *dht.IpfsDHT, proxyID string) error {
+	proxyKey := fmt.Sprintf("/orcanet/proxy/%s", proxyID)
+	cid := cid.NewCidV1(cid.Raw, multihash.Multihash([]byte(proxyKey)))
+	return dht.Provide(ctx, cid, true)
+}
+func discoverProxies(ctx context.Context, dht *dht.IpfsDHT) ([]peer.ID, error) {
+	proxyKey := "/orcanet/proxy/"
+	cid := cid.NewCidV1(cid.Raw, multihash.Multihash([]byte(proxyKey)))
+
 	var discoveredPeers []peer.ID
-
-	// Use FindPeer or similar methods to query
-	for _, peerInfo := range dhtInstance.RoutingTable().ListPeers() {
-		discoveredPeers = append(discoveredPeers, peerInfo)
-		fmt.Println("Discovered Peer:", peerInfo.String())
+	providersChan := dht.FindProvidersAsync(ctx, cid, 100)
+	for provider := range providersChan {
+		discoveredPeers = append(discoveredPeers, provider.ID)
 	}
-
+	fmt.Print("DISCOVERED PEERS", discoveredPeers)
 	return discoveredPeers, nil
 }
 
-func getAllProxiesFromDHT(dht *dht.IpfsDHT, ctx context.Context) ([]models.Proxy, error) {
-	peers, err := discoverPeers(dht)
-	if err != nil {
-		fmt.Printf("Error discovering peers: %v", err)
-
-	}
-
-	fmt.Println("Discovered Peers:")
-	for _, peerID := range peers {
-		fmt.Println(peerID.String())
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to get closest peers: %v", err)
-	}
-
-	var proxies []models.Proxy
-	for _, peerID := range peers {
-		value, err := dht.GetValue(ctx, proxyKeyPrefix+peerID.String())
-		if err != nil {
-			log.Printf("Failed to get value for peer %s: %v", peerID, err)
-			continue
-		}
-
-		var proxy models.Proxy
-		if err := json.Unmarshal(value, &proxy); err != nil {
-			log.Printf("Failed to unmarshal proxy data for peer %s: %v", peerID, err)
-			continue
-		}
-
-		proxies = append(proxies, proxy)
-	}
-
-	return proxies, nil
-}
 func saveProxyToDHT(proxy models.Proxy) error {
 	ctx := context.Background()
 	key := "/orcanet/proxy/" + proxy.PeerID
 
-	// Check if the proxy already exists
-	existingValue, err := dht_kad.DHT.GetValue(ctx, key)
-	if err == nil {
-		// Proxy exists, update it
-		var existingProxy models.Proxy
-		if err := json.Unmarshal(existingValue, &existingProxy); err != nil {
-			return fmt.Errorf("failed to unmarshal existing proxy data: %v", err)
-		}
-
-		// Check if the new proxy's PeerID matches the existing one
-		if existingProxy.PeerID == proxy.PeerID {
-			// If they are the same, either update or reject
-			existingProxy.Name = proxy.Name
-			existingProxy.Location = proxy.Location
-			existingProxy.Price = proxy.Price
-			existingProxy.Statistics = proxy.Statistics
-			existingProxy.Bandwidth = proxy.Bandwidth
-			existingProxy.IsEnabled = proxy.IsEnabled
-
-			// Serialize and update the proxy as needed
-			updatedProxyJSON, err := json.Marshal(existingProxy)
-			if err != nil {
-				return fmt.Errorf("failed to serialize updated proxy data: %v", err)
-			}
-
-			err = dht_kad.DHT.PutValue(ctx, key, updatedProxyJSON)
-			if err != nil {
-				return fmt.Errorf("failed to update proxy in DHT: %v", err)
-			}
-
-			fmt.Printf("Proxy updated successfully in DHT for PeerID: %s\n", proxy.PeerID)
-		}
-	} else {
-		// Proxy doesn't exist, add it as a new entry
-		proxyJSON, err := json.Marshal(proxy)
-
-		if err != nil {
-			return fmt.Errorf("failed to serialize new proxy data: %v", err)
-		}
-
-		err = dht_kad.DHT.PutValue(ctx, key, proxyJSON)
-		if err != nil {
-			return fmt.Errorf("failed to store new proxy in DHT: %v", err)
-		}
-
-		fmt.Printf("New proxy added successfully to DHT for PeerID: %s\n", proxy.PeerID)
+	proxyJSON, err := json.Marshal(proxy)
+	if err != nil {
+		return fmt.Errorf("failed to serialize proxy data: %v", err)
 	}
+
+	err = dht_kad.DHT.PutValue(ctx, key, proxyJSON)
+	if err != nil {
+		return fmt.Errorf("failed to store proxy in DHT: %v", err)
+	}
+
+	err = advertiseProxy(ctx, dht_kad.DHT, proxy.PeerID)
+	if err != nil {
+		return fmt.Errorf("failed to advertise proxy: %v", err)
+	}
+
+	fmt.Printf("Proxy added and advertised in DHT for PeerID: %s\n", proxy.PeerID)
 	return nil
 }
 

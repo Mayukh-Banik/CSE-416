@@ -28,7 +28,7 @@ func StartDHTService() {
 	go handlePeerExchange(node)
 
 	// cloud node used to hold all uploaded files - for marketplace retrieval and rating
-	ConnectToPeer(node, Cloud_node_addr)
+	// ConnectToPeer(node, Cloud_node_addr)
 
 	// ReceiveDataFromPeer(node) //listen on stream /senddata/p2p
 	setupStreams(node)
