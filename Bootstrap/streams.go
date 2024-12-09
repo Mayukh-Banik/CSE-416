@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -196,4 +198,57 @@ func createNewStream(node host.Host, targetPeerID string, streamProtocol protoco
 
 	fmt.Printf("Successfully created stream to peer %s\n", peerinfo.ID)
 	return stream, nil
+}
+
+func receiveProxy(s network.Stream) {
+	defer s.Close() // Ensure the stream is closed after handling
+
+	// Log the incoming connection
+	log.Printf("Received connection from peer: %s", s.Conn().RemotePeer())
+
+	// Create a buffer to read data
+	var buf bytes.Buffer
+
+	// Read the incoming data from the stream
+	_, err := io.Copy(&buf, s)
+	if err != nil {
+		log.Printf("Error reading from stream: %v", err)
+		return
+	}
+
+	receivedData := buf.String()
+	log.Printf("Data received: %s", receivedData)
+
+	// Save the received data (example: save to a file)
+	err = saveProxyData(receivedData)
+	if err != nil {
+		log.Printf("Error saving proxy data: %v", err)
+		s.Write([]byte("Failed to save data."))
+		return
+	}
+
+	// Send acknowledgment back to the sender
+	_, err = s.Write([]byte("Proxy data received and saved successfully."))
+	if err != nil {
+		log.Printf("Error sending acknowledgment: %v", err)
+	}
+}
+
+func saveProxyData(data string) error {
+	// Create or append to a file with a timestamped filename
+	filename := fmt.Sprintf("proxy_data_%s.txt", time.Now().Format("20060102_150405"))
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// Write the data to the file
+	_, err = file.WriteString(data + "\n")
+	if err != nil {
+		return fmt.Errorf("failed to write data: %w", err)
+	}
+
+	log.Printf("Data saved to file: %s", filename)
+	return nil
 }
