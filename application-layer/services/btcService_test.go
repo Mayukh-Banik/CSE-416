@@ -234,6 +234,40 @@ func TestStopBtcwallet(t *testing.T) {
 	t.Log("TestStopBtcwallet completed.")
 }
 
+// go test -v -run ^TestCreateWallet$ -count=1 application-layer/services
+// TestCreateWallet validates the workflow of creating a wallet, generating a new address, and cleaning up resources.
+// TestCreateWallet validates the creation of a new wallet, address generation, and proper cleanup of btcd and btcwallet processes.
+func TestCreateWallet(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Define test passphrase
+	passphrase := "CSE416"
+
+	// Call CreateWallet
+	newAddress, err := btcService.CreateWallet(passphrase)
+	if err != nil {
+		t.Fatalf("CreateWallet failed: %v", err)
+	}
+
+	// Validate the generated address
+	if newAddress == "" {
+		t.Errorf("Expected a valid new address, but got an empty string")
+	} else {
+		t.Logf("Generated new address: %s", newAddress)
+	}
+
+	// Ensure btcd and btcwallet are not running after function execution
+	if isProcessRunning("btcd") {
+		t.Errorf("btcd process is still running after CreateWallet execution")
+	}
+	if isProcessRunning("btcwallet") {
+		t.Errorf("btcwallet process is still running after CreateWallet execution")
+	}
+
+	// Log success
+	t.Log("CreateWallet executed successfully, and processes were cleaned up.")
+}
+
 // go test -v -run ^TestInit$ -count=1 application-layer/services
 // TestInit validates the initialization of the BtcService.
 func TestInit(t *testing.T) {
@@ -309,34 +343,68 @@ func TestLockWallet(t *testing.T) {
 	t.Logf("LockWallet Result: %s", result)
 }
 
-// go test -v -run ^TestStartBtcdWithArgs$
+// go test -v -run ^TestGetNewAddress$ -count=1 application-layer/services
+// TestGetNewAddress validates getting a new address.
+func TestGetNewAddress(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Ensure btcd and btcwallet are running
+	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
+		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
+	}
+
+	// Call GetNewAddress
+	newAddress, err := btcService.GetNewAddress()
+	if err != nil {
+		t.Fatalf("Failed to get new address: %v", err)
+	}
+
+	// Validate the generated address
+	if newAddress == "" {
+		t.Fatalf("Generated address is empty")
+	}
+
+	// Log and print the result
+	t.Logf("Generated new address: %s", newAddress)
+	fmt.Printf("Generated new address (from test): %s\n", newAddress)
+}
+
+// go test -v -run ^TestListReceivedByAddress$ -count=1 application-layer/services
+// TestListReceivedByAddress validates listing received addresses.
+func TestListReceivedByAddress(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Ensure btcd and btcwallet are running
+	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
+		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
+	}
+
+	// Call ListReceivedByAddress
+	addressList, err := btcService.ListReceivedByAddress()
+	if err != nil {
+		t.Errorf("Failed to list received addresses: %v", err)
+		return
+	}
+
+	// Validate that addresses are returned
+	if len(addressList) == 0 {
+		t.Fatalf("No addresses received from ListReceivedByAddress")
+	}
+
+	// Log and print the result
+	t.Logf("Received Addresses: %v", addressList)
+	fmt.Printf("Received Addresses (from test): %v\n", addressList)
+}
+
+// go test -v -run ^TestStartBtcdWithArgs$ -count=1 application-layer/services
+// TestStartBtcdWithArgs validates starting btcd with arguments.
 func TestStartBtcdWithArgs(t *testing.T) {
 	btcService := NewBtcService()
 
 	// 초기화 호출
 	SetupTempFilePath()
 
-	result := btcService.StartBtcd("1B5t2bk3BtCw88uveEFbvFERotX6adGY6w")
-	expectedSuccess := "btcd started successfully"
-	expectedFailure := "Error starting btcd"
-	expectedAlreadyRunning := "btcd is already running"
-
-	if result != expectedSuccess && result != expectedFailure && result != expectedAlreadyRunning {
-		t.Errorf("Unexpected result: %q", result)
-	}
-
-	if result == expectedSuccess {
-		t.Log("btcd started successfully with wallet address.")
-	}
-}
-
-func TestStartBtcdWithArgs2(t *testing.T) {
-	btcService := NewBtcService()
-
-	// 초기화 호출
-	SetupTempFilePath()
-
-	result := btcService.StartBtcd("13NPW1mgHkJv3tAkogtd3hMvAwoid2YgkU")
+	result := btcService.StartBtcd("1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca")
 	expectedSuccess := "btcd started successfully"
 	expectedFailure := "Error starting btcd"
 	expectedAlreadyRunning := "btcd is already running"
@@ -365,37 +433,39 @@ func TestStartBtcdWithInvalidArgs(t *testing.T) {
 	}
 }
 
-// go test -v -run ^TestGetMiningStatus$
+// go test -v -run ^TestGetMiningStatus$ -count=1 application-layer/services
+// TestGetMiningStatus validates checking the mining status.
 func TestGetMiningStatus(t *testing.T) {
 	btcService := NewBtcService()
 
-	// 마이닝 상태 확인
+	// Check mining status
 	status, err := btcService.GetMiningStatus()
 	if err != nil {
 		t.Errorf("Error checking mining status: %v", err)
 	}
 
-	// 상태 출력
+	// Log the mining status
 	t.Logf("Mining status: %t", status)
 }
 
-// go test -v -run ^TestStartMining$
+// go test -v -run ^TestStartMining$ -count=1 application-layer/services
+// TestStartMining validates starting the mining process.
 func TestStartMining(t *testing.T) {
 	btcService := NewBtcService()
 
-	result := btcService.StartMining(5) // 블록 5개 생성 요청
+	result := btcService.StartMining(5) // Request to generate 5 blocks
 
-	// 예상 가능한 결과
+	// Expected outcomes
 	expected := "mining started successfully"
 	expectedAlreadyRunning := "mining is running"
 	expectedError := "Error checking mining status"
 
-	// 결과 검증
+	// Validate result
 	if result != expected && result != expectedAlreadyRunning && result != expectedError {
 		t.Errorf("Unexpected result: %q", result)
 	}
 
-	// 결과에 따라 로그 출력
+	// Log based on result
 	switch result {
 	case expected:
 		t.Log("Mining started successfully.")
@@ -406,77 +476,106 @@ func TestStartMining(t *testing.T) {
 	}
 }
 
-// go test -v -run ^TestStopMining$
+// go test -v -run ^TestStopMining$ -count=1 application-layer/services
+// TestStopMining validates stopping the mining process.
 func TestStopMining(t *testing.T) {
 	btcService := NewBtcService()
 
-	// 1. temp 파일 초기화
+	// Initialize temp file
 	SetupTempFilePath()
 
-	// temp 파일에 저장된 마이닝 주소 확인
+	// Retrieve mining address from temp file
 	miningAddress, err := getMiningAddressFromTemp()
 	if err != nil {
 		t.Fatalf("Failed to retrieve mining address from temp file: %v", err)
 	}
 
-	// 마이닝 주소 출력
+	// Log mining address
 	fmt.Printf("Mining address retrieved from temp file: %s\n", miningAddress)
 
-	// 2. StopMining 호출
+	// Call StopMining
 	result := btcService.StopMining()
 
-	// 결과 검증
+	// Validate result
 	expected := "Mining process stopped and restarted successfully"
 	if result != expected {
 		t.Errorf("Expected %q, but got %q", expected, result)
 	}
 
-	// 추가 로그
+	// Log result
 	t.Logf("StopMining function result: %s", result)
-}
 
-// go test -v -run ^TestGetNewAddress$
-func TestGetNewAddress(t *testing.T) {
-	btcService := NewBtcService()
-
-	// GetNewAddress 호출
-	newAddress, err := btcService.GetNewAddress()
-	if err != nil {
-		t.Fatalf("Failed to get new address: %v", err)
+	// Cleanup: Stop btcd and btcwallet
+	stopBtcdResult := btcService.StopBtcd()
+	if stopBtcdResult != "btcd stopped successfully" {
+		t.Logf("Failed to stop btcd: %s", stopBtcdResult)
 	}
 
-	// 생성된 주소 출력
-	t.Logf("Generated new address: %s", newAddress)
+	stopBtcwalletResult := btcService.StopBtcwallet()
+	if stopBtcwalletResult != "btcwallet stopped successfully" {
+		t.Logf("Failed to stop btcwallet: %s", stopBtcwalletResult)
+	}
 }
 
-// go test -v -run ^TestLogin$
+// go test -v -run ^TestLogin$ -count=1 application-layer/services
+// TestLogin validates logging into the wallet.
 func TestLogin(t *testing.T) {
 	btcService := NewBtcService()
 
-	// 초기화 호출
+	// Initialize temporary file path
 	SetupTempFilePath()
 
-	// 테스트용 walletAddress와 passphrase
-	walletAddress := "1B5t2bk3BtCw88uveEFbvFERotX6adGY6w"
+	// Test wallet address and passphrase
+	walletAddress := "1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca"
 	passphrase := "CSE416"
 
-	// Login 호출
+	// Ensure wallet exists for testing
+	var walletDBPath string
+	if runtime.GOOS == "windows" {
+		walletDBPath = fmt.Sprintf(`%s\AppData\Local\Btcwallet\mainnet\wallet.db`, os.Getenv("USERPROFILE"))
+	} else if runtime.GOOS == "darwin" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			t.Fatalf("Failed to get home directory: %v", err)
+		}
+		walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
+	} else {
+		t.Fatalf("Unsupported OS: %s", runtime.GOOS)
+	}
+
+	if _, err := os.Stat(walletDBPath); os.IsNotExist(err) {
+		t.Fatalf("Wallet does not exist at path: %s. Please set up a test wallet first.", walletDBPath)
+	}
+
+	// Call Login
 	result, err := btcService.Login(walletAddress, passphrase)
 	if err != nil {
 		t.Errorf("Login failed: %v", err)
 	}
 
-	// 결과 검증
+	// Validate results
 	expected := "Wallet unlocked successfully"
 	if result != expected {
 		t.Errorf("Expected %q, but got %q", expected, result)
 	}
 
-	// 로그 출력
+	// Log output
 	t.Logf("Login Result: %s", result)
+
+	// Cleanup: Stop btcd and btcwallet
+	stopBtcdResult := btcService.StopBtcd()
+	if stopBtcdResult != "btcd stopped successfully" {
+		t.Logf("Failed to stop btcd: %s", stopBtcdResult)
+	}
+
+	stopBtcwalletResult := btcService.StopBtcwallet()
+	if stopBtcwalletResult != "btcwallet stopped successfully" {
+		t.Logf("Failed to stop btcwallet: %s", stopBtcwalletResult)
+	}
 }
 
-// go test -v -run ^TestGetBalance$
+// go test -v -run ^TestGetBalance$ -count=1 application-layer/services
+// TestGetBalance validates getting the wallet balance.
 func TestGetBalance(t *testing.T) {
 	btcService := NewBtcService()
 
@@ -491,12 +590,13 @@ func TestGetBalance(t *testing.T) {
 	fmt.Printf("Wallet Balance (from test): %s\n", balance)
 }
 
-// go test -v -run ^TestGetReceivedByAddress$
+// go test -v -run ^TestGetReceivedByAddress$ -count=1 application-layer/services
+// TestGetReceivedByAddress validates getting the received amount for an address.
 func TestGetReceivedByAddress(t *testing.T) {
 	btcService := NewBtcService()
 
-	// 테스트용 walletAddress 설정
-	walletAddress := "1B5t2bk3BtCw88uveEFbvFERotX6adGY6w"
+	// Test wallet addres
+	walletAddress := "1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca"
 
 	// Ensure btcd and btcwallet are running
 	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
@@ -515,7 +615,8 @@ func TestGetReceivedByAddress(t *testing.T) {
 	fmt.Printf("Received amount for address %s (from test): %s\n", walletAddress, receivedAmount)
 }
 
-// go test -v -run ^TestGetBlockCount$
+// go test -v -run ^TestGetBlockCount$ -count=1 application-layer/services
+// TestGetBlockCount validates getting the current block count.
 func TestGetBlockCount(t *testing.T) {
 	btcService := NewBtcService()
 
@@ -536,28 +637,8 @@ func TestGetBlockCount(t *testing.T) {
 	fmt.Printf("Current block count (from test): %s\n", blockCount)
 }
 
-// go test -v -run ^TestListReceivedByAddress$
-func TestListReceivedByAddress(t *testing.T) {
-	btcService := NewBtcService()
-
-	// Ensure btcd and btcwallet are running
-	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
-		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
-	}
-
-	// Call ListReceivedByAddress
-	addressList, err := btcService.ListReceivedByAddress()
-	if err != nil {
-		t.Errorf("Failed to list received addresses: %v", err)
-		return
-	}
-
-	// Log and Print address list
-	t.Logf("Received Addresses: %v", addressList)
-	fmt.Printf("Received Addresses (from test): %v\n", addressList)
-}
-
-// go test -v -run ^TestListUnspent$
+// go test -v -run ^TestListUnspent$ -count=1 application-layer/services
+// TestListUnspent validates listing unspent transactions.
 func TestListUnspent(t *testing.T) {
 	btcService := NewBtcService()
 
@@ -680,33 +761,6 @@ func TestCreateRawTransaction(t *testing.T) {
 	}
 
 	t.Logf("Raw transaction created successfully: %s", rawTx)
-}
-
-func TestUnlockWallet2(t *testing.T) {
-	btcService := NewBtcService()
-
-	// 테스트용 passphrase 설정
-	passphrase := "CSE416"
-
-	// btcd와 btcwallet이 실행 중인지 확인
-	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
-		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
-	}
-
-	// UnlockWallet 호출
-	result, err := btcService.UnlockWallet(passphrase)
-	if err != nil {
-		t.Errorf("Failed to unlock wallet: %v", err)
-	}
-
-	// 결과 검증
-	expected := "" // btcctl 명령어는 일반적으로 출력이 없으므로 빈 문자열 예상
-	if result != expected {
-		t.Errorf("Expected %q, but got %q", expected, result)
-	}
-
-	// 로그 출력
-	t.Logf("UnlockWallet Result: %s", result)
 }
 
 // go test -v -run ^TestSignRawTransaction$
