@@ -527,7 +527,7 @@ func TestLogin(t *testing.T) {
 	SetupTempFilePath()
 
 	// Test wallet address and passphrase
-	walletAddress := "1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca"
+	walletAddress := "15RMzownS37XMpPhGExBJoSQFHkePenw39"
 	passphrase := "CSE416"
 
 	// Ensure wallet exists for testing
