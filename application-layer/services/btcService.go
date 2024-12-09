@@ -987,6 +987,11 @@ func (bs *BtcService) GetBalance() (string, error) {
 		"getbalance",
 	)
 
+	// Configure environment for macOS
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
@@ -1024,6 +1029,12 @@ func (bs *BtcService) GetReceivedByAddress(walletAddress string) (string, error)
 		walletAddress,
 		"1", // Minimum confirmations set to 1
 	)
+
+	// Configure environment for macOS
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
 
 	var output bytes.Buffer
 	cmd.Stdout = &output

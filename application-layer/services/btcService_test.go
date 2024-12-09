@@ -565,8 +565,8 @@ func TestLogin(t *testing.T) {
 	}
 }
 
-
-// go test -v -run ^TestGetBalance$
+// go test -v -run ^TestGetBalance$ -count=1 application-layer/services
+// TestGetBalance validates getting the wallet balance.
 func TestGetBalance(t *testing.T) {
 	btcService := NewBtcService()
 
@@ -581,12 +581,13 @@ func TestGetBalance(t *testing.T) {
 	fmt.Printf("Wallet Balance (from test): %s\n", balance)
 }
 
-// go test -v -run ^TestGetReceivedByAddress$
+// go test -v -run ^TestGetReceivedByAddress$ -count=1 application-layer/services
+// TestGetReceivedByAddress validates getting the received amount for an address.
 func TestGetReceivedByAddress(t *testing.T) {
 	btcService := NewBtcService()
 
-	// 테스트용 walletAddress 설정
-	walletAddress := "1B5t2bk3BtCw88uveEFbvFERotX6adGY6w"
+	// Test wallet addres
+	walletAddress := "1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca"
 
 	// Ensure btcd and btcwallet are running
 	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
