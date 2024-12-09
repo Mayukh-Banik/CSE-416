@@ -341,11 +341,102 @@ func (bs *BtcService) StopBtcd() string {
 }
 
 // btcwalletCreate executes a PowerShell script to create a btcwallet.
+// func BtcwalletCreate(passphrase string) error {
+// 	// Create a new btcwallet
+// 	var cmd *exec.Cmd
+
+// 	if runtime.GOOS == "windows" {
+// 		// Use PowerShell script on Windows
+// 		cmd = exec.Command("powershell",
+// 			"-NoProfile",
+// 			"-ExecutionPolicy", "Bypass",
+// 			"-WindowStyle", "Hidden",
+// 			"-File", btcwalletScriptPath,
+// 		)
+// 		cmd.Env = append(os.Environ(), "BTCWALLET_PASSPHRASE="+passphrase)
+// 		cmd.SysProcAttr = &syscall.SysProcAttr{}
+// 	} else if runtime.GOOS == "darwin" {
+// 		// Use ./btcwallet directly on macOS
+// 		cmd = exec.Command(btcwalletPath, "--create")
+
+// 		// Create a pseudo-terminal
+// 		ptmx, err := pty.Start(cmd)
+// 		if err != nil {
+// 			return fmt.Errorf("failed to create pty: %v", err)
+// 		}
+// 		defer ptmx.Close()
+
+// 		// Simulate user inputs
+// 		go func() {
+// 			fmt.Fprintf(ptmx, "%s\n", passphrase) // Enter passphrase
+// 			fmt.Fprintf(ptmx, "%s\n", passphrase) // Confirm passphrase
+// 			fmt.Fprintf(ptmx, "no\n")             // No encryption for public data
+// 			fmt.Fprintf(ptmx, "no\n")             // No existing wallet seed
+// 			fmt.Fprintf(ptmx, "OK\n")             // Confirm seed saved
+// 		}()
+
+// 		// Capture output for debugging
+// 		var output bytes.Buffer
+// 		go func() {
+// 			output.ReadFrom(ptmx)
+// 		}()
+
+// 		// Wait for the command to finish
+// 		err = cmd.Wait()
+// 		if err != nil {
+// 			return fmt.Errorf("failed to execute btcwallet: %v\noutput: %s", err, output.String())
+// 		}
+
+// 		fmt.Printf("btcwallet output:\n%s\n", output.String())
+// 		return nil
+// 	} else {
+// 		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+// 	}
+
+// 	// Capture output for debugging
+// 	var stdout, stderr bytes.Buffer
+// 	cmd.Stdout = &stdout
+// 	cmd.Stderr = &stderr
+
+// 	// Run the command and capture errors
+// 	err := cmd.Run()
+// 	if err != nil {
+// 		return fmt.Errorf("failed to execute btcwallet: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+// 	}
+
+// 	fmt.Printf("btcwallet output:\n%s\n", stdout.String())
+// 	return nil
+// }
+
+// BtcwalletCreate creates a new wallet, replacing any existing wallet database.
 func BtcwalletCreate(passphrase string) error {
+	// Define the path to the wallet database
+	var walletDBPath string
+	if runtime.GOOS == "windows" {
+		walletDBPath = fmt.Sprintf(`%s\AppData\Local\Btcwallet\mainnet\wallet.db`, os.Getenv("USERPROFILE"))
+	} else if runtime.GOOS == "darwin" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to get home directory: %v", err)
+		}
+		walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
+	} else {
+		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+	}
+
+	// Check if the wallet database exists and delete it
+	if _, err := os.Stat(walletDBPath); err == nil {
+		err = os.Remove(walletDBPath)
+		if err != nil {
+			return fmt.Errorf("failed to remove existing wallet database: %v", err)
+		}
+		fmt.Println("Existing wallet database removed successfully.")
+	}
+
+	// Create a new wallet
 	var cmd *exec.Cmd
 
 	if runtime.GOOS == "windows" {
-		// Use PowerShell script on Windows
 		cmd = exec.Command("powershell",
 			"-NoProfile",
 			"-ExecutionPolicy", "Bypass",
@@ -355,7 +446,6 @@ func BtcwalletCreate(passphrase string) error {
 		cmd.Env = append(os.Environ(), "BTCWALLET_PASSPHRASE="+passphrase)
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 	} else if runtime.GOOS == "darwin" {
-		// Use ./btcwallet directly on macOS
 		cmd = exec.Command(btcwalletPath, "--create")
 
 		// Create a pseudo-terminal
@@ -406,6 +496,7 @@ func BtcwalletCreate(passphrase string) error {
 	fmt.Printf("btcwallet output:\n%s\n", stdout.String())
 	return nil
 }
+
 
 // StartBtcwallet is a function to start the btcwallet process
 func (bs *BtcService) StartBtcwallet() string {
@@ -489,6 +580,74 @@ func (bs *BtcService) StopBtcwallet() string {
 	fmt.Println("btcwallet stopped successfully")
 	return "btcwallet stopped successfully"
 }
+
+// CreateWallet creates a new wallet by starting btcd, creating the wallet, starting btcwallet, generating a new address, stopping btcd and btcwallet, and returning the new address.
+// CreateWallet creates a new wallet, generates a new address, and ensures proper cleanup of btcd and btcwallet processes.
+func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
+	// Step 1: Start btcd without a wallet address
+	btcdResult := bs.StartBtcd()
+	if btcdResult != "btcd started successfully" {
+		return "", fmt.Errorf("failed to start btcd: %s", btcdResult)
+	}
+	fmt.Println("btcd started successfully.")
+
+	// Allow btcd to stabilize
+	time.Sleep(2 * time.Second)
+
+	// Step 2: Create or overwrite the wallet
+	err := BtcwalletCreate(passphrase)
+	if err != nil {
+		bs.StopBtcd() // Ensure btcd is stopped in case of failure
+		return "", fmt.Errorf("failed to create btcwallet: %w", err)
+	}
+	fmt.Println("Wallet created successfully.")
+
+	// Allow time for wallet creation to stabilize
+	time.Sleep(2 * time.Second)
+
+	// Step 3: Start btcwallet
+	btcwalletResult := bs.StartBtcwallet()
+	if btcwalletResult != "btcwallet started successfully" {
+		bs.StopBtcd()
+		return "", fmt.Errorf("failed to start btcwallet: %s", btcwalletResult)
+	}
+	fmt.Println("btcwallet started successfully.")
+
+	// Allow btcwallet to stabilize
+	time.Sleep(2 * time.Second)
+
+	// Step 4: Generate a new address
+	newAddress, err := bs.GetNewAddress()
+	if err != nil {
+		bs.StopBtcd()
+		bs.StopBtcwallet()
+		return "", fmt.Errorf("failed to generate new address: %w", err)
+	}
+	fmt.Printf("New address generated: %s\n", newAddress)
+
+	// Step 5: Stop btcwallet
+	btcwalletStopResult := bs.StopBtcwallet()
+	if btcwalletStopResult != "btcwallet stopped successfully" {
+		bs.StopBtcd()
+		return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
+	}
+	fmt.Println("btcwallet stopped successfully.")
+
+	// Allow time before stopping btcd
+	time.Sleep(1 * time.Second)
+
+	// Step 6: Stop btcd
+	btcdStopResult := bs.StopBtcd()
+	if btcdStopResult != "btcd stopped successfully" {
+		return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
+	}
+	fmt.Println("btcd stopped successfully.")
+
+	// Step 7: Return the new address
+	return newAddress, nil
+}
+
+
 
 // Init is an initialisation function that starts btcd and btcwallet, connects to the TA server, and exits.
 func (bs *BtcService) Init() string {
@@ -965,7 +1124,7 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	return unlockResult, nil
 }
 
-
+// GetBalance is a function to get the wallet balance
 func (bs *BtcService) GetBalance() (string, error) {
 	// Check if btcd and btcwallet are running
 	if !isProcessRunning("btcd") {
@@ -1007,6 +1166,7 @@ func (bs *BtcService) GetBalance() (string, error) {
 	return balance, nil
 }
 
+// GetReceivedByAddress is a function to get the received amount for a specific address
 func (bs *BtcService) GetReceivedByAddress(walletAddress string) (string, error) {
 	// Check if btcd and btcwallet are running
 	if !isProcessRunning("btcd") {
@@ -1051,6 +1211,7 @@ func (bs *BtcService) GetReceivedByAddress(walletAddress string) (string, error)
 	return receivedAmount, nil
 }
 
+// GetBlockCount is a function to get the current block count
 func (bs *BtcService) GetBlockCount() (string, error) {
 	// Check if btcd is running
 	if !isProcessRunning("btcd") {
@@ -1067,6 +1228,11 @@ func (bs *BtcService) GetBlockCount() (string, error) {
 		"getblockcount",
 	)
 
+	// Configure environment for macOS
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
@@ -1082,6 +1248,7 @@ func (bs *BtcService) GetBlockCount() (string, error) {
 	return blockCount, nil
 }
 
+// ListUnspent is a function to list all unspent transactions
 func (bs *BtcService) ListUnspent() ([]map[string]interface{}, error) {
 	// Check if btcd and btcwallet are running
 	if !isProcessRunning("btcd") {
@@ -1102,6 +1269,11 @@ func (bs *BtcService) ListUnspent() ([]map[string]interface{}, error) {
 		"--notls",
 		"listunspent",
 	)
+
+	// Configure environment for macOS
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
 
 	var output bytes.Buffer
 	cmd.Stdout = &output
@@ -1126,7 +1298,7 @@ func (bs *BtcService) ListUnspent() ([]map[string]interface{}, error) {
 	return utxos, nil
 }
 
-// CreateRawTransaction 함수 수정
+// CreateRawTransaction is a function to create a raw transaction
 func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float64) (string, error) {
 	// Step 1: Retrieve source address (mining address) from temp file
 	fmt.Println("Step 1: Retrieving source address from temp file...")
@@ -1246,7 +1418,7 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 	return rawId, nil
 }
 
-// signRawTransaction 함수 수정
+// signRawTransaction is a function to sign a raw transaction
 func (bs *BtcService) signRawTransaction(rawId string) (string, bool, error) {
 	fmt.Printf("[DEBUG] Starting signRawTransaction with rawId: %s\n", rawId)
 
@@ -1303,7 +1475,7 @@ func (bs *BtcService) signRawTransaction(rawId string) (string, bool, error) {
 	return hex, complete, nil
 }
 
-// sendRawTransaction 함수는 문제 없어 보입니다.
+// sendRawTransaction is a function to send a raw transaction
 func (bs *BtcService) sendRawTransaction(hex string) (string, error) {
 	// Use btcctlPath to construct the command
 	cmd := exec.Command(
@@ -1338,7 +1510,7 @@ func (bs *BtcService) sendRawTransaction(hex string) (string, error) {
 	return txid, nil
 }
 
-// Transaction 함수 수정
+// Transaction is a function to perform a transaction
 func (bs *BtcService) Transaction(passphrase, txid, dst string, amount float64) (string, error) {
 	fmt.Printf("[DEBUG] Starting transaction with passphrase: %s, txid: %s, dst: %s, amount: %.8f\n", passphrase, txid, dst, amount)
 
