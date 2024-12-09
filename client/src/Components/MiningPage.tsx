@@ -44,15 +44,15 @@ const MiningPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [numBlocks, setNumBlocks] = useState<number>(1); // 블록 수 상태
+    const [numBlocks, setNumBlocks] = useState<number>(1);
 
-    const API_BASE_URL = "http://localhost:8080/api/btc"; // 백엔드 API 베이스 URL
+    const API_BASE_URL = "http://localhost:8080/api/btc"; 
 
 
     useEffect(() => {
         console.log("Mining status changed:", isMining);
         if (!isMining) {
-            setIsLoading(false); // 마이닝 중단 시 로딩 해제
+            setIsLoading(false); // Unloading when mining stops
         }
     }, [isMining]);
 
@@ -75,25 +75,25 @@ const MiningPage: React.FC = () => {
 
                 const data = await response.json();
 
-                // 이전 상태와 비교하여 변경된 경우만 처리
+                
                 setIsMining((prevStatus) => {
                     if (prevStatus !== data.data.mining) {
                         console.log("Mining status changed:", data.data.mining);
-                        setIsLoading(false); // 로딩 상태 해제
+                        setIsLoading(false);
                     }
-                    return data.data.mining; // 새로운 상태 설정
+                    return data.data.mining; 
                 });
             } catch (err) {
                 console.error("Error fetching mining status:", err);
                 setError(err instanceof Error ? err.message : "An unknown error occurred.");
-                setIsLoading(false); // 로딩 상태 해제
+                setIsLoading(false); 
             }
         };
 
-        fetchMiningStatus(); // 컴포넌트 초기 렌더링 시 실행
-        const interval = setInterval(fetchMiningStatus, refreshInterval); // 5초마다 상태 갱신
+        fetchMiningStatus(); 
+        const interval = setInterval(fetchMiningStatus, refreshInterval + 1000);
 
-        return () => clearInterval(interval); // 컴포넌트 언마운트 시 인터벌 해제
+        return () => clearInterval(interval); 
     }, []);
 
     // Fetch balance periodically
@@ -120,10 +120,10 @@ const MiningPage: React.FC = () => {
             }
         };
 
-        fetchBalance(); // 컴포넌트가 처음 렌더링될 때 즉시 호출
+        fetchBalance(); 
 
-        const interval = setInterval(fetchBalance, refreshInterval); // 5초마다 갱신
-        return () => clearInterval(interval); // 컴포넌트 언마운트 시 인터벌 정리
+        const interval = setInterval(fetchBalance, refreshInterval); 
+        return () => clearInterval(interval); 
     }, []);
 
     // Start mining
@@ -133,7 +133,7 @@ const MiningPage: React.FC = () => {
             return;
         }
 
-        console.log("Start Mining: Button clicked"); // 디버깅 로그
+        console.log("Start Mining: Button clicked");
         setIsLoading(true);
 
         try {
@@ -148,26 +148,26 @@ const MiningPage: React.FC = () => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error("Server Error:", errorData); // 서버 에러 로그
+                console.error("Server Error:", errorData);
                 throw new Error(errorData.message || "Failed to start mining");
             }
 
             const data = await response.json();
-            console.log("Mining started successfully:", data); // 서버 성공 로그
+            console.log("Mining started successfully:", data);
             setSuccess(data.message || "Mining started successfully");
         } catch (error) {
-            console.error("Error starting mining:", error); // 오류 로그
-            setIsMining(false); // 상태 롤백
+            console.error("Error starting mining:", error); 
+            setIsMining(false); 
             setError(error instanceof Error ? error.message : "An unknown error occurred.");
         } finally {
-            console.log("Start Mining: Finished"); // 디버깅 로그
-            setIsLoading(false); // 로딩 상태 해제
+            console.log("Start Mining: Finished"); 
+            setIsLoading(false); 
         }
     };
 
     // Stop mining
     const handleStopMining = async () => {
-        console.log("Stop Mining: Button clicked"); // 디버깅 로그
+        console.log("Stop Mining: Button clicked"); 
         setIsLoading(true);
 
         try {
@@ -181,19 +181,19 @@ const MiningPage: React.FC = () => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error("Server Error:", errorData); // 서버 에러 로그
+                console.error("Server Error:", errorData); 
                 throw new Error(errorData.message || "Failed to stop mining");
             }
 
             const data = await response.json();
-            console.log("Mining stopped successfully:", data); // 서버 성공 로그
+            console.log("Mining stopped successfully:", data);
             setSuccess(data.message || "Mining stopped successfully");
         } catch (error) {
-            console.error("Error stopping mining:", error); // 오류 로그
+            console.error("Error stopping mining:", error);
             setError(error instanceof Error ? error.message : "An unknown error occurred.");
         } finally {
-            console.log("Stop Mining: Finished"); // 디버깅 로그
-            setIsLoading(false); // 로딩 상태 해제
+            console.log("Stop Mining: Finished"); 
+            setIsLoading(false); 
         }
     };
 
@@ -246,7 +246,7 @@ const MiningPage: React.FC = () => {
                                         value={numBlocks}
                                         onChange={(e) => setNumBlocks(Number(e.target.value))}
                                         sx={{ width: 150 }}
-                                        disabled={isMining || isLoading} // 마이닝 상태는 비활성화하지 않음
+                                        disabled={isMining || isLoading} 
                                         inputProps={{ min: 1 }}
                                     />
                                     <Button
@@ -254,7 +254,7 @@ const MiningPage: React.FC = () => {
                                         color="primary"
                                         onClick={isMining ? handleStopMining : handleStartMining}
                                         disabled={isLoading}
-                                        sx={{ height: '56px' }} // TextField와 높이 맞춤
+                                        sx={{ height: '56px' }}
                                     >
                                         {isLoading ? (<CircularProgress size={24} />) : isMining ? ("Stop Mining") : ("Start Mining")}
                                     </Button>
