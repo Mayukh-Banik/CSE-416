@@ -128,9 +128,9 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 func PublishFile(requestBody models.FileMetadata) {
 	fmt.Println("publishing new file")
 
-	err := dht_kad.UpdateFileInDHT(requestBody)
+	dhtMetadata, err := dht_kad.UpdateFileInDHT(requestBody)
 	if err != nil {
-		fmt.Printf("unable to update file in the dht %w\n", err)
+		fmt.Printf("unable to update file in the dht %v\n", err)
 		return
 	}
 
@@ -146,7 +146,7 @@ func PublishFile(requestBody models.FileMetadata) {
 	fmt.Println("PublishFile: fileHashToPath: ", dht_kad.FileHashToPath)
 	dht_kad.FileMapMutex.Unlock()
 
-	dht_kad.SendCloudNodeFiles(requestBody)
+	dht_kad.SendCloudNodeFiles(dhtMetadata)
 }
 
 // bug

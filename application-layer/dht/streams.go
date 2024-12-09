@@ -29,7 +29,7 @@ var (
 	RefreshResponse []models.FileMetadata
 	ProxyResponse   []models.Proxy
 
-	MarketplaceFiles []models.FileMetadata
+	MarketplaceFiles []models.DHTMetadata
 
 	MarketplaceFilesSignal = make(chan struct{})
 
@@ -237,7 +237,7 @@ func SendMarketFilesRequest(nodeID string) error {
 	return nil
 }
 
-func SendCloudNodeFiles(fileMetadata models.FileMetadata) error {
+func SendCloudNodeFiles(fileMetadata models.DHTMetadata) error {
 	stream, err := CreateNewStream(DHT.Host(), Cloud_node_id, "/nodeFiles/p2p")
 	if err != nil {
 		return fmt.Errorf("error sending file to cloud node")
@@ -506,7 +506,7 @@ func receiveFile(node host.Host) error {
 		utils.AddOrUpdateTransaction(transaction)
 
 		// ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
-		err = UpdateFileInDHT(metadata)
+		_, err = UpdateFileInDHT(metadata)
 		if err != nil {
 			// is it a failure if the user receives the file but cannot be added to the dht?
 			fmt.Errorf("failed to update dht metadata")
@@ -540,7 +540,7 @@ func receiveMarketplaceFiles(node host.Host) {
 		}
 
 		// Parse the accumulated JSON data
-		var fileData []models.FileMetadata
+		var fileData []models.DHTMetadata
 		err := json.Unmarshal(receivedData.Bytes(), &fileData)
 		fmt.Println("file data received from refresh", fileData)
 		if err != nil {

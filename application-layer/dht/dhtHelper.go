@@ -33,15 +33,13 @@ import (
 )
 
 var (
-	Node_id             string
-	Relay_node_addr     = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
-	Bootstrap_node_addr = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+	Node_id         string
+	Relay_node_addr = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
+	// Bootstrap_node_addr = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+	Bootstrap_node_addr = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
 	Cloud_node_addr     = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
 	Cloud_node_id       = "12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
 	// Bootstrap_node_addr = "/ip4/192.168.86.218/tcp/61000/p2p/12D3KooWPs4FtjU4YmGoFgnd225gj3XKBD6QZpWFK5Pq1yEp87kx"
-	// Bootstrap_node_addr = "/ip4/10.1.163.195/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
-	// Bootstrap_node_addr = "/ip4/192.168.86.218/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
-
 	GlobalCtx     context.Context
 	PeerID        string
 	DHT           *dht.IpfsDHT
@@ -330,7 +328,8 @@ func getNodeId() {
 }
 
 // move to files package?
-func UpdateFileInDHT(currentInfo models.FileMetadata) error {
+func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error) {
+	fmt.Println("-----UpdateFileInDHT-----")
 	// Retrieve the current metadata for the file, if it exists
 	var currentMetadata models.DHTMetadata
 	existingData, err := DHT.GetValue(GlobalCtx, "/orcanet/"+currentInfo.Hash)
@@ -377,13 +376,13 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) error {
 	// Marshal the updated metadata
 	dhtMetadataBytes, err := json.Marshal(currentMetadata)
 	if err != nil {
-		return fmt.Errorf("failed to marshal updated DHTMetadata: %w", err)
+		return models.DHTMetadata{}, fmt.Errorf("failed to marshal updated DHTMetadata: %w", err)
 	}
 
 	// Begin providing ourselves as a provider for that file
 	err = ProvideKey(GlobalCtx, DHT, currentInfo.Hash)
 	if err != nil {
-		return fmt.Errorf("failed to register updated file to dht: %w", err)
+		return models.DHTMetadata{}, fmt.Errorf("failed to register updated file to dht: %w", err)
 	}
 
 	// Store the updated metadata in the DHT
@@ -393,5 +392,5 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) error {
 	}
 	fmt.Println("successfully updated file to dht with new provider", currentInfo.Hash)
 
-	return nil
+	return currentMetadata, nil
 }
