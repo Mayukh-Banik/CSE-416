@@ -675,11 +675,11 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 	return newAddress, nil
 }
 
-// Init is an initialisation function that starts btcd and btcwallet, connects to the TA server, and exits.
+// Init is a function to initialize the service	
 func (bs *BtcService) Init() string {
 	SetupTempFilePath()
 
-	// initialize temp file
+	// Initialize temp file
 	err := initializeTempFile()
 	if err != nil {
 		fmt.Printf("Failed to initialize temp file: %v\n", err)
@@ -687,7 +687,7 @@ func (bs *BtcService) Init() string {
 	}
 	fmt.Println("Temporary file initialized successfully.")
 
-	// start btcd
+	// Start btcd
 	btcdResult := bs.StartBtcd()
 	if btcdResult != "btcd started successfully" {
 		bs.StopBtcd()
@@ -696,7 +696,7 @@ func (bs *BtcService) Init() string {
 		return btcdResult
 	}
 
-	// start btcwallet
+	// Start btcwallet
 	btcwalletResult := bs.StartBtcwallet()
 	if btcwalletResult != "btcwallet started successfully" {
 		bs.StopBtcd()
@@ -705,7 +705,7 @@ func (bs *BtcService) Init() string {
 		return btcwalletResult
 	}
 
-	// connect to TA server
+	// Connect to TA server
 	cmd := exec.Command(
 		btcctlPath,
 		"--rpcuser=user",
@@ -723,22 +723,37 @@ func (bs *BtcService) Init() string {
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error connecting to TA server: %v\n", err)
+		bs.StopBtcd()
+		bs.StopBtcwallet()
 		return fmt.Sprintf("Error connecting to TA server: %s", output.String())
 	}
 
 	fmt.Println("Connected to TA server successfully.")
 
-	// stop btcd and btcwallet
-	stopBtcdResult := bs.StopBtcd()
-	if stopBtcdResult != "btcd stopped successfully" {
-		fmt.Println("Failed to stop btcd.")
-		return stopBtcdResult
+	// Ensure btcwallet is running before stopping it
+	time.Sleep(1 * time.Second) // Allow stabilization
+	if !isProcessRunning("btcwallet") {
+		fmt.Println("btcwallet is not running. Skipping stop step.")
+	} else {
+		stopBtcwalletResult := bs.StopBtcwallet()
+		if stopBtcwalletResult != "btcwallet stopped successfully" {
+			fmt.Println("Failed to stop btcwallet.")
+			return stopBtcwalletResult
+		}
+		fmt.Println("btcwallet stopped successfully.")
 	}
 
-	stopBtcwalletResult := bs.StopBtcwallet()
-	if stopBtcwalletResult != "btcwallet stopped successfully" {
-		fmt.Println("Failed to stop btcwallet.")
-		return stopBtcwalletResult
+	// Ensure btcd is running before stopping it
+	time.Sleep(1 * time.Second) // Allow stabilization
+	if !isProcessRunning("btcd") {
+		fmt.Println("btcd is not running. Skipping stop step.")
+	} else {
+		stopBtcdResult := bs.StopBtcd()
+		if stopBtcdResult != "btcd stopped successfully" {
+			fmt.Println("Failed to stop btcd.")
+			return stopBtcdResult
+		}
+		fmt.Println("btcd stopped successfully.")
 	}
 
 	fmt.Println("Initialization and cleanup completed successfully.")
@@ -1333,7 +1348,7 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 		utxoAmount, ok3 := utxo["amount"].(float64)
 
 		if !ok1 || !ok2 || !ok3 {
-			continue // 잘못된 UTXO 형식 건너뛰기
+			continue // Skip invalid UTXOs
 		}
 
 		// Match txid, source address, and check amount sufficiency
@@ -1362,34 +1377,18 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 
 	// Step 4: Construct raw transaction command
 	fmt.Println("Step 4: Constructing raw transaction command...")
-	rawTxCommandWin := []string{
+	txInputs := fmt.Sprintf(`[{"txid":"%s", "vout":%d}]`, txid, vout)
+	txOutputs := fmt.Sprintf(`{"%s": %.8f, "%s": %.8f}`, dst, amount, srcAddress, srcAmount-amount)
+
+	rawTxCommand := []string{
 		"--wallet",
 		"--rpcuser=user",
 		"--rpcpass=password",
 		"--rpcserver=127.0.0.1:8332",
 		"--notls",
 		"createrawtransaction",
-		fmt.Sprintf(`[{"txid":"%s", "vout":%d}]`, txid, vout),
-		fmt.Sprintf(`{"%s": %.8f, "%s": %.8f}`, dst, amount, srcAddress, srcAmount-amount),
-	}
-
-	rawTxCommandMac := []string{
-		"--wallet",
-		"--rpcuser=user",
-		"--rpcpass=password",
-		"--rpcserver=127.0.0.1:8332",
-		"--notls",
-		"createrawtransaction",
-		fmt.Sprintf(`[{"txid":"%s", "vout":%d}]`, txid, vout),
-		fmt.Sprintf(`{"%s": %.8f, "%s": %.8f}`, dst, amount, srcAddress, srcAmount-amount),
-	}
-
-	// Determine OS-specific command
-	var rawTxCommand []string
-	if os.Getenv("OS") == "Windows_NT" {
-		rawTxCommand = rawTxCommandWin
-	} else {
-		rawTxCommand = rawTxCommandMac
+		txInputs,
+		txOutputs,
 	}
 
 	fmt.Printf("Raw transaction command: %v\n", rawTxCommand)
@@ -1397,6 +1396,12 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 	// Step 5: Execute raw transaction command
 	fmt.Println("Step 5: Executing raw transaction command...")
 	cmd := exec.Command(btcctlPath, rawTxCommand...)
+
+	// Add macOS-specific PATH configuration
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
 	var output bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &output
@@ -1413,6 +1418,7 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 	fmt.Printf("Raw transaction created: %s\n", rawId)
 	return rawId, nil
 }
+
 
 // signRawTransaction is a function to sign a raw transaction
 func (bs *BtcService) signRawTransaction(rawId string) (string, bool, error) {
