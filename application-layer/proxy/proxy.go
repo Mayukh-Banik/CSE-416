@@ -87,7 +87,7 @@ func pollPeerAddresses(node host.Host) {
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
 	go dht_kad.ConnectToPeer(node, dht_kad.Bootstrap_node_addr)
-	go dht_kad.ConnectToPeer(node, Cloud_node_addr)
+	// go dht_kad.ConnectToPeer(node, Cloud_node_addr)
 	globalCtx = context.Background()
 	if r.Method == "POST" {
 		isHost = true
@@ -130,8 +130,14 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	go pollPeerAddresses(node)
 
 	if r.Method == "GET" {
-
-		proxyInfo, err := getProxyFromDHT(dht_kad.DHT, node.ID(), models.Proxy{})
+		ctx := context.Background()
+		proxies, err := getAllProxiesFromDHT(dht_kad.DHT, ctx)
+		fmt.Println("Retrieved Proxies:")
+		for _, proxy := range proxies {
+			fmt.Printf("Peer ID: %s\n", proxy.PeerID)
+			fmt.Printf("Addresses: %v\n", proxy.Address)
+			fmt.Println("----------------------------")
+		}
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error retrieving proxies: %v", err), http.StatusInternalServerError)
 			return
@@ -141,10 +147,10 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 
 		// Ensure proxyInfo is wrapped in an array if it's not already
 		var responseData []models.Proxy
-		if len(proxyInfo) == 0 {
+		if len(proxies) == 0 {
 			responseData = []models.Proxy{}
 		} else {
-			responseData = proxyInfo
+			responseData = proxies
 		}
 
 		if err := json.NewEncoder(w).Encode(responseData); err != nil {
@@ -157,12 +163,14 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 func getProxyFromDHT(dht *dht.IpfsDHT, peerID peer.ID, proxy models.Proxy) ([]models.Proxy, error) {
 	ctx := context.Background()
 	key := proxyKeyPrefix + peerID.String()
+	fmt.Printf("Attempting to retrieve proxy with key: %s\n", key)
 
 	value, err := dht.GetValue(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get proxy from DHT: %v", err)
 	}
 
+	fmt.Printf("Raw value retrieved from DHT: %s\n", string(value))
 	var storedProxy models.Proxy
 	err = json.Unmarshal(value, &storedProxy)
 	if err != nil {
@@ -171,8 +179,29 @@ func getProxyFromDHT(dht *dht.IpfsDHT, peerID peer.ID, proxy models.Proxy) ([]mo
 
 	return []models.Proxy{storedProxy}, nil
 }
+func discoverPeers(dhtInstance *dht.IpfsDHT) ([]peer.ID, error) {
+	var discoveredPeers []peer.ID
+
+	// Use FindPeer or similar methods to query
+	for _, peerInfo := range dhtInstance.RoutingTable().ListPeers() {
+		discoveredPeers = append(discoveredPeers, peerInfo)
+		fmt.Println("Discovered Peer:", peerInfo.String())
+	}
+
+	return discoveredPeers, nil
+}
+
 func getAllProxiesFromDHT(dht *dht.IpfsDHT, ctx context.Context) ([]models.Proxy, error) {
-	peers, err := dht.GetClosestPeers(ctx, string(proxyKeyPrefix))
+	peers, err := discoverPeers(dht)
+	if err != nil {
+		fmt.Printf("Error discovering peers: %v", err)
+
+	}
+
+	fmt.Println("Discovered Peers:")
+	for _, peerID := range peers {
+		fmt.Println(peerID.String())
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get closest peers: %v", err)
 	}
