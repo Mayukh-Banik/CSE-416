@@ -223,7 +223,6 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		filePath = DownloadedFilePath
 	}
 
-	// VERY BUGGY
 	err := deleteFileContent(name) // currently using file name but we should switch to hash
 	if err != nil {
 		http.Error(w, fmt.Sprint("failed to delete file from squidcoinFiles", err), http.StatusInternalServerError)
@@ -241,6 +240,12 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = removeProvider(hash, true)
+	if err != nil {
+		http.Error(w, fmt.Sprint("failed to remove node as file provider", err), http.StatusInternalServerError)
+		return
+	}
+
 	response := map[string]string{
 		"status":  action,
 		"message": "File deletion successful",
@@ -249,6 +254,31 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
+}
+
+func removeProvider(hash string, isDelete bool) error {
+	var metadata models.DHTMetadata
+
+	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, hash)
+	if err != nil {
+		return fmt.Errorf("failed to get file from dht for provider updating: %v", err)
+	}
+
+	err = json.Unmarshal(data, &metadata)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal data: %v", err)
+	}
+
+	// delete the provider or set inactive
+	if isDelete {
+		delete(metadata.Providers, dht_kad.PeerID)
+	} else {
+		if value, exists := metadata.Providers[dht_kad.PeerID]; exists {
+			value.IsActive = false
+			metadata.Providers[dht_kad.PeerID] = value // Reassign after modification
+		}
+	}
+	return nil
 }
 
 // removeFileFromJSON removes the file entry with the given hash from the JSON file

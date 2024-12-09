@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, LinearProgress } from '@mui/material';
 import Sidebar from './Sidebar';
 import { useTheme } from '@mui/material/styles';
-import { FileMetadata, Provider } from "../models/fileMetadata"
+import { FileMetadata, Provider, DHTMetadata } from "../models/fileMetadata"
 import { Transaction } from '../models/transactions';
 
 const drawerWidth = 300;
@@ -66,7 +66,7 @@ const MarketplacePage: React.FC = () => {
     setFileHash("");
     setProviders([]);
     setSelectedFile(null);
-    setSearchTerm("");
+    // setSearchTerm("");
     setLoadingRequest(false);
     setLoadingSearch(false);
     setSearchResults([])
@@ -129,7 +129,8 @@ const MarketplacePage: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefresh(true);
-    resetStates();
+    await resetStates();
+    setSearchResults([])
     setLoadingSearch(true);
     console.log("Refreshing marketplace");
 
@@ -162,6 +163,7 @@ const MarketplacePage: React.FC = () => {
   // only works for complete file hashes
   const handleSearchRequest = async (searchTerm: string) => {
     await resetStates();
+    setSearchResults([])
     if (!searchTerm || searchTerm.length === 0) {
       setSearchResults(marketResults);
       return;
@@ -176,7 +178,7 @@ const MarketplacePage: React.FC = () => {
   }
 
   const getFileByHash = async (hash: string) => {
-    // resetStates()
+    await resetStates()
     setLoadingSearch(true)
     try {
         const encodedHash = encodeURIComponent(hash);  // Ensure hash is URL-safe
@@ -333,30 +335,31 @@ const MarketplacePage: React.FC = () => {
           </Box>
         )}
   
-          {Object.entries(providers).length ? (
-            Object.entries(providers)
-              .filter(([peerID, provider]) => provider.IsActive)
-              .map(([peerID, provider]) => (
-                <Button
-                  key={peerID} // Ensure this is unique for the key
-                  variant="outlined"
-                  onClick={() => handleProviderSelect(peerID)}
-                  sx={{
-                    margin: 1,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    width: '100%',
-                  }}
-                >
-                  <span style={{ wordBreak: 'break-all', whiteSpace: 'normal' }}>
-                    {peerID}
-                  </span>
-                  <span>{provider.Fee} SQD/MB</span>
-                </Button>
-              ))
-          ) : (
-            <Typography>No providers available for this file.</Typography>
-          )}
+  {Object.entries(providers).some(([_, provider]) => provider.IsActive) ? (
+  Object.entries(providers)
+    .filter(([_, provider]) => provider.IsActive)
+    .map(([peerID, provider]) => (
+      <Button
+        key={peerID} // Ensure this is unique for the key
+        variant="outlined"
+        onClick={() => handleProviderSelect(peerID)}
+        sx={{
+          margin: 1,
+          display: 'flex',
+          justifyContent: 'space-between',
+          width: '100%',
+        }}
+      >
+        <span style={{ wordBreak: 'break-all', whiteSpace: 'normal' }}>
+          {peerID}
+        </span>
+        <span>{provider.Fee} SQD/MB</span>
+      </Button>
+    ))
+) : (
+  <Typography>No providers available for this file.</Typography>
+)}
+
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>

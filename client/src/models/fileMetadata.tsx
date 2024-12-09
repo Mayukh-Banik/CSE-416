@@ -1,18 +1,23 @@
 export interface Provider {
     Fee: number;
-    PeerID: string;
+    PeerAddr: string;
     IsActive: boolean;
+    Rating: number;
   }
   
-export interface dhtFile{
-  name: string;
-  type: string;
-  size: number;
-  description: string;
-  hash: string;
-  rating?: number;
-  isPublished?: boolean;
-  providers: Provider[];
+export interface DHTMetadata{
+  Name:             string
+	NameWithExtension: string
+	Type:              string
+	Size:              number
+	Description:       string
+	CreatedAt:         string
+	Rating:            number               //
+  Providers: { [key: string]: Provider }; // Use PeerID as the key
+	NumRaters:         number
+	Upvote:            number
+	Downvote:          number
+	Hash:              string
 }
 
 export interface FileMetadata {
