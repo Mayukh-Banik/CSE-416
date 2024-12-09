@@ -268,6 +268,7 @@ func TestCreateWallet(t *testing.T) {
 	t.Log("CreateWallet executed successfully, and processes were cleaned up.")
 }
 
+
 // go test -v -run ^TestInit$ -count=1 application-layer/services
 // TestInit validates the initialization of the BtcService.
 func TestInit(t *testing.T) {
@@ -404,7 +405,7 @@ func TestStartBtcdWithArgs(t *testing.T) {
 	// 초기화 호출
 	SetupTempFilePath()
 
-	result := btcService.StartBtcd("1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca")
+	result := btcService.StartBtcd("14QnrKvCS9cskoMjfKkCe7xaWkQwdWCbJc")
 	expectedSuccess := "btcd started successfully"
 	expectedFailure := "Error starting btcd"
 	expectedAlreadyRunning := "btcd is already running"
@@ -596,7 +597,7 @@ func TestGetReceivedByAddress(t *testing.T) {
 	btcService := NewBtcService()
 
 	// Test wallet addres
-	walletAddress := "1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca"
+	walletAddress := "14QnrKvCS9cskoMjfKkCe7xaWkQwdWCbJc"
 
 	// Ensure btcd and btcwallet are running
 	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
@@ -659,7 +660,7 @@ func TestListUnspent(t *testing.T) {
 	fmt.Printf("List of unspent transactions (from test): %v\n", utxos)
 }
 
-// go test -v -run ^TestCreateRawTransactionWithValidation$
+// go test -v -run ^TestCreateRawTransactionWithValidation$ -count=1 application-layer/services
 // this test is incomplete code block of the original function
 func TestCreateRawTransactionWithValidation(t *testing.T) {
 	btcService := NewBtcService()
@@ -737,7 +738,7 @@ func TestCreateRawTransactionWithValidation(t *testing.T) {
 	t.Log("Transaction validation successful.")
 }
 
-// go test -v -run ^TestCreateRawTransaction$
+// go test -v -run ^TestCreateRawTransaction$ -count=1 application-layer/services
 func TestCreateRawTransaction(t *testing.T) {
 	// BTC 서비스 초기화
 	btcService := NewBtcService()
@@ -745,9 +746,9 @@ func TestCreateRawTransaction(t *testing.T) {
 	SetupTempFilePath()
 
 	// 테스트 인자 설정
-	txid := "cf38e31e633110e35a0fd91c16807904a4e38d2acbfd5d5a985d36a7240fe702"
-	dst := "1G23RBEZVhePDeTP5gq4be3jEec5mBWorw"
-	amount := 20.0
+	txid := "224e895ef356e72f4b0809e2ccfe9d2eef8c83b157285624822929ec949797a1"
+	dst := "15RMzownS37XMpPhGExBJoSQFHkePenw39"
+	amount := 10.0
 
 	// 함수 호출
 	rawTx, err := btcService.CreateRawTransaction(txid, dst, amount)
@@ -763,13 +764,13 @@ func TestCreateRawTransaction(t *testing.T) {
 	t.Logf("Raw transaction created successfully: %s", rawTx)
 }
 
-// go test -v -run ^TestSignRawTransaction$
+// go test -v -run ^TestSignRawTransaction$ -count=1 application-layer/services
 func TestSignRawTransaction(t *testing.T) {
 	// BTC 서비스 초기화
 	btcService := NewBtcService()
 
 	// 테스트용 Raw Transaction ID
-	rawId := "010000000102e70f24a7365d985a5dfdcb2a8de3a4047980161cd90f5ae31031631ee338cf0000000000ffffffff0280e2eeb2000000001976a9146e9d847156b018b35e6275c150cb2788b24c90a188ac00943577000000001976a914a4bc51f8084fffa6a7432568cf46f1353a0666ca88ac00000000"
+	rawId := "0100000001a1979794ec29298224562857b1838cef2e9dfecce209084b2fe756f35e894e220000000000ffffffff0200286bee000000001976a914256837efb737ab0023119c429de6bb4b96546a2888ac00ca9a3b000000001976a914307c036da6d21136926389930a8d40c7d6850b5588ac00000000"
 
 	// 함수 호출
 	hex, complete, err := btcService.signRawTransaction(rawId)
@@ -789,13 +790,13 @@ func TestSignRawTransaction(t *testing.T) {
 	t.Logf("Transaction complete status: %v", complete)
 }
 
-// go test -v -run ^TestSendRawTransaction$
+// go test -v -run ^TestSendRawTransaction$ -count=1 application-layer/services
 func TestSendRawTransaction(t *testing.T) {
 	// BTC 서비스 초기화
 	btcService := NewBtcService()
 
 	// 테스트용 Signed Transaction Hex
-	signedTxHex := "010000000171f1ebd5a5a021005107273671642181aaa9457710636efa7b7362b56f5de3f9000000006a47304402200f53775acd4fe46ae4c52fd09b39408798cca6d6e5e709cba17b76451ae282d802204872576f48be483a16bfb5d1272bae4478f34be8d24f20bad5121d6c08af764201210387d22a806b62c919e5f461f6038f583e40bcc591eb2e4e562802ce9e56b9dea2ffffffff02c0512677000000001976a9146e9d847156b018b35e6275c150cb2788b24c90a188ac00943577000000001976a914a4bc51f8084fffa6a7432568cf46f1353a0666ca88ac00000000"
+	signedTxHex := "0100000001a1979794ec29298224562857b1838cef2e9dfecce209084b2fe756f35e894e22000000006b483045022100b177aa508b5e73a29b643db7c952591664815467c3cd6bd4c338fcfa97244193022057e0fe59c442bd8539f14639f9ba9f0031cffb53c5e0c4d27ea9cab29100bab401210300a4d118b08eff4d98c1a86bc6d19a563a78d0456869c65b7d0f97e4057691a9ffffffff0200286bee000000001976a914256837efb737ab0023119c429de6bb4b96546a2888ac00ca9a3b000000001976a914307c036da6d21136926389930a8d40c7d6850b5588ac00000000"
 
 	// 함수 호출
 	txid, err := btcService.sendRawTransaction(signedTxHex)
@@ -811,7 +812,7 @@ func TestSendRawTransaction(t *testing.T) {
 	t.Logf("Transaction ID: %s", txid)
 }
 
-// go test -v -run ^TestTransaction$
+// go test -v -run ^TestTransaction$ -count=1 application-layer/services
 func TestTransaction(t *testing.T) {
 
 	// Initialize BtcService
@@ -822,8 +823,8 @@ func TestTransaction(t *testing.T) {
 
 	// Test parameters
 	passphrase := "CSE416"
-	txid := "5dfcbcd73fb25f65c335fef7fe63701d1b0ddb743b2d80c84209515f82f67d0a"
-	dst := "1G23RBEZVhePDeTP5gq4be3jEec5mBWorw"
+	txid := "6badadaa3cd1c6ac32e04b37d036b3b10fa9b330dc558ac4123eade72a8ba681"
+	dst := "15RMzownS37XMpPhGExBJoSQFHkePenw39"
 	amount := 5.0
 
 	// Step 1: Call the Transaction function

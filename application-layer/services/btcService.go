@@ -675,7 +675,7 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 	return newAddress, nil
 }
 
-// Init is an initialisation function that starts btcd and btcwallet, connects to the TA server, and exits.
+// Init is a function to initialize the service	
 func (bs *BtcService) Init() string {
 	SetupTempFilePath()
 
@@ -1348,7 +1348,7 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 		utxoAmount, ok3 := utxo["amount"].(float64)
 
 		if !ok1 || !ok2 || !ok3 {
-			continue // 잘못된 UTXO 형식 건너뛰기
+			continue // Skip invalid UTXOs
 		}
 
 		// Match txid, source address, and check amount sufficiency
@@ -1377,34 +1377,18 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 
 	// Step 4: Construct raw transaction command
 	fmt.Println("Step 4: Constructing raw transaction command...")
-	rawTxCommandWin := []string{
+	txInputs := fmt.Sprintf(`[{"txid":"%s", "vout":%d}]`, txid, vout)
+	txOutputs := fmt.Sprintf(`{"%s": %.8f, "%s": %.8f}`, dst, amount, srcAddress, srcAmount-amount)
+
+	rawTxCommand := []string{
 		"--wallet",
 		"--rpcuser=user",
 		"--rpcpass=password",
 		"--rpcserver=127.0.0.1:8332",
 		"--notls",
 		"createrawtransaction",
-		fmt.Sprintf(`[{"txid":"%s", "vout":%d}]`, txid, vout),
-		fmt.Sprintf(`{"%s": %.8f, "%s": %.8f}`, dst, amount, srcAddress, srcAmount-amount),
-	}
-
-	rawTxCommandMac := []string{
-		"--wallet",
-		"--rpcuser=user",
-		"--rpcpass=password",
-		"--rpcserver=127.0.0.1:8332",
-		"--notls",
-		"createrawtransaction",
-		fmt.Sprintf(`[{"txid":"%s", "vout":%d}]`, txid, vout),
-		fmt.Sprintf(`{"%s": %.8f, "%s": %.8f}`, dst, amount, srcAddress, srcAmount-amount),
-	}
-
-	// Determine OS-specific command
-	var rawTxCommand []string
-	if os.Getenv("OS") == "Windows_NT" {
-		rawTxCommand = rawTxCommandWin
-	} else {
-		rawTxCommand = rawTxCommandMac
+		txInputs,
+		txOutputs,
 	}
 
 	fmt.Printf("Raw transaction command: %v\n", rawTxCommand)
@@ -1412,6 +1396,12 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 	// Step 5: Execute raw transaction command
 	fmt.Println("Step 5: Executing raw transaction command...")
 	cmd := exec.Command(btcctlPath, rawTxCommand...)
+
+	// Add macOS-specific PATH configuration
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
 	var output bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &output
@@ -1428,6 +1418,7 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 	fmt.Printf("Raw transaction created: %s\n", rawId)
 	return rawId, nil
 }
+
 
 // signRawTransaction is a function to sign a raw transaction
 func (bs *BtcService) signRawTransaction(rawId string) (string, bool, error) {
