@@ -256,6 +256,60 @@ func TestInit(t *testing.T) {
 	t.Logf("Init function result: %s", result)
 }
 
+// go test -v -run ^TestUnlockWallet$ -count=1 application-layer/services
+// TestUnlockWallet validates unlocking the wallet.
+func TestUnlockWallet(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Test passphrase
+	passphrase := "CSE416"
+
+	// Ensure btcd and btcwallet are running
+	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
+		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
+	}
+
+	// Call UnlockWallet
+	result, err := btcService.UnlockWallet(passphrase)
+	if err != nil {
+		t.Errorf("Failed to unlock wallet: %v", err)
+	}
+
+	// Verify the result
+	expected := "" // btcctl command typically outputs an empty string
+	if result != expected {
+		t.Errorf("Expected %q, but got %q", expected, result)
+	}
+
+	t.Logf("UnlockWallet Result: %s", result)
+}
+
+// go test -v -run ^TestLockWallet$ -count=1 application-layer/services
+// TestLockWallet validates locking the wallet.
+func TestLockWallet(t *testing.T) {
+	btcService := NewBtcService()
+
+	// Ensure btcd and btcwallet are running
+	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
+		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
+	}
+
+	// Call LockWallet
+	result, err := btcService.LockWallet()
+	if err != nil {
+		t.Errorf("Failed to lock wallet: %v", err)
+	}
+
+	// Verify the result
+	expected := "" // btcctl command typically outputs an empty string
+	if result != expected {
+		t.Errorf("Expected %q, but got %q", expected, result)
+	}
+
+	t.Logf("LockWallet Result: %s", result)
+}
+
+
 
 
 // go test -v -run ^TestStartBtcdWithArgs$
@@ -396,58 +450,6 @@ func TestGetNewAddress(t *testing.T) {
 
 	// 생성된 주소 출력
 	t.Logf("Generated new address: %s", newAddress)
-}
-
-// go test -v -run ^TestUnlockWallet$
-func TestUnlockWallet(t *testing.T) {
-	btcService := NewBtcService()
-
-	// 테스트용 passphrase 설정
-	passphrase := "CSE416"
-
-	// btcd와 btcwallet이 실행 중인지 확인
-	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
-		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
-	}
-
-	// UnlockWallet 호출
-	result, err := btcService.UnlockWallet(passphrase)
-	if err != nil {
-		t.Errorf("Failed to unlock wallet: %v", err)
-	}
-
-	// 결과 검증
-	expected := "" // btcctl 명령어는 일반적으로 출력이 없으므로 빈 문자열 예상
-	if result != expected {
-		t.Errorf("Expected %q, but got %q", expected, result)
-	}
-
-	// 로그 출력
-	t.Logf("UnlockWallet Result: %s", result)
-}
-
-func TestLockWallet(t *testing.T) {
-	btcService := NewBtcService()
-
-	// btcd와 btcwallet이 실행 중인지 확인
-	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
-		t.Fatalf("btcd or btcwallet is not running. Please start both processes before testing")
-	}
-
-	// LockWallet 호출
-	result, err := btcService.LockWallet()
-	if err != nil {
-		t.Errorf("Failed to lock wallet: %v", err)
-	}
-
-	// 결과 검증
-	expected := "" // btcctl 명령어는 일반적으로 출력이 없으므로 빈 문자열 예상
-	if result != expected {
-		t.Errorf("Expected %q, but got %q", expected, result)
-	}
-
-	// 로그 출력
-	t.Logf("LockWallet Result: %s", result)
 }
 
 // go test -v -run ^TestLogin$

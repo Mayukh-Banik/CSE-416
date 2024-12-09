@@ -588,6 +588,85 @@ func (bs *BtcService) Init() string {
 	return "Initialization and cleanup completed successfully"
 }
 
+// UnlockWallet is a function to unlock the wallet
+func (bs *BtcService) UnlockWallet(passphrase string) (string, error) {
+	// check if btcd and btcwallet are running
+	if !isProcessRunning("btcd") {
+		return "", fmt.Errorf("btcd is not running. Please start btcd before unlocking the wallet")
+	}
+
+	if !isProcessRunning("btcwallet") {
+		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before unlocking the wallet")
+	}
+
+	// unlock wallet command for 600 seconds
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"walletpassphrase",
+		passphrase,
+		"600", // unlock for 600 seconds
+	)
+
+	// Adjust PATH for macOS
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error unlocking wallet: %v\n", err)
+		return "", fmt.Errorf("error unlocking wallet: %w", err)
+	}
+
+	result := strings.TrimSpace(output.String())
+	fmt.Println("Wallet unlocked successfully.")
+	return result, nil
+}
+
+// LockWallet is a function to lock the wallet
+func (bs *BtcService) LockWallet() (string, error) {
+	// check if btcd and btcwallet are running
+	if !isProcessRunning("btcd") {
+		return "", fmt.Errorf("btcd is not running. Please start btcd before locking the wallet")
+	}
+
+	if !isProcessRunning("btcwallet") {
+		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before locking the wallet")
+	}
+
+	// lock wallet command
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"walletlock",
+	)
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error locking wallet: %v\n", err)
+		return "", fmt.Errorf("error locking wallet: %w", err)
+	}
+
+	result := strings.TrimSpace(output.String())
+	fmt.Println("Wallet locked successfully.")
+	return result, nil
+}
+
 // getMiningStatus is a function to check the mining status
 func (bs *BtcService) GetMiningStatus() (bool, error) {
 	// btcctl command
@@ -752,80 +831,6 @@ func (bs *BtcService) GetNewAddress() (string, error) {
 	fmt.Printf("Generated new address: %s\n", newAddress)
 
 	return newAddress, nil
-}
-
-// UnlockWallet is a function to unlock the wallet
-func (bs *BtcService) UnlockWallet(passphrase string) (string, error) {
-	// check if btcd and btcwallet are running
-	if !isProcessRunning("btcd") {
-		return "", fmt.Errorf("btcd is not running. Please start btcd before unlocking the wallet")
-	}
-
-	if !isProcessRunning("btcwallet") {
-		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before unlocking the wallet")
-	}
-
-	// unlock wallet command for 600 seconds
-	cmd := exec.Command(
-		btcctlPath,
-		"--wallet",
-		"--rpcuser=user",
-		"--rpcpass=password",
-		"--rpcserver=127.0.0.1:8332",
-		"--notls",
-		"walletpassphrase",
-		passphrase,
-		"600", // unlock for 600 seconds
-	)
-
-	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
-
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error unlocking wallet: %v\n", err)
-		return "", fmt.Errorf("error unlocking wallet: %w", err)
-	}
-
-	result := strings.TrimSpace(output.String())
-	fmt.Println("Wallet unlocked successfully.")
-	return result, nil
-}
-
-// LockWallet is a function to lock the wallet
-func (bs *BtcService) LockWallet() (string, error) {
-	// check if btcd and btcwallet are running
-	if !isProcessRunning("btcd") {
-		return "", fmt.Errorf("btcd is not running. Please start btcd before locking the wallet")
-	}
-
-	if !isProcessRunning("btcwallet") {
-		return "", fmt.Errorf("btcwallet is not running. Please start btcwallet before locking the wallet")
-	}
-
-	// lock wallet command
-	cmd := exec.Command(
-		btcctlPath,
-		"--wallet",
-		"--rpcuser=user",
-		"--rpcpass=password",
-		"--rpcserver=127.0.0.1:8332",
-		"--notls",
-		"walletlock",
-	)
-
-	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
-
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Error locking wallet: %v\n", err)
-		return "", fmt.Errorf("error locking wallet: %w", err)
-	}
-
-	result := strings.TrimSpace(output.String())
-	fmt.Println("Wallet locked successfully.")
-	return result, nil
 }
 
 func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
