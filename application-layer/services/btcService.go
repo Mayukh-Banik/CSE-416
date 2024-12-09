@@ -30,7 +30,7 @@ const CREATE_NO_WINDOW = 0x08000000
 
 // Setting the executable path as a global variable
 var (
-	btcwalletScriptPath = `C:\dev\workspace\CSE-416\btcwallet\btcwallet_create.ps1`
+	btcwalletScriptPath = `../../btcwallet/btcwallet_create.ps1`
 	btcdPath            = "../../btcd/btcd"
 	btcwalletPath       = "../../btcwallet/btcwallet"
 	btcctlPath          = "../../btcd/cmd/btcctl/btcctl"
@@ -679,7 +679,7 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 func (bs *BtcService) Init() string {
 	SetupTempFilePath()
 
-	// initialize temp file
+	// Initialize temp file
 	err := initializeTempFile()
 	if err != nil {
 		fmt.Printf("Failed to initialize temp file: %v\n", err)
@@ -687,7 +687,7 @@ func (bs *BtcService) Init() string {
 	}
 	fmt.Println("Temporary file initialized successfully.")
 
-	// start btcd
+	// Start btcd
 	btcdResult := bs.StartBtcd()
 	if btcdResult != "btcd started successfully" {
 		bs.StopBtcd()
@@ -696,7 +696,7 @@ func (bs *BtcService) Init() string {
 		return btcdResult
 	}
 
-	// start btcwallet
+	// Start btcwallet
 	btcwalletResult := bs.StartBtcwallet()
 	if btcwalletResult != "btcwallet started successfully" {
 		bs.StopBtcd()
@@ -705,7 +705,7 @@ func (bs *BtcService) Init() string {
 		return btcwalletResult
 	}
 
-	// connect to TA server
+	// Connect to TA server
 	cmd := exec.Command(
 		btcctlPath,
 		"--rpcuser=user",
@@ -723,22 +723,37 @@ func (bs *BtcService) Init() string {
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error connecting to TA server: %v\n", err)
+		bs.StopBtcd()
+		bs.StopBtcwallet()
 		return fmt.Sprintf("Error connecting to TA server: %s", output.String())
 	}
 
 	fmt.Println("Connected to TA server successfully.")
 
-	// stop btcd and btcwallet
-	stopBtcdResult := bs.StopBtcd()
-	if stopBtcdResult != "btcd stopped successfully" {
-		fmt.Println("Failed to stop btcd.")
-		return stopBtcdResult
+	// Ensure btcwallet is running before stopping it
+	time.Sleep(1 * time.Second) // Allow stabilization
+	if !isProcessRunning("btcwallet") {
+		fmt.Println("btcwallet is not running. Skipping stop step.")
+	} else {
+		stopBtcwalletResult := bs.StopBtcwallet()
+		if stopBtcwalletResult != "btcwallet stopped successfully" {
+			fmt.Println("Failed to stop btcwallet.")
+			return stopBtcwalletResult
+		}
+		fmt.Println("btcwallet stopped successfully.")
 	}
 
-	stopBtcwalletResult := bs.StopBtcwallet()
-	if stopBtcwalletResult != "btcwallet stopped successfully" {
-		fmt.Println("Failed to stop btcwallet.")
-		return stopBtcwalletResult
+	// Ensure btcd is running before stopping it
+	time.Sleep(1 * time.Second) // Allow stabilization
+	if !isProcessRunning("btcd") {
+		fmt.Println("btcd is not running. Skipping stop step.")
+	} else {
+		stopBtcdResult := bs.StopBtcd()
+		if stopBtcdResult != "btcd stopped successfully" {
+			fmt.Println("Failed to stop btcd.")
+			return stopBtcdResult
+		}
+		fmt.Println("btcd stopped successfully.")
 	}
 
 	fmt.Println("Initialization and cleanup completed successfully.")
