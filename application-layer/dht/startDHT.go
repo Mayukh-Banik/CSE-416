@@ -21,6 +21,7 @@ func StartDHTService() {
 
 	DHT = setupDHT(ctx, dht.Host())
 	ProviderStore = DHT.ProviderStore()
+	RoutingTable = dht.RoutingTable()
 	ConnectToPeer(node, Relay_node_addr) // connect to relay node
 	makeReservation(node)                // make reservation on relay node
 	go refreshReservation(node, 5*time.Minute)

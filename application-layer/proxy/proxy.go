@@ -178,6 +178,9 @@ func pollPeerAddresses(node host.Host) {
 }
 
 func getAdjacentNodeProxiesMetadata(w http.ResponseWriter, r *http.Request) {
+	// for _, node := range dht_kad.RoutingTable.NearestPeers(kbucket.ID(peer_id), 5) {
+	// 	fmt.Println("node: ", node)
+	// }
 
 	// Retrieve connected peers
 	adjacentNodes := dht_kad.Host.Network().Peers()
@@ -271,7 +274,7 @@ func handlePeerExchange(node host.Host) {
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
 	go dht_kad.ConnectToPeer(node, dht_kad.Bootstrap_node_addr)
-	go dht_kad.ConnectToPeer(node, Cloud_node_addr)
+	// go dht_kad.ConnectToPeer(node, Cloud_node_addr)
 	globalCtx = context.Background()
 	if r.Method == "POST" {
 		isHost = true
