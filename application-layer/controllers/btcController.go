@@ -3,24 +3,37 @@ package controllers
 import (
 	"application-layer/services"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
-// define Response struct
+// BtcController는 비트코인 관련 핸들러를 제공하는 구조체입니다.
+type BtcController struct {
+	Service *services.BtcService
+}
+
+// Response는 일반적인 API 응답 구조체입니다.
 type Response struct {
 	Status  string      `json:"status"`
 	Message string      `json:"message,omitempty"`
 	Data    interface{} `json:"data,omitempty"`
 }
 
-// define BtcController struct
-type BtcController struct {
-	Service *services.BtcService
-}
-
 // initialize BtcController
 func NewBtcController(service *services.BtcService) *BtcController {
 	return &BtcController{Service: service}
+}
+
+// SignupRequest는 회원가입 요청의 구조체입니다.
+type SignupRequest struct {
+	Passphrase string `json:"passphrase"`
+}
+
+// SignupResponse는 회원가입 응답의 구조체입니다.
+type SignupResponse struct {
+	Address    string `json:"address,omitempty"`
+	PrivateKey string `json:"private_key,omitempty"`
+	Message    string `json:"message"`
 }
 
 // Helper function: respondWithJSON
@@ -44,13 +57,54 @@ func respondWithError(w http.ResponseWriter, status int, message string) {
 	respondWithJSON(w, status, resp)
 }
 
-func (bc *BtcController) InitHandler(w http.ResponseWriter, r *http.Request) {
-	result := bc.Service.Init()
-	resp := Response{
-		Status:  "success",
-		Message: result,
+// SignupHandler는 회원가입 요청을 처리합니다.
+func (bc *BtcController) SignupHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("SignupHandler called") // 디버깅을 위한 로그 추가
+
+	var req SignupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
 	}
-	respondWithJSON(w, http.StatusOK, resp)
+
+	// 패스프레이즈가 제공되지 않은 경우 에러 반환
+	if req.Passphrase == "" {
+		respondWithError(w, http.StatusBadRequest, "Passphrase is required")
+		return
+	}
+
+	// 지갑 생성 시도
+	err := bc.Service.BtcwalletCreate(req.Passphrase)
+	if err != nil {
+		if err.Error() == "wallet already exists" {
+			response := SignupResponse{
+				Message: "Wallet already exists.",
+			}
+			respondWithJSON(w, http.StatusOK, response)
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, "Failed to create wallet: "+err.Error())
+		return
+	}
+
+	// 새로운 주소 생성
+	newAddress, err := bc.Service.GetNewAddress()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to get new address: "+err.Error())
+		return
+	}
+
+	// Private Key 생성 로직 추가 (예시)
+	privateKey := "generated-private-key" // 실제 Private Key 생성 로직으로 대체하세요.
+
+	// 응답 생성
+	response := SignupResponse{
+		Address:    newAddress,
+		PrivateKey: privateKey,
+		Message:    "Wallet successfully created.",
+	}
+
+	respondWithJSON(w, http.StatusOK, response)
 }
 
 // LoginHandler 핸들러 함수
@@ -289,29 +343,6 @@ func (bc *BtcController) StopMiningHandler(w http.ResponseWriter, r *http.Reques
 	resp := Response{
 		Status:  "success",
 		Message: result,
-	}
-	respondWithJSON(w, http.StatusOK, resp)
-}
-
-func (bc *BtcController) BtcwalletCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var params struct {
-		Passphrase string `json:"passphrase"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	err := services.BtcwalletCreate(params.Passphrase)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	resp := Response{
-		Status:  "success",
-		Message: "btcwallet process started in the background.",
 	}
 	respondWithJSON(w, http.StatusOK, resp)
 }

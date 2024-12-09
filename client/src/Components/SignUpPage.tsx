@@ -1,3 +1,4 @@
+// SignUpPage.tsx
 import React, { useState } from "react";
 import {
   Button,
@@ -16,7 +17,6 @@ import {
   TextField,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import useRegisterPageStyles from "../Stylesheets/RegisterPageStyles";
 import Header from "./Header";
@@ -26,7 +26,9 @@ const SignUpPage: React.FC = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [privateKey, setPrivateKey] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false); // State for dialog open/close
+  const [isDialogOpen, setIsDialogOpen] = useState(false); // Dialog 상태
+  const [passphrase, setPassphrase] = useState<string>(""); // 패스프레이즈 상태
+  const [error, setError] = useState<string | null>(null); // 에러 상태
 
   const navigate = useNavigate();
 
@@ -34,35 +36,48 @@ const SignUpPage: React.FC = () => {
     navigate("/login");
   };
 
-  // API call to backend to generate wallet
-  // SignUpPage.tsx
-  const handleSignup = async () => {
-    console.log("Generate Wallet 버튼 클릭됨"); // 로그 추가
+  // "Generate Wallet" 버튼 클릭 시 다이얼로그 열기
+  const handleGenerateWalletClick = () => {
+    setIsDialogOpen(true);
+  };
+
+  // 패스프레이즈 제출 핸들러
+  const handlePassphraseSubmit = async () => {
     try {
       const response = await fetch("http://localhost:8080/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ passphrase: "CSE416" }), // 필요 시 추가 데이터 전송
+        body: JSON.stringify({ passphrase }), // 사용자가 입력한 패스프레이즈 전송
       });
 
       console.log("서버 응답 상태:", response.status); // 응답 상태 로그
 
       if (response.ok) {
         const data = await response.json();
-        console.log("서버 응답 데이터:", data); // 응답 데이터 로그
-        setWalletAddress(data.user.address); // 수정된 부분
-        setPrivateKey(data.private_key);
-        setIsSubmitted(true);
+        if (data.message === "Wallet already exists.") {
+          alert("이미 지갑이 존재합니다.");
+          setIsDialogOpen(false);
+          // 필요 시 추가적인 로그인 로직을 여기에 추가할 수 있습니다.
+        } else if (data.message === "Wallet successfully created.") {
+          setWalletAddress(data.address);
+          setPrivateKey(data.private_key);
+          setIsSubmitted(true);
+          setIsDialogOpen(false);
+          setPassphrase("");
+        }
       } else {
-        console.error("Failed to signup");
+        const errorData = await response.json();
+        setError(errorData.message || "Failed to signup");
+        alert("Failed to signup: " + (errorData.message || "Unknown error"));
       }
     } catch (error) {
-      console.error("Error during signup:", error);
+      // console.error("Error during signup:", error);
+      setError("Error during signup");
+      alert("Error during signup: " + error);
     }
   };
-
 
   const copyToClipboard = (text: string | null) => {
     if (text) {
@@ -77,17 +92,14 @@ const SignUpPage: React.FC = () => {
       const file = new Blob([privateKey], { type: "text/plain" });
       element.href = URL.createObjectURL(file);
       element.download = "privateKey.txt";
-      document.body.appendChild(element); // Required for this to work in FireFox
+      document.body.appendChild(element); // FireFox를 위해 필요
       element.click();
     }
   };
 
-  const handleOpenDialog = () => {
-    setIsDialogOpen(true); // Open the dialog
-  };
-
   const handleCloseDialog = () => {
-    setIsDialogOpen(false); // Close the dialog
+    setIsDialogOpen(false); // 다이얼로그 닫기
+    setPassphrase("");
   };
 
   return (
@@ -134,7 +146,7 @@ const SignUpPage: React.FC = () => {
                 backgroundColor: "#1976d2",
               },
             }}
-            onClick={handleSignup}
+            onClick={handleGenerateWalletClick} // 수정된 핸들러 사용
           >
             Generate Wallet
           </Button>
@@ -254,7 +266,7 @@ const SignUpPage: React.FC = () => {
                 borderRadius: "8px",
                 boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
               }}
-            //   onClick={handleContinueToAccount}
+              // onClick={handleContinueToAccount}
             >
               Continue to Account
             </Button>
@@ -273,6 +285,34 @@ const SignUpPage: React.FC = () => {
             Already have an account? Log In
           </Link>
         </Typography>
+
+        {/* 패스프레이즈 입력 다이얼로그 */}
+        <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
+          <DialogTitle>Enter Passphrase</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Please enter a passphrase to create your wallet. This passphrase is
+              essential for recovering or accessing your wallet, so do not forget
+              it.
+            </DialogContentText>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Passphrase"
+              type="password"
+              fullWidth
+              variant="standard"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>Cancel</Button>
+            <Button onClick={handlePassphraseSubmit} disabled={!passphrase}>
+              Create Wallet
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </>
   );

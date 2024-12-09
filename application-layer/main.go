@@ -19,7 +19,6 @@ import (
 	"github.com/rs/cors"
 )
 
-
 func main() {
 
 	// Load .env file
@@ -33,26 +32,17 @@ func main() {
 		log.Fatal("RPC_USER and RPC_PASS environment variables are required")
 	}
 
-	btcService := services.NewBtcService()
-
-	// initialization
-	// walletService, err := wallet.NewWalletService(rpcUser, rpcPass)
-	// if err != nil {
-	// 	log.Fatalf("Failed to initialize WalletService: %v", err)
-	// }
-	// userService := wallet.NewUserService()
-	// walletController := controllers.NewWalletController(walletService)
-	// authController := controllers.NewAuthController(userService, walletService)
-
 	fmt.Println("Main server started")
 
-	fileRouter := files.InitFileRoutes()
-	downloadRouter := download.InitDownloadRoutes()
-
+	btcService := services.NewBtcService()
 	btcController := controllers.NewBtcController(btcService)
 
 	router := mux.NewRouter()
-	routes.RegisterBtcRoutes(router, btcController)
+	routes.RegisterRoutes(router, btcController) // Register Btc and Auth routes
+
+	// Initialize additional routers
+	fileRouter := files.InitFileRoutes()
+	downloadRouter := download.InitDownloadRoutes()
 
 	go dht_kad.StartDHTService()
 
