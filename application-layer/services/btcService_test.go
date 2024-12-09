@@ -362,19 +362,15 @@ func TestListReceivedByAddress(t *testing.T) {
 	fmt.Printf("Received Addresses (from test): %v\n", addressList)
 }
 
-
-
-
-
-
-// go test -v -run ^TestStartBtcdWithArgs$
+// go test -v -run ^TestStartBtcdWithArgs$ -count=1 application-layer/services
+// TestStartBtcdWithArgs validates starting btcd with arguments.
 func TestStartBtcdWithArgs(t *testing.T) {
 	btcService := NewBtcService()
 
 	// 초기화 호출
 	SetupTempFilePath()
 
-	result := btcService.StartBtcd("1B5t2bk3BtCw88uveEFbvFERotX6adGY6w")
+	result := btcService.StartBtcd("1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca")
 	expectedSuccess := "btcd started successfully"
 	expectedFailure := "Error starting btcd"
 	expectedAlreadyRunning := "btcd is already running"
@@ -388,6 +384,8 @@ func TestStartBtcdWithArgs(t *testing.T) {
 	}
 }
 
+// go test -v -run ^TestStartBtcdWithArgs2$ -count=1 application-layer/services
+// TestStartBtcdWithArgs2 validates starting btcd with arguments.
 func TestStartBtcdWithArgs2(t *testing.T) {
 	btcService := NewBtcService()
 
@@ -423,37 +421,40 @@ func TestStartBtcdWithInvalidArgs(t *testing.T) {
 	}
 }
 
-// go test -v -run ^TestGetMiningStatus$
+// go test -v -run ^TestGetMiningStatus$ -count=1 application-layer/services
+// TestGetMiningStatus validates checking the mining status.
 func TestGetMiningStatus(t *testing.T) {
 	btcService := NewBtcService()
 
-	// 마이닝 상태 확인
+	// Check mining status
 	status, err := btcService.GetMiningStatus()
 	if err != nil {
 		t.Errorf("Error checking mining status: %v", err)
 	}
 
-	// 상태 출력
+	// Log the mining status
 	t.Logf("Mining status: %t", status)
 }
 
-// go test -v -run ^TestStartMining$
+
+// go test -v -run ^TestStartMining$ -count=1 application-layer/services
+// TestStartMining validates starting the mining process.
 func TestStartMining(t *testing.T) {
 	btcService := NewBtcService()
 
-	result := btcService.StartMining(5) // 블록 5개 생성 요청
+	result := btcService.StartMining(5) // Request to generate 5 blocks
 
-	// 예상 가능한 결과
+	// Expected outcomes
 	expected := "mining started successfully"
 	expectedAlreadyRunning := "mining is running"
 	expectedError := "Error checking mining status"
 
-	// 결과 검증
+	// Validate result
 	if result != expected && result != expectedAlreadyRunning && result != expectedError {
 		t.Errorf("Unexpected result: %q", result)
 	}
 
-	// 결과에 따라 로그 출력
+	// Log based on result
 	switch result {
 	case expected:
 		t.Log("Mining started successfully.")
@@ -464,34 +465,37 @@ func TestStartMining(t *testing.T) {
 	}
 }
 
-// go test -v -run ^TestStopMining$
+
+// go test -v -run ^TestStopMining$ -count=1 application-layer/services
+// TestStopMining validates stopping the mining process.
 func TestStopMining(t *testing.T) {
 	btcService := NewBtcService()
 
-	// 1. temp 파일 초기화
+	// Initialize temp file
 	SetupTempFilePath()
 
-	// temp 파일에 저장된 마이닝 주소 확인
+	// Retrieve mining address from temp file
 	miningAddress, err := getMiningAddressFromTemp()
 	if err != nil {
 		t.Fatalf("Failed to retrieve mining address from temp file: %v", err)
 	}
 
-	// 마이닝 주소 출력
+	// Log mining address
 	fmt.Printf("Mining address retrieved from temp file: %s\n", miningAddress)
 
-	// 2. StopMining 호출
+	// Call StopMining
 	result := btcService.StopMining()
 
-	// 결과 검증
+	// Validate result
 	expected := "Mining process stopped and restarted successfully"
 	if result != expected {
 		t.Errorf("Expected %q, but got %q", expected, result)
 	}
 
-	// 추가 로그
+	// Log result
 	t.Logf("StopMining function result: %s", result)
 }
+
 
 // go test -v -run ^TestLogin$
 func TestLogin(t *testing.T) {

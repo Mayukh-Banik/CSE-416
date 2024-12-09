@@ -774,6 +774,11 @@ func (bs *BtcService) GetMiningStatus() (bool, error) {
 		"getgenerate",
 	)
 
+	// Add macOS-specific environment setup
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
@@ -821,6 +826,11 @@ func (bs *BtcService) StartMining(numBlock int) string {
 		strconv.Itoa(numBlock),
 	)
 
+	// Add macOS-specific environment setup
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
@@ -844,6 +854,8 @@ func (bs *BtcService) StopMining() string {
 		return "Error checking mining status"
 	}
 
+	time.Sleep(time.Second) // 1 second
+
 	// if mining is not running, no action needed
 	if !isMining {
 		fmt.Println("Mining is not active. No action needed.")
@@ -858,18 +870,24 @@ func (bs *BtcService) StopMining() string {
 	}
 	fmt.Printf("Retrieved mining address: %s\n", miningAddress)
 
+	time.Sleep(time.Second) // 1 second
+
 	// stop btcd and btcwallet
+	stopBtcwalletResult := bs.StopBtcwallet()
+	if stopBtcwalletResult != "btcwallet stopped successfully" {
+		fmt.Printf("Failed to stop btcwallet: %s\n", stopBtcwalletResult)
+		return stopBtcwalletResult
+	}
+
+	time.Sleep(time.Second) // 1 second
+
 	stopBtcdResult := bs.StopBtcd()
 	if stopBtcdResult != "btcd stopped successfully" {
 		fmt.Printf("Failed to stop btcd: %s\n", stopBtcdResult)
 		return stopBtcdResult
 	}
 
-	stopBtcwalletResult := bs.StopBtcwallet()
-	if stopBtcwalletResult != "btcwallet stopped successfully" {
-		fmt.Printf("Failed to stop btcwallet: %s\n", stopBtcwalletResult)
-		return stopBtcwalletResult
-	}
+	time.Sleep(time.Second) // 1 second
 
 	// restart btcd and btcwallet with mining address
 	startBtcdResult := bs.StartBtcd(miningAddress)
@@ -877,6 +895,8 @@ func (bs *BtcService) StopMining() string {
 		fmt.Printf("Failed to restart btcd with mining address: %s\n", startBtcdResult)
 		return startBtcdResult
 	}
+
+	time.Sleep(time.Second) // 1 second
 
 	startBtcwalletResult := bs.StartBtcwallet()
 	if startBtcwalletResult != "btcwallet started successfully" {
