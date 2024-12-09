@@ -626,7 +626,7 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 	err := bs.BtcwalletCreate(passphrase)
 	if err != nil {
 		bs.StopBtcd() // Ensure btcd is stopped in case of failure
-		return "", fmt.Errorf("failed to create btcwallet: %w", err)
+		return "", fmt.Errorf("%w", err)
 	}
 	fmt.Println("Wallet created successfully.")
 
