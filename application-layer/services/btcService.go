@@ -183,7 +183,7 @@ func isProcessRunning(processName string) bool {
 	}
 
 	// Log output for debugging
-	fmt.Printf("isProcessRunning output: %s\n", output.String())
+	// fmt.Printf("isProcessRunning output: %s\n", output.String())
 
 	// Return true if output is not empty
 	return strings.TrimSpace(output.String()) != ""
@@ -675,7 +675,7 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 	return newAddress, nil
 }
 
-// Init is a function to initialize the service	
+// Init is a function to initialize the service
 func (bs *BtcService) Init() string {
 	SetupTempFilePath()
 
@@ -1418,7 +1418,6 @@ func (bs *BtcService) CreateRawTransaction(txid string, dst string, amount float
 	fmt.Printf("Raw transaction created: %s\n", rawId)
 	return rawId, nil
 }
-
 
 // signRawTransaction is a function to sign a raw transaction
 func (bs *BtcService) signRawTransaction(rawId string) (string, bool, error) {
