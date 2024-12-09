@@ -9,11 +9,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
-	"runtime"
+
 	"github.com/creack/pty"
 )
 
@@ -21,7 +22,7 @@ import (
 
 func NewBtcService() *BtcService {
 	SetupTempFilePath() // Ensure temp file is set up
-    return &BtcService{}
+	return &BtcService{}
 
 }
 
@@ -298,6 +299,8 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 }
 
 // StopBtcd stops the btcd process.
+// go test -v -run ^TestStopBtcd$ -count=1 application-layer/services
+// use -count=1 to avoid caching
 func (bs *BtcService) StopBtcd() string {
 	var checkProcessCmd *exec.Cmd
 	var killCmd *exec.Cmd
@@ -340,8 +343,102 @@ func (bs *BtcService) StopBtcd() string {
 	return "btcd stopped successfully"
 }
 
+func (bs *BtcService) WalletExists() bool {
+	var walletDBPath string
+
+	// OS별 지갑 경로 설정
+	if runtime.GOOS == "windows" {
+		userProfile := os.Getenv("USERPROFILE")
+		if userProfile == "" {
+			return false
+		}
+		walletDBPath = filepath.Join(userProfile, "AppData", "Local", "Btcwallet", "mainnet", "wallet.db")
+	} else if runtime.GOOS == "darwin" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return false
+		}
+		walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
+	} else {
+		// 지원하지 않는 OS의 경우 false 반환
+		return false
+	}
+
+	// 지갑 파일 존재 여부 확인
+	_, err := os.Stat(walletDBPath)
+	return !os.IsNotExist(err)
+}
+
+// btcwalletCreate executes a PowerShell script to create a btcwallet.
+// func BtcwalletCreate(passphrase string) error {
+// 	// Create a new btcwallet
+// 	var cmd *exec.Cmd
+
+// 	if runtime.GOOS == "windows" {
+// 		// Use PowerShell script on Windows
+// 		cmd = exec.Command("powershell",
+// 			"-NoProfile",
+// 			"-ExecutionPolicy", "Bypass",
+// 			"-WindowStyle", "Hidden",
+// 			"-File", btcwalletScriptPath,
+// 		)
+// 		cmd.Env = append(os.Environ(), "BTCWALLET_PASSPHRASE="+passphrase)
+// 		cmd.SysProcAttr = &syscall.SysProcAttr{}
+// 	} else if runtime.GOOS == "darwin" {
+// 		// Use ./btcwallet directly on macOS
+// 		cmd = exec.Command(btcwalletPath, "--create")
+
+// 		// Create a pseudo-terminal
+// 		ptmx, err := pty.Start(cmd)
+// 		if err != nil {
+// 			return fmt.Errorf("failed to create pty: %v", err)
+// 		}
+// 		defer ptmx.Close()
+
+// 		// Simulate user inputs
+// 		go func() {
+// 			fmt.Fprintf(ptmx, "%s\n", passphrase) // Enter passphrase
+// 			fmt.Fprintf(ptmx, "%s\n", passphrase) // Confirm passphrase
+// 			fmt.Fprintf(ptmx, "no\n")             // No encryption for public data
+// 			fmt.Fprintf(ptmx, "no\n")             // No existing wallet seed
+// 			fmt.Fprintf(ptmx, "OK\n")             // Confirm seed saved
+// 		}()
+
+// 		// Capture output for debugging
+// 		var output bytes.Buffer
+// 		go func() {
+// 			output.ReadFrom(ptmx)
+// 		}()
+
+// 		// Wait for the command to finish
+// 		err = cmd.Wait()
+// 		if err != nil {
+// 			return fmt.Errorf("failed to execute btcwallet: %v\noutput: %s", err, output.String())
+// 		}
+
+// 		fmt.Printf("btcwallet output:\n%s\n", output.String())
+// 		return nil
+// 	} else {
+// 		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+// 	}
+
+// 	// Capture output for debugging
+// 	var stdout, stderr bytes.Buffer
+// 	cmd.Stdout = &stdout
+// 	cmd.Stderr = &stderr
+
+// 	// Run the command and capture errors
+// 	err := cmd.Run()
+// 	if err != nil {
+// 		return fmt.Errorf("failed to execute btcwallet: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+// 	}
+
+// 	fmt.Printf("btcwallet output:\n%s\n", stdout.String())
+// 	return nil
+// }
+
 // BtcwalletCreate creates a new wallet, replacing any existing wallet database.
-func BtcwalletCreate(passphrase string) error {
+func (bs *BtcService) BtcwalletCreate(passphrase string) error {
 	// Define the path to the wallet database
 	var walletDBPath string
 	if runtime.GOOS == "windows" {
@@ -428,7 +525,6 @@ func BtcwalletCreate(passphrase string) error {
 	fmt.Printf("btcwallet output:\n%s\n", stdout.String())
 	return nil
 }
-
 
 // StartBtcwallet is a function to start the btcwallet process
 func (bs *BtcService) StartBtcwallet() string {
@@ -527,7 +623,7 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 	time.Sleep(2 * time.Second)
 
 	// Step 2: Create or overwrite the wallet
-	err := BtcwalletCreate(passphrase)
+	err := bs.BtcwalletCreate(passphrase)
 	if err != nil {
 		bs.StopBtcd() // Ensure btcd is stopped in case of failure
 		return "", fmt.Errorf("failed to create btcwallet: %w", err)
@@ -581,10 +677,9 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 
 // Init is an initialisation function that starts btcd and btcwallet, connects to the TA server, and exits.
 func (bs *BtcService) Init() string {
-	// Set up the temporary file path based on OS
 	SetupTempFilePath()
 
-	// Initialize the temp file
+	// initialize temp file
 	err := initializeTempFile()
 	if err != nil {
 		fmt.Printf("Failed to initialize temp file: %v\n", err)
@@ -592,7 +687,7 @@ func (bs *BtcService) Init() string {
 	}
 	fmt.Println("Temporary file initialized successfully.")
 
-	// Start btcd
+	// start btcd
 	btcdResult := bs.StartBtcd()
 	if btcdResult != "btcd started successfully" {
 		bs.StopBtcd()
@@ -601,10 +696,7 @@ func (bs *BtcService) Init() string {
 		return btcdResult
 	}
 
-	// Add a brief sleep to allow btcd to stabilize
-	time.Sleep(1 * time.Second)
-
-	// Start btcwallet
+	// start btcwallet
 	btcwalletResult := bs.StartBtcwallet()
 	if btcwalletResult != "btcwallet started successfully" {
 		bs.StopBtcd()
@@ -613,10 +705,7 @@ func (bs *BtcService) Init() string {
 		return btcwalletResult
 	}
 
-	// brief sleep to allow btcwallet to stabilize
-	time.Sleep(1 * time.Second)
-
-	// Connect to TA server
+	// connect to TA server
 	cmd := exec.Command(
 		btcctlPath,
 		"--rpcuser=user",
@@ -628,16 +717,10 @@ func (bs *BtcService) Init() string {
 		"add",
 	)
 
-	// Configure environment for MacOS compatibility
-	if runtime.GOOS == "darwin" {
-		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
-	}
-
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
 
-	// Run the command to connect to the TA server
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Error connecting to TA server: %v\n", err)
 		return fmt.Sprintf("Error connecting to TA server: %s", output.String())
@@ -645,33 +728,18 @@ func (bs *BtcService) Init() string {
 
 	fmt.Println("Connected to TA server successfully.")
 
-	// sleep to ensure btcd and btcwallet states are stable before stopping
-	time.Sleep(1 * time.Second)
-
-	stopBtcwalletResult := bs.StopBtcwallet()
-	if stopBtcwalletResult != "btcwallet stopped successfully" {
-		fmt.Println("Failed to stop btcwallet.")
-		return stopBtcwalletResult
-	}
-
-	// sleep before stopping btcwallet
-	time.Sleep(1 * time.Millisecond)
-
-	// Stop btcd and btcwallet for cleanup
+	// stop btcd and btcwallet
 	stopBtcdResult := bs.StopBtcd()
 	if stopBtcdResult != "btcd stopped successfully" {
 		fmt.Println("Failed to stop btcd.")
 		return stopBtcdResult
 	}
 
-	// // sleep before stopping btcwallet
-	// time.Sleep(1 * time.Millisecond)
-
-	// stopBtcwalletResult := bs.StopBtcwallet()
-	// if stopBtcwalletResult != "btcwallet stopped successfully" {
-	// 	fmt.Println("Failed to stop btcwallet.")
-	// 	return stopBtcwalletResult
-	// }
+	stopBtcwalletResult := bs.StopBtcwallet()
+	if stopBtcwalletResult != "btcwallet stopped successfully" {
+		fmt.Println("Failed to stop btcwallet.")
+		return stopBtcwalletResult
+	}
 
 	fmt.Println("Initialization and cleanup completed successfully.")
 	return "Initialization and cleanup completed successfully"
@@ -997,7 +1065,6 @@ func (bs *BtcService) StopMining() string {
 	return "Mining process stopped and restarted successfully"
 }
 
-// Login is a function to start btcd and btcwallet, unlock the wallet, and return a success message
 func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	// Step 0: Check if the wallet exists
 	var walletDBPath string
@@ -1124,7 +1191,6 @@ func (bs *BtcService) GetReceivedByAddress(walletAddress string) (string, error)
 	if runtime.GOOS == "darwin" {
 		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
 	}
-
 
 	var output bytes.Buffer
 	cmd.Stdout = &output

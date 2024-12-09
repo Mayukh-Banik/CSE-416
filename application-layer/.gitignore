@@ -6,3 +6,6 @@ btcd/cmd/btcctl/new_address.json
 btcd/cmd/btcctl/received_addresses.json
 btcd/cmd/btcctl/getgenerate_output.json
 btcd/cmd/btcctl/getmininginfo_output.json
+
+#main.exe
+tmp/main.exe

@@ -61,7 +61,8 @@
         "build": "set DISABLE_ESLINT_PLUGIN=true && react-app-rewired build",
         "test": "react-app-rewired test",
         "eject": "react-scripts eject",
-        "run-build": "set DISABLE_ESLINT_PLUGIN=true && react-app-rewired build && electron ./main.js"
+        "run-build": "set DISABLE_ESLINT_PLUGIN=true && react-app-rewired build && electron ./main.js",
+        "dev": "nodemon"
     },
     "eslintConfig": {
         "extends": [
@@ -93,6 +94,7 @@
         "eslint": "^8.57.1",
         "eslint-config-react-app": "^7.0.1",
         "jest": "^29.7.0",
+        "nodemon": "^3.1.7",
         "react-app-rewired": "^2.2.1"
     },
     "eslintIgnore": [

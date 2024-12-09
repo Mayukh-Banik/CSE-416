@@ -6,12 +6,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"testing"
 	"runtime"
+	"testing"
 	"time"
 )
-
-
 
 // Get-Process | Where-Object {$_.Name -like "btc*"}
 
@@ -51,60 +49,60 @@ func TestStartBtcdWithNoArgs(t *testing.T) {
 	t.Log("TestStartBtcdWithNoArgs completed.")
 }
 
-//go test -v -run ^TestStartBtcdWithNoArgsAndStop$ -count=1 application-layer/services
+// go test -v -run ^TestStartBtcdWithNoArgsAndStop$ -count=1 application-layer/services
 // TestStartBtcdWithNoArgsAndStop validates starting and stopping btcd without arguments.
 func TestStartBtcdWithNoArgsAndStop(t *testing.T) {
-    btcService := NewBtcService()
+	btcService := NewBtcService()
 
-    // Log test start
-    t.Log("Starting TestStartBtcdWithNoArgsAndStop...")
+	// Log test start
+	t.Log("Starting TestStartBtcdWithNoArgsAndStop...")
 
-    // Call StartBtcd with no arguments
-    result := btcService.StartBtcd()
-    expectedSuccess := "btcd started successfully"
-    expectedFailure := "Error starting btcd"
-    expectedAlreadyRunning := "btcd is already running"
+	// Call StartBtcd with no arguments
+	result := btcService.StartBtcd()
+	expectedSuccess := "btcd started successfully"
+	expectedFailure := "Error starting btcd"
+	expectedAlreadyRunning := "btcd is already running"
 
-    // Log result for debugging
-    t.Logf("Test Result: %s", result)
+	// Log result for debugging
+	t.Logf("Test Result: %s", result)
 
-    // Validate results based on OS
-    if result != expectedSuccess && result != expectedFailure && result != expectedAlreadyRunning {
-        t.Errorf("Unexpected result: %q", result)
-    }
+	// Validate results based on OS
+	if result != expectedSuccess && result != expectedFailure && result != expectedAlreadyRunning {
+		t.Errorf("Unexpected result: %q", result)
+	}
 
-    // Additional logging based on results
-    if result == expectedSuccess {
-        t.Log("btcd started successfully with no arguments.")
-    } else if result == expectedFailure {
-        t.Log("btcd failed to start.")
-    } else if result == expectedAlreadyRunning {
-        t.Log("btcd is already running.")
-    }
+	// Additional logging based on results
+	if result == expectedSuccess {
+		t.Log("btcd started successfully with no arguments.")
+	} else if result == expectedFailure {
+		t.Log("btcd failed to start.")
+	} else if result == expectedAlreadyRunning {
+		t.Log("btcd is already running.")
+	}
 
-    // Stop btcd process (teardown)
-    t.Log("Stopping btcd process...")
-    stopResult := btcService.StopBtcd()
-    t.Logf("Stop Result: %s", stopResult)
+	// Stop btcd process (teardown)
+	t.Log("Stopping btcd process...")
+	stopResult := btcService.StopBtcd()
+	t.Logf("Stop Result: %s", stopResult)
 
-    // Validate stop results
-    expectedStopSuccess := "btcd stopped successfully"
-    expectedNotRunning := "btcd is not running"
+	// Validate stop results
+	expectedStopSuccess := "btcd stopped successfully"
+	expectedNotRunning := "btcd is not running"
 
-    if stopResult != expectedStopSuccess && stopResult != expectedNotRunning {
-        t.Errorf("Unexpected stop result: %q", stopResult)
-    } else if stopResult == expectedStopSuccess {
-        t.Log("btcd stopped successfully.")
-    } else if stopResult == expectedNotRunning {
-        t.Log("btcd was not running.")
-    }
+	if stopResult != expectedStopSuccess && stopResult != expectedNotRunning {
+		t.Errorf("Unexpected stop result: %q", stopResult)
+	} else if stopResult == expectedStopSuccess {
+		t.Log("btcd stopped successfully.")
+	} else if stopResult == expectedNotRunning {
+		t.Log("btcd was not running.")
+	}
 
-    t.Log("TestStartBtcdWithNoArgsAndStop completed.")
+	t.Log("TestStartBtcdWithNoArgsAndStop completed.")
 }
 
 // C:\dev\workspace\CSE-416\application-layer\services> go test -v -run ^TestStopBtcd$
 // TestStopBtcd validates stopping the btcd process.
-// go test -v -run ^TestStopBtcd$ -count=1 application-layer/services    
+// go test -v -run ^TestStopBtcd$ -count=1 application-layer/services
 func TestStopBtcd(t *testing.T) {
 	btcService := NewBtcService()
 
@@ -142,6 +140,8 @@ func TestStopBtcd(t *testing.T) {
 func TestBtcwalletCreate(t *testing.T) {
 	var walletDBPath string
 
+	btcService := NewBtcService()
+
 	// Determine OS-specific wallet.db path
 	if runtime.GOOS == "windows" {
 		userProfile := os.Getenv("USERPROFILE")
@@ -167,7 +167,7 @@ func TestBtcwalletCreate(t *testing.T) {
 
 	// Call BtcwalletCreate to test wallet creation
 	passphrase := "CSE416"
-	err = BtcwalletCreate(passphrase)
+	err = btcService.BtcwalletCreate(passphrase)
 	if err != nil {
 		t.Fatalf("Failed to create btcwallet: %v", err)
 	}
@@ -518,7 +518,6 @@ func TestStopMining(t *testing.T) {
 	}
 }
 
-
 // go test -v -run ^TestLogin$ -count=1 application-layer/services
 // TestLogin validates logging into the wallet.
 func TestLogin(t *testing.T) {
@@ -855,6 +854,8 @@ func TestTransaction(t *testing.T) {
 // go test -v -run ^TestBtcwalletCreate_PowerShell$
 // TestBtcwalletCreate_PowerShell는 btcwallet 생성 테스트를 수행합니다.
 func TestBtcwalletCreate_PowerShell(t *testing.T) {
+
+	btcService := NewBtcService()
 	// %USERPROFILE% 환경 변수에서 사용자 홈 경로 가져오기
 	userProfile := os.Getenv("USERPROFILE")
 	if userProfile == "" {
@@ -871,7 +872,7 @@ func TestBtcwalletCreate_PowerShell(t *testing.T) {
 	}
 
 	// btcwallet 생성 함수 호출
-	err = BtcwalletCreate("CSE416")
+	err = btcService.BtcwalletCreate("CSE416")
 	if err != nil {
 		t.Fatalf("Failed to create btcwallet via PowerShell: %v", err)
 	}
@@ -883,6 +884,3 @@ func TestBtcwalletCreate_PowerShell(t *testing.T) {
 		fmt.Println("wallet.db successfully created.")
 	}
 }
-
-
-
