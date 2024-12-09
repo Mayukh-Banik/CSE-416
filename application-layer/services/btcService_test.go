@@ -269,7 +269,6 @@ func TestCreateWallet(t *testing.T) {
 }
 
 
-
 // go test -v -run ^TestInit$ -count=1 application-layer/services
 // TestInit validates the initialization of the BtcService.
 func TestInit(t *testing.T) {
@@ -406,7 +405,7 @@ func TestStartBtcdWithArgs(t *testing.T) {
 	// 초기화 호출
 	SetupTempFilePath()
 
-	result := btcService.StartBtcd("1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca")
+	result := btcService.StartBtcd("1Q3eNWo5nygkaib8LCSExXmoqeREpsxkSx")
 	expectedSuccess := "btcd started successfully"
 	expectedFailure := "Error starting btcd"
 	expectedAlreadyRunning := "btcd is already running"
@@ -477,7 +476,6 @@ func TestStartMining(t *testing.T) {
 		t.Log("Error occurred while checking mining status.")
 	}
 }
-
 
 // go test -v -run ^TestStopMining$ -count=1 application-layer/services
 // TestStopMining validates stopping the mining process.
@@ -600,7 +598,7 @@ func TestGetReceivedByAddress(t *testing.T) {
 	btcService := NewBtcService()
 
 	// Test wallet addres
-	walletAddress := "1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca"
+	walletAddress := "1Q3eNWo5nygkaib8LCSExXmoqeREpsxkSx"
 
 	// Ensure btcd and btcwallet are running
 	if !isProcessRunning("btcd") || !isProcessRunning("btcwallet") {
