@@ -2,6 +2,7 @@ package proxyService
 
 import (
 	dht_kad "application-layer/dht"
+
 	"application-layer/models"
 	"bufio"
 	"bytes"
@@ -18,12 +19,12 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
+
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
 var (
-	node_id        = ""
 	peer_id        = ""
 	globalCtx      context.Context
 	Peer_Addresses []ma.Multiaddr
@@ -32,118 +33,24 @@ var (
 )
 
 const (
-	bootstrapNode   = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+	bootstrapNode   = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
 	proxyKeyPrefix  = "/orcanet/proxy/"
 	Cloud_node_addr = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
 	Cloud_node_id   = "12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
 )
 
 type ProxyService struct {
-	dht  *dht.IpfsDHT
 	host host.Host
 }
 
-func NewProxyService(dht *dht.IpfsDHT, host host.Host) *ProxyService {
+func NewProxyService(host host.Host) *ProxyService {
 	return &ProxyService{
-		dht:  dht,
 		host: host,
 	}
 }
 
-func getProxyFromDHT(dht *dht.IpfsDHT, peerID peer.ID) (string, error) {
-	ctx := context.Background()
-	key := []byte("/orcanet/proxy/" + peerID.String())
-	value, err := dht.GetValue(ctx, string(key))
-	if err != nil {
-		return "", fmt.Errorf("failed to retrieve proxy info from DHT: %v", err)
-	}
-	return string(value), nil
-}
-
-func getKnownProxyKeys() []string {
-	var keys []string
-	prefix := "/orcanet/proxy/"
-
-	// Get the known peers from the DHT
-	peers := dht_kad.DHT.Host().Peerstore().Peers()
-
-	// Add the current node (itself) to the list of peers
-	currentNodeID := dht_kad.DHT.Host().ID()
-	peers = append(peers, currentNodeID)
-
-	// Iterate through all peers, including the current node
-	for _, peerID := range peers {
-		key := prefix + peerID.String()
-
-		// Check if the key exists in the DHT
-		value, err := dht_kad.DHT.GetValue(context.Background(), key)
-		if err == nil {
-			keys = append(keys, key)
-			// Optionally, log the value associated with the key
-			fmt.Println("Found proxy for key:", key, "with value:", string(value))
-		}
-	}
-
-	return keys
-}
 func isEmptyProxy(p models.Proxy) bool {
 	return p.Name == "" && p.Location == "" && p.PeerID == "" && p.Address == ""
-}
-
-func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy models.Proxy) ([]models.Proxy, error) {
-	ctx := context.Background()
-	var proxies []models.Proxy
-	done := make(chan struct{})
-
-	proxyKeys := getKnownProxyKeys()
-
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	wg.Add(len(proxyKeys))
-
-	for _, key := range proxyKeys {
-		go func(k string) {
-			defer wg.Done()
-			log.Printf("Debug: Retrieving proxy info for key: %s", k)
-			value, err := dht.GetValue(ctx, k)
-			if err != nil {
-				log.Printf("Debug: Error retrieving proxy info for key %s: %v", k, err)
-				return
-			}
-
-			var proxy models.Proxy
-			err = json.Unmarshal(value, &proxy)
-			if err != nil {
-				log.Printf("Debug: Error unmarshalling proxy data for key %s: %v", k, err)
-				return
-			}
-
-			mu.Lock()
-			proxies = append(proxies, proxy)
-			mu.Unlock()
-		}(key)
-	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if !isEmptyProxy(localProxy) {
-
-			mu.Lock()
-			fmt.Println("Local proxy", localProxy)
-			proxies = append(proxies, localProxy)
-			mu.Unlock()
-			log.Printf("Debug: Added local proxy information")
-		}
-	}()
-
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	<-done
-	return proxies, nil
 }
 
 func pollPeerAddresses(node host.Host) {
@@ -177,97 +84,6 @@ func pollPeerAddresses(node host.Host) {
 	}
 }
 
-func getAdjacentNodeProxiesMetadata(w http.ResponseWriter, r *http.Request) {
-
-	// Retrieve connected peers
-	adjacentNodes := dht_kad.Host.Network().Peers()
-	fmt.Println("Connected peers:", adjacentNodes)
-
-	var sendWG sync.WaitGroup
-	var responseWG sync.WaitGroup
-
-	// Iterate over peers and request proxy metadata
-	for _, peer := range adjacentNodes {
-		peerID := peer.String()
-		if peerID != dht_kad.Bootstrap_node_addr && peerID != dht_kad.PeerID && nodeSupportRefreshStreams(peer) {
-			sendWG.Add(1)
-			responseWG.Add(1)
-			go func(peerID string) {
-				defer responseWG.Done()
-				go dht_kad.SendProxyRequest(peerID, &sendWG) // Adjust to match your request handler for proxies
-			}(peerID)
-		}
-	}
-
-	// Wait for all requests to complete
-	sendWG.Wait()
-	responseWG.Wait()
-
-	// Introduce a short delay if necessary for processing
-	<-time.After(3 * time.Second)
-
-	// Set response headers
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	// Encode the collected proxy metadata as JSON
-	if err := json.NewEncoder(w).Encode(dht_kad.ProxyResponse); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-	}
-
-}
-
-func nodeSupportRefreshStreams(peerID peer.ID) bool {
-	supportSendRefreshRequest := false
-	supportSendRefreshResponse := false
-
-	protocols, _ := dht_kad.Host.Peerstore().GetProtocols(peerID)
-	fmt.Printf("protocols supported by peer %v: %v\n", peerID, protocols)
-
-	for _, protocol := range protocols {
-		if protocol == "/sendRefreshRequest/p2p" {
-			supportSendRefreshRequest = true
-		} else if protocol == "/sendRefreshResponse/p2p" {
-			supportSendRefreshResponse = true
-		}
-	}
-	return supportSendRefreshRequest && supportSendRefreshResponse
-}
-
-func handlePeerExchange(node host.Host) {
-	bootstrap_node_info, _ := peer.AddrInfoFromString(dht_kad.Bootstrap_node_addr)
-	node.SetStreamHandler("/orcanet/p2p", func(s network.Stream) {
-		defer s.Close()
-
-		buf := bufio.NewReader(s)
-		peerAddr, err := buf.ReadString('\n')
-		if err != nil {
-			if err != io.EOF {
-				fmt.Printf("error reading from stream: %v", err)
-			}
-		}
-		peerAddr = strings.TrimSpace(peerAddr)
-		var data map[string]interface{}
-		err = json.Unmarshal([]byte(peerAddr), &data)
-		if err != nil {
-			fmt.Printf("error unmarshaling JSON: %v", err)
-		}
-		if knownPeers, ok := data["known_peers"].([]interface{}); ok {
-			for _, peer := range knownPeers {
-				fmt.Println("Peer:")
-				if peerMap, ok := peer.(map[string]interface{}); ok {
-					if peerID, ok := peerMap["peer_id"].(string); ok {
-						if string(peerID) != string(bootstrap_node_info.ID) {
-							dht_kad.ConnectToPeer(node, peerID)
-						}
-					}
-				}
-			}
-		}
-	})
-}
-
-// Retrieveing proxies data, and adding yourself as host
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
 	go dht_kad.ConnectToPeer(node, dht_kad.Bootstrap_node_addr)
@@ -294,7 +110,7 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("Debug: Proxy saved to DHT successfully")
 
-		proxyInfo, err := getAllProxiesFromDHT(dht_kad.DHT, node.ID(), newProxy)
+		proxyInfo, err := getProxyFromDHT(dht_kad.DHT, node.ID(), newProxy)
 		if err != nil {
 			log.Printf("Debug: Error retrieving proxies from DHT: %v", err)
 		} else {
@@ -310,14 +126,12 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Debug: Connecting to bootstrap node")
-	getAdjacentNodeProxiesMetadata(w, r)
 
 	go pollPeerAddresses(node)
 
 	if r.Method == "GET" {
-		// clearAllProxies()
 
-		proxyInfo, err := getAllProxiesFromDHT(dht_kad.DHT, node.ID(), models.Proxy{})
+		proxyInfo, err := getProxyFromDHT(dht_kad.DHT, node.ID(), models.Proxy{})
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error retrieving proxies: %v", err), http.StatusInternalServerError)
 			return
@@ -340,7 +154,48 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 
 	}
 }
+func getProxyFromDHT(dht *dht.IpfsDHT, peerID peer.ID, proxy models.Proxy) ([]models.Proxy, error) {
+	ctx := context.Background()
+	key := proxyKeyPrefix + peerID.String()
 
+	value, err := dht.GetValue(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get proxy from DHT: %v", err)
+	}
+
+	var storedProxy models.Proxy
+	err = json.Unmarshal(value, &storedProxy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal proxy data: %v", err)
+	}
+
+	return []models.Proxy{storedProxy}, nil
+}
+func getAllProxiesFromDHT(dht *dht.IpfsDHT, ctx context.Context) ([]models.Proxy, error) {
+	peers, err := dht.GetClosestPeers(ctx, string(proxyKeyPrefix))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get closest peers: %v", err)
+	}
+
+	var proxies []models.Proxy
+	for _, peerID := range peers {
+		value, err := dht.GetValue(ctx, proxyKeyPrefix+peerID.String())
+		if err != nil {
+			log.Printf("Failed to get value for peer %s: %v", peerID, err)
+			continue
+		}
+
+		var proxy models.Proxy
+		if err := json.Unmarshal(value, &proxy); err != nil {
+			log.Printf("Failed to unmarshal proxy data for peer %s: %v", peerID, err)
+			continue
+		}
+
+		proxies = append(proxies, proxy)
+	}
+
+	return proxies, nil
+}
 func saveProxyToDHT(proxy models.Proxy) error {
 	ctx := context.Background()
 	key := "/orcanet/proxy/" + proxy.PeerID
@@ -520,27 +375,4 @@ func httpHostToClient(node host.Host) {
 		}
 		log.Println("Response successfully written to stream.")
 	})
-}
-
-func clearAllProxies() {
-	ctx := context.Background()
-
-	// Get all known proxy keys
-	proxyKeys := getKnownProxyKeys()
-
-	for _, key := range proxyKeys {
-		emptyProxy := models.Proxy{}
-		emptyProxyJSON, err := json.Marshal(emptyProxy)
-		if err != nil {
-			log.Printf("Failed to marshal empty proxy: %v", err)
-			continue
-		}
-
-		err = dht_kad.DHT.PutValue(ctx, key, emptyProxyJSON)
-		if err != nil {
-			log.Printf("Failed to clear proxy for key %s: %v", key, err)
-		} else {
-			log.Printf("Proxy for key %s cleared", key)
-		}
-	}
 }

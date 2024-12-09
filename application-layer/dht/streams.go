@@ -337,6 +337,26 @@ func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
 	ProxyResponse = append(ProxyResponse, proxy)
 	fmt.Printf("SendProxyRequest: Successfully received proxy metadata from peer %s\n", peerID)
 }
+func SendProxyData(proxyData models.Proxy) error {
+	stream, err := CreateNewStream(DHT.Host(), Cloud_node_id, "/proxyData/p2p")
+	if err != nil {
+		return fmt.Errorf("error creating stream to send proxy data: %v", err)
+	}
+	defer stream.Close()
+
+	proxyJSON, err := json.Marshal(proxyData)
+	if err != nil {
+		return fmt.Errorf("sendProxyData: failed to marshal proxy data: %v", err)
+	}
+
+	_, err = stream.Write(proxyJSON)
+	if err != nil {
+		return fmt.Errorf("sendProxyData: failed to send proxy data to cloud node: %v", err)
+	}
+
+	fmt.Printf("Sent proxy data to cloud node %s\n", Cloud_node_id)
+	return nil
+}
 
 // RECEIVING FUNCTIONS
 
