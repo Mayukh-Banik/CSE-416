@@ -54,7 +54,7 @@ const ProxyHosts: React.FC = () => {
       const rawText = await response.text();
       const cleanedText = rawText.replace(/^null\s*/, '').trim();
       const result = JSON.parse(cleanedText);
-  
+      console.log("Parsed reult",result)
       const proxyData = Array.isArray(result) ? result : [result];
       const isEmptyProxy = (proxy: ProxyHost) => {
         return !proxy.name && !proxy.location && !proxy.price && !proxy.Statistics.uptime && !proxy.bandwidth;
