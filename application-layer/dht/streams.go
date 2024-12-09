@@ -5,6 +5,7 @@ import (
 	"application-layer/utils"
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,9 +13,11 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var (
@@ -278,52 +281,63 @@ func sendSuccessConfirmation(transaction models.Transaction) {
 		return
 	}
 }
-func SendProxyRequest(nodeID string) error {
-	fmt.Println("Requesting proxy data from cloud node ", nodeID)
+func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
+	defer wg.Done()
 
-	// Create a new stream to the target node for requesting proxy data
-	requestStream, err := CreateNewStream(DHT.Host(), nodeID, "/sendProxyRequest/p2p")
+	// Convert string peerID to libp2p PeerID
+	peerIDObj, err := peer.Decode(peerID)
 	if err != nil {
-		return fmt.Errorf("error creating stream: %v", err)
-	}
-	defer requestStream.Close()
-
-	// Prepare the request data (you may include more specific information here)
-	requestData := []byte(fmt.Sprintf("Requesting proxies from node: %s", nodeID)) // Example request data
-
-	// Send the request data over the stream
-	_, err = requestStream.Write(requestData)
-	if err != nil {
-		return fmt.Errorf("error sending proxy request: %v", err)
+		fmt.Printf("SendProxyRequest: Failed to decode PeerID %s: %v\n", peerID, err)
+		return
 	}
 
-	// Optionally, handle a response here (you could read proxy data or acknowledgment from the node)
-	// For instance, if proxies are returned as a JSON string, you could deserialize them.
-	// responseData, err := ReadResponse(requestStream)
-
-	fmt.Printf("Sent proxy request to cloud node %s\n", nodeID)
-	return nil
-}
-
-func SendProxyData(proxyData models.Proxy) error {
-	stream, err := CreateNewStream(DHT.Host(), Cloud_node_id, "/proxyData/p2p")
+	// Open a new stream to the peer
+	stream, err := Host.NewStream(context.Background(), peerIDObj, "/proxy/metadata/1.0.0")
 	if err != nil {
-		return fmt.Errorf("error creating stream to send proxy data: %v", err)
+		fmt.Printf("SendProxyRequest: Failed to create stream to peer %s: %v\n", peerID, err)
+		return
 	}
 	defer stream.Close()
 
-	proxyJSON, err := json.Marshal(proxyData)
-	if err != nil {
-		return fmt.Errorf("sendProxyData: failed to marshal proxy data: %v", err)
+	// Write a request message to the stream (if needed)
+	request := models.RefreshRequest{
+		Message:     "Requesting proxy metadata",
+		RequesterID: Host.ID().String(),
+		TargetID:    peerID,
 	}
 
-	_, err = stream.Write(proxyJSON)
+	requestBytes, err := json.Marshal(request)
 	if err != nil {
-		return fmt.Errorf("sendProxyData: failed to send proxy data to cloud node: %v", err)
+		fmt.Printf("SendProxyRequest: Failed to marshal request for peer %s: %v\n", peerID, err)
+		return
 	}
 
-	fmt.Printf("Sent proxy data to cloud node %s\n", Cloud_node_id)
-	return nil
+	_, err = stream.Write(requestBytes)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to send request to peer %s: %v\n", peerID, err)
+		return
+	}
+
+	// Read the response
+	responseBytes := make([]byte, 4096)
+	stream.SetReadDeadline(time.Now().Add(10 * time.Second))
+	n, err := stream.Read(responseBytes)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to read response from peer %s: %v\n", peerID, err)
+		return
+	}
+
+	// Unmarshal the response into a Proxy object
+	var proxy models.Proxy
+	err = json.Unmarshal(responseBytes[:n], &proxy)
+	if err != nil {
+		fmt.Printf("SendProxyRequest: Failed to unmarshal response from peer %s: %v\n", peerID, err)
+		return
+	}
+
+	// Append the proxy metadata to ProxyResponse
+	ProxyResponse = append(ProxyResponse, proxy)
+	fmt.Printf("SendProxyRequest: Successfully received proxy metadata from peer %s\n", peerID)
 }
 
 // RECEIVING FUNCTIONS
