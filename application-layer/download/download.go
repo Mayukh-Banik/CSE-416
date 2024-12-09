@@ -23,7 +23,8 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("handling download request for", request.FileHash)
-	request.RequesterID = dht_kad.DHT.Host().ID().String()
+	request.RequesterID = dht_kad.PeerID
+	request.RequesterAddr = dht_kad.My_node_addr
 	request.TransactionID = uuid.New().String()
 	// Log the requester and provider IDs
 	fmt.Printf("Requesting file download: Requester: %v | Provider: %v\n", request.RequesterID, request.TargetID)
@@ -38,10 +39,6 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	// fmt.Println("Connected peers:", dht_kad.Host.Peerstore().Peers())
-
-	// just testing if nodes are connected
-	// dht_kad.SendDataToPeer(dht_kad.DHT.Host(), request.TargetID)
 
 	// actually send the download request
 	if err := dht_kad.SendDownloadRequest(request); err != nil {

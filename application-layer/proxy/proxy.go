@@ -32,7 +32,8 @@ var (
 )
 
 const (
-	bootstrapNode   = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+	bootstrapNode = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+	// bootstrapNode   = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
 	proxyKeyPrefix  = "/orcanet/proxy/"
 	Cloud_node_addr = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
 	Cloud_node_id   = "12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
@@ -93,6 +94,7 @@ func isEmptyProxy(p models.Proxy) bool {
 func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy models.Proxy) ([]models.Proxy, error) {
 	ctx := context.Background()
 	var proxies []models.Proxy
+	seenProxies := make(map[string]struct{}) // Track seen PeerIDs to avoid duplicates
 	done := make(chan struct{})
 
 	proxyKeys := getKnownProxyKeys()
@@ -118,9 +120,13 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 				return
 			}
 
-			mu.Lock()
-			proxies = append(proxies, proxy)
-			mu.Unlock()
+			// Avoid duplicates by checking the PeerID
+			if _, seen := seenProxies[proxy.PeerID]; !seen {
+				mu.Lock()
+				proxies = append(proxies, proxy)
+				seenProxies[proxy.PeerID] = struct{}{} // Mark this PeerID as seen
+				mu.Unlock()
+			}
 		}(key)
 	}
 
@@ -128,7 +134,6 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 	go func() {
 		defer wg.Done()
 		if !isEmptyProxy(localProxy) {
-
 			mu.Lock()
 			fmt.Println("Local proxy", localProxy)
 			proxies = append(proxies, localProxy)

@@ -24,22 +24,22 @@ const MarketplacePage: React.FC = () => {
   const [refresh, setRefresh] = useState(false);
   const [ratings, setRatings] = useState<{ [key: string]: number }>({}); // Store ratings by file hash
   const [marketResults, setMarketResults] = useState<FileMetadata[]>([])
-  // const socket = new WebSocket("ws://localhost:8081/ws")
-  // socket.onmessage = (event) => {
-  //     const message = JSON.parse(event.data);
-  //     if (message.status === "declined") {
-  //         alert(`File with hash ${message.fileHash} was declined.`);
-  //         // Update UI accordingly
-  //     }
-  // };
 
   useEffect(() => {
-    const hasLoaded = localStorage.getItem("marketplaceLoaded");
-    if (!hasLoaded) {
-      handleRefresh();
-      localStorage.setItem("marketplaceLoaded", "true");
-    }
-  }, []);  
+    const initializeMarketplace = async () => {
+      localStorage.setItem("marketplaceLoaded", "false");
+      const hasLoaded = localStorage.getItem("marketplaceLoaded");
+      console.log("Has Loaded from localStorage:", hasLoaded); // Debug log
+      if (!hasLoaded || hasLoaded === "false") {
+        console.log("First load, calling handleRefresh..."); // Debug log
+        await handleRefresh(true);
+        localStorage.setItem("marketplaceLoaded", "true");
+      }
+    };
+  
+    initializeMarketplace();
+  }, []); // Empty dependency array to run only on initial render
+  
 
   useEffect(() => {
     const fetchRatings = async () => {
@@ -69,7 +69,7 @@ const MarketplacePage: React.FC = () => {
     // setSearchTerm("");
     setLoadingRequest(false);
     setLoadingSearch(false);
-    setSearchResults([])
+    setSearchResults(marketResults)
     setRatings({})
   }
 
@@ -118,6 +118,7 @@ const MarketplacePage: React.FC = () => {
       } else {
         setNotification({ open: true, message: `Request sent to provider ${provider}`, severity: "success" });
         setOpen(false); // Close the modal after selecting a provider
+        setSearchResults(marketResults)
       }
     } catch (error) {
       console.error("Error in handleProviderSelect:", error);
@@ -127,7 +128,7 @@ const MarketplacePage: React.FC = () => {
     }
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = async (initial: boolean) => {
     setRefresh(true);
     await resetStates();
     setSearchResults([])
@@ -135,7 +136,7 @@ const MarketplacePage: React.FC = () => {
     console.log("Refreshing marketplace");
 
     try {
-      const response = await fetch(`http://localhost:8081/files/refresh`, {
+      const response = await fetch(`http://localhost:8081/files/refresh?val=${initial}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -249,7 +250,7 @@ const MarketplacePage: React.FC = () => {
 
       <Button 
         variant="contained" 
-        onClick={() => {handleRefresh()}}
+        onClick={() => {handleRefresh(false)}}
         disabled={loadingRequest || loadingSearch}
         sx={{marginBottom:2}}
         >
@@ -285,7 +286,7 @@ const MarketplacePage: React.FC = () => {
             <TableRow>
               <TableCell>File Name</TableCell>
               <TableCell>File Size (KB)</TableCell>
-              <TableCell>Rating</TableCell>
+              {/* <TableCell>Rating</TableCell> */}
               {/* <TableCell>Created At</TableCell> */}
               <TableCell></TableCell>
             </TableRow>
@@ -296,7 +297,7 @@ const MarketplacePage: React.FC = () => {
                 <TableCell>{file.Name}</TableCell>
                 <TableCell>{(file.Size / 1024).toFixed(2)}</TableCell>
                 {/* <TableCell>{file.Reputation}</TableCell> */}
-                <TableCell>{ratings[file.Hash] !== undefined ? ratings[file.Hash] : "0"}</TableCell> {/* Use ratings */}
+                {/* <TableCell>{ratings[file.Hash] !== undefined ? ratings[file.Hash] : "0"}</TableCell> Use ratings */}
                 {/* <TableCell>{file.createdAt.toLocaleDateString()}</TableCell> */}
                 {/* <TableCell>2023-09-15</TableCell> */}
 
@@ -332,37 +333,38 @@ const MarketplacePage: React.FC = () => {
             {selectedFile.Description && (
               <Typography>Description: {selectedFile.Description}</Typography>
             )}
+            <Typography>Rating: {selectedFile.Rating}</Typography>
           </Box>
         )}
   
-  {Object.entries(providers).some(([_, provider]) => provider.IsActive) ? (
-  Object.entries(providers)
-    .filter(([_, provider]) => provider.IsActive)
-    .map(([peerID, provider]) => (
-      <Button
-        key={peerID} // Ensure this is unique for the key
-        variant="outlined"
-        onClick={() => handleProviderSelect(peerID)}
-        sx={{
-          margin: 1,
-          display: 'flex',
-          justifyContent: 'space-between',
-          width: '100%',
-        }}
-      >
-        <span style={{ wordBreak: 'break-all', whiteSpace: 'normal' }}>
-          {peerID}
-        </span>
-        <span>{provider.Fee} SQD/MB</span>
-      </Button>
-    ))
-) : (
-  <Typography>No providers available for this file.</Typography>
-)}
+          {Object.entries(providers).some(([_, provider]) => provider.IsActive) ? (
+          Object.entries(providers)
+            .filter(([_, provider]) => provider.IsActive)
+            .map(([peerID, provider]) => (
+              <Button
+                key={peerID} // Ensure this is unique for the key
+                variant="outlined"
+                onClick={() => handleProviderSelect(peerID)}
+                sx={{
+                  margin: 1,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                }}
+              >
+                <span style={{ wordBreak: 'break-all', whiteSpace: 'normal' }}>
+                  {peerID}
+                </span>
+                <span>{provider.Fee} SQD/MB</span>
+              </Button>
+            ))
+        ) : (
+          <Typography>No providers available for this file.</Typography>
+        )}
 
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={() => {setOpen(false), setSearchResults(marketResults)}}>Cancel</Button>
         </DialogActions>
       </Dialog>
 

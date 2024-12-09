@@ -342,7 +342,16 @@ func deleteFileContent(hash string) error {
 // functions below are used in marketplace to get all dht files
 func getMarketplaceFiles(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("getting marketplace files")
+	initialFetch := r.URL.Query().Get("val")
 
+	if initialFetch == "true" && dht_kad.MarketplaceFiles != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(dht_kad.MarketplaceFiles); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
+		return
+	}
 	err := dht_kad.SendMarketFilesRequest(dht_kad.Cloud_node_id)
 	if err != nil {
 		http.Error(w, "failed to send request to cloud node", http.StatusInternalServerError)

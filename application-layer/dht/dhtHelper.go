@@ -37,9 +37,9 @@ var (
 	Node_id         string
 	Relay_node_addr = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
 	// Bootstrap_node_addr = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
-	Bootstrap_node_addr = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
-	Cloud_node_addr     = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
-	Cloud_node_id       = "12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+	// Bootstrap_node_addr = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
+	Cloud_node_addr = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+	Cloud_node_id   = "12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
 	// Bootstrap_node_addr = "/ip4/192.168.1.169/tcp/61000/p2p/12D3KooWRYvqQomwwQVrWr2BkARXqzED5jLSpTaozQRVoZPHtRVz"
 	GlobalCtx     context.Context
 	PeerID        string
@@ -47,7 +47,11 @@ var (
 	ProviderStore providers.ProviderStore
 	Host          host.Host
 	RoutingTable  *kbucket.RoutingTable
+	My_node_addr  string
 	// bootstrap_seed      = "BOOTSTRAP1"
+
+	// testing
+	Bootstrap_node_addr = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
 )
 
 func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {
@@ -390,7 +394,7 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 	// Store the updated metadata in the DHT
 	err = DHT.PutValue(GlobalCtx, "/orcanet/"+currentInfo.Hash, dhtMetadataBytes)
 	if err != nil {
-		return models.DHTMetadata{}, fmt.Errorf("failed to updated file in dht: %w\n", err)
+		return models.DHTMetadata{}, fmt.Errorf("failed to updated file in dht: %w", err)
 	}
 	fmt.Println("successfully updated file to dht with new provider", currentInfo.Hash)
 

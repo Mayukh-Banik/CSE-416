@@ -42,9 +42,11 @@ type Transaction struct {
 	Type          string `json:"Type"`        // "request" or "response"
 	FileHash      string `json:"FileHash"`    // Unique identifier for the file
 	RequesterID   string `json:"RequesterID"` // ID of the requesting node
-	TargetID      string `json:"TargetID"`    // ID of the target node
-	Status        string `json:"Status"`      // "pending", "accepted", "declined"
-	Message       string `json:"Message"`     // Additional info
+	RequesterAddr string `json:"RequesterAddr"`
+	TargetID      string `json:"TargetID"` // ID of the target node
+	TargetAddr    string `json:"TargetAddr"`
+	Status        string `json:"Status"`  // "pending", "accepted", "declined"
+	Message       string `json:"Message"` // Additional info
 	CreatedAt     string `json:"CreatedAt"`
 	FileName      string `json:"FileName"`
 	TransactionID string `json:"TransactionID"`
