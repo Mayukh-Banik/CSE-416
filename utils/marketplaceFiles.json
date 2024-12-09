@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "Name": "bed",
+    "NameWithExtension": "bed.JPG",
+    "Type": "image/jpeg",
+    "Size": 1152747,
+    "Description": "",
+    "Hash": "3e675e4438350017eaace2cf2e57530d8cb7b1978a8a3c152e5e014e53d235dc",
+    "IsPublished": true,
+    "Fee": 0,
+    "CreatedAt": "",
+    "OriginalUploader": true,
+    "Rating": 0,
+    "HasVoted": false
+  }
+]
