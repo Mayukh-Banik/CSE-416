@@ -626,9 +626,9 @@ func (bs *BtcService) UnlockWallet(passphrase string) (string, error) {
 		return "", fmt.Errorf("error unlocking wallet: %w", err)
 	}
 
-	result := strings.TrimSpace(output.String())
+	// result := strings.TrimSpace(output.String())
 	fmt.Println("Wallet unlocked successfully.")
-	return result, nil
+	return "Wallet unlocked successfully", nil
 }
 
 // LockWallet is a function to lock the wallet
@@ -908,16 +908,31 @@ func (bs *BtcService) StopMining() string {
 	return "Mining process stopped and restarted successfully"
 }
 
+// Login is a function to start btcd and btcwallet, unlock the wallet, and return a success message
 func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	// Step 0: Check if the wallet exists
-	walletDBPath := fmt.Sprintf(`%s\AppData\Local\Btcwallet\mainnet\wallet.db`, os.Getenv("USERPROFILE")) // Adjust path as needed
+	var walletDBPath string
+	if runtime.GOOS == "windows" {
+		walletDBPath = fmt.Sprintf(`%s\AppData\Local\Btcwallet\mainnet\wallet.db`, os.Getenv("USERPROFILE"))
+	} else if runtime.GOOS == "darwin" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Printf("Failed to get home directory: %v\n", err)
+			return "Failed to get home directory", err
+		}
+		walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
+	} else {
+		return "Unsupported OS", fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+	}
+
 	if _, err := os.Stat(walletDBPath); os.IsNotExist(err) {
 		fmt.Printf("Wallet does not exist at path: %s\n", walletDBPath)
 		return "Wallet does not exist", fmt.Errorf("wallet does not exist at path: %s", walletDBPath)
 	}
+
 	// Step 1: Start btcd with wallet address
 	btcdResult := bs.StartBtcd(walletAddress)
-	time.Sleep(time.Second) // 1 second
+	time.Sleep(2 * time.Second) // Wait for btcd initialization
 	if btcdResult != "btcd started successfully" {
 		fmt.Printf("Failed to start btcd: %s\n", btcdResult)
 		bs.StopBtcd()
@@ -926,7 +941,7 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 
 	// Step 2: Start btcwallet
 	btcwalletResult := bs.StartBtcwallet()
-	time.Sleep(time.Second) // 1 second
+	time.Sleep(2 * time.Second) // Wait for btcwallet initialization
 	if btcwalletResult != "btcwallet started successfully" {
 		fmt.Printf("Failed to start btcwallet: %s\n", btcwalletResult)
 		bs.StopBtcd()
@@ -934,21 +949,22 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 		return "Failed to start btcwallet", fmt.Errorf("failed to start btcwallet: %s", btcwalletResult)
 	}
 
-	// Step 4: Unlock the wallet
+	// Step 3: Unlock the wallet
 	unlockResult, err := bs.UnlockWallet(passphrase)
-	time.Sleep(time.Second) // 1 second
+	time.Sleep(2 * time.Second) // Allow sufficient time for wallet unlock
 	if err != nil {
 		fmt.Printf("Failed to unlock wallet: %v\n", err)
 		bs.StopBtcd()
-		time.Sleep(time.Second) // 1 second
+		time.Sleep(2 * time.Second) // Wait before stopping btcwallet
 		bs.StopBtcwallet()
 		return "Failed to unlock wallet", fmt.Errorf("failed to unlock wallet: %w", err)
 	}
 
-	// Step 5: Success
+	// Step 4: Success
 	fmt.Println("Login successful. Wallet unlocked.")
 	return unlockResult, nil
 }
+
 
 func (bs *BtcService) GetBalance() (string, error) {
 	// Check if btcd and btcwallet are running

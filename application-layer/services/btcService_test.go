@@ -494,35 +494,77 @@ func TestStopMining(t *testing.T) {
 
 	// Log result
 	t.Logf("StopMining function result: %s", result)
+
+	// Cleanup: Stop btcd and btcwallet
+	stopBtcdResult := btcService.StopBtcd()
+	if stopBtcdResult != "btcd stopped successfully" {
+		t.Logf("Failed to stop btcd: %s", stopBtcdResult)
+	}
+
+	stopBtcwalletResult := btcService.StopBtcwallet()
+	if stopBtcwalletResult != "btcwallet stopped successfully" {
+		t.Logf("Failed to stop btcwallet: %s", stopBtcwalletResult)
+	}
 }
 
 
-// go test -v -run ^TestLogin$
+// go test -v -run ^TestLogin$ -count=1 application-layer/services
+// TestLogin validates logging into the wallet.
 func TestLogin(t *testing.T) {
 	btcService := NewBtcService()
 
-	// 초기화 호출
+	// Initialize temporary file path
 	SetupTempFilePath()
 
-	// 테스트용 walletAddress와 passphrase
-	walletAddress := "1B5t2bk3BtCw88uveEFbvFERotX6adGY6w"
+	// Test wallet address and passphrase
+	walletAddress := "1Cao3f7JiqjjTeYp6YQQ7kZqEBRjVyMBca"
 	passphrase := "CSE416"
 
-	// Login 호출
+	// Ensure wallet exists for testing
+	var walletDBPath string
+	if runtime.GOOS == "windows" {
+		walletDBPath = fmt.Sprintf(`%s\AppData\Local\Btcwallet\mainnet\wallet.db`, os.Getenv("USERPROFILE"))
+	} else if runtime.GOOS == "darwin" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			t.Fatalf("Failed to get home directory: %v", err)
+		}
+		walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
+	} else {
+		t.Fatalf("Unsupported OS: %s", runtime.GOOS)
+	}
+
+	if _, err := os.Stat(walletDBPath); os.IsNotExist(err) {
+		t.Fatalf("Wallet does not exist at path: %s. Please set up a test wallet first.", walletDBPath)
+	}
+
+	// Call Login
 	result, err := btcService.Login(walletAddress, passphrase)
 	if err != nil {
 		t.Errorf("Login failed: %v", err)
 	}
 
-	// 결과 검증
+	// Validate results
 	expected := "Wallet unlocked successfully"
 	if result != expected {
 		t.Errorf("Expected %q, but got %q", expected, result)
 	}
 
-	// 로그 출력
+	// Log output
 	t.Logf("Login Result: %s", result)
+
+	// Cleanup: Stop btcd and btcwallet
+	stopBtcdResult := btcService.StopBtcd()
+	if stopBtcdResult != "btcd stopped successfully" {
+		t.Logf("Failed to stop btcd: %s", stopBtcdResult)
+	}
+
+	stopBtcwalletResult := btcService.StopBtcwallet()
+	if stopBtcwalletResult != "btcwallet stopped successfully" {
+		t.Logf("Failed to stop btcwallet: %s", stopBtcwalletResult)
+	}
 }
+
 
 // go test -v -run ^TestGetBalance$
 func TestGetBalance(t *testing.T) {
