@@ -46,7 +46,6 @@ var (
 	tempFilePath        string
 )
 
-
 type BtcService struct{}
 
 // this function is used to check the contents of a directory for development purposes
@@ -259,8 +258,6 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 		fmt.Println("Invalid number of arguments. Only 0 or 1 argument is allowed.")
 		return "Invalid number of arguments"
 	}
-
-
 
 	// Detached mode with OS-specific handling
 	if runtime.GOOS == "windows" {
@@ -619,12 +616,81 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 	return newAddress, nil
 }
 
-// Init is a function to initialize the service
+// Function to remove Windows-specific attributes
+func removeReadonlyAttribute(path string) error {
+	return filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Retrieve file attributes
+		attrs, err := syscall.GetFileAttributes(syscall.StringToUTF16Ptr(p))
+		if err != nil {
+			return err
+		}
+
+		// Check if the readonly attribute is set
+		if attrs&syscall.FILE_ATTRIBUTE_READONLY != 0 {
+			// Remove the readonly attribute
+			newAttrs := attrs &^ syscall.FILE_ATTRIBUTE_READONLY
+			if err := syscall.SetFileAttributes(syscall.StringToUTF16Ptr(p), newAttrs); err != nil {
+				return fmt.Errorf("failed to remove readonly attribute from %s: %v", p, err)
+			}
+		}
+
+		return nil
+	})
+}
+
+// Function for forced deletion
+func forceRemoveAll(path string) error {
+	// Change file attributes (e.g., remove readonly)
+	err := removeReadonlyAttribute(path)
+	if err != nil {
+		return fmt.Errorf("failed to remove readonly attributes: %v", err)
+	}
+
+	// Attempt to delete the directory
+	err = os.RemoveAll(path)
+	if err != nil {
+		return fmt.Errorf("failed to remove path: %v", err)
+	}
+	return nil
+}
+
+// Function to check if a directory is being used by a process (simple example)
+func isDirectoryInUse(path string) bool {
+	// In reality, you would need a more sophisticated method such as trying to open all files,
+	// but here we simply check if a specific process is running.
+	return isProcessRunning("btcd") || isProcessRunning("btcwallet")
+}
+
+// Modified Init function
 func (bs *BtcService) Init() string {
 	SetupTempFilePath()
 
+	// Remove mainnet data directory with force delete
+	mainnetPath := fmt.Sprintf(`%s\AppData\Local\Btcd\data\mainnet`, os.Getenv("USERPROFILE"))
+	fmt.Printf("Attempting to remove path: %s\n", mainnetPath)
+
+	// First, try to terminate processes using the directory
+	if isDirectoryInUse(mainnetPath) {
+		fmt.Println("Directory is in use. Attempting to stop related services...")
+		bs.StopBtcd()
+		bs.StopBtcwallet()
+		time.Sleep(2 * time.Second) // Wait for processes to terminate
+	}
+
+	// Attempt forced deletion
+	err := forceRemoveAll(mainnetPath)
+	if err != nil {
+		fmt.Printf("Failed to remove mainnet directory: %v\n", err)
+		return "Failed to remove mainnet directory"
+	}
+	fmt.Println("Mainnet directory removed successfully.")
+
 	// Initialize temp file
-	err := initializeTempFile()
+	err = initializeTempFile()
 	if err != nil {
 		fmt.Printf("Failed to initialize temp file: %v\n", err)
 		return "Failed to initialize temp file"
@@ -1129,14 +1195,10 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	}
 	fmt.Println("btcd stopped successfully.")
 
-
 	// Step 4: Success
 	fmt.Println("Login successful. Wallet unlocked.")
 	return unlockResult, nil
 }
-
-
-
 
 // GetBalance is a function to get the wallet balance
 func (bs *BtcService) GetBalance() (string, error) {
