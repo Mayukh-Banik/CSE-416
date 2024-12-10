@@ -398,7 +398,7 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 		currentMetadata.Providers[PeerID] = provider // Reassign the modified provider back to the map
 	}
 
-	fmt.Println("metadata to be added to DHT: ", currentMetadata)
+	fmt.Println("UpdateFileInDHT: metadata to be added to DHT: ", currentMetadata)
 	// Marshal the updated metadata
 	dhtMetadataBytes, err := json.Marshal(currentMetadata)
 	if err != nil {
@@ -410,6 +410,7 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 	if err != nil {
 		return models.DHTMetadata{}, fmt.Errorf("failed to register updated file to dht: %w", err)
 	}
+	fmt.Println("am now a provider of", currentMetadata.Hash)
 
 	// Store the updated metadata in the DHT
 	err = DHT.PutValue(GlobalCtx, "/orcanet/"+currentInfo.Hash, dhtMetadataBytes)

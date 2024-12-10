@@ -151,17 +151,14 @@ func PublishFile(requestBody models.FileMetadata) {
 
 // bug
 func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
-	// Get file hash from the query parameters (instead of the body)
-	fmt.Println("getting file by hash")
 	fileHash := r.URL.Query().Get("val")
-	fmt.Println("filehash:", fileHash)
+	fmt.Println("handleGetFileByHash: filehash:", fileHash)
 
 	if fileHash == "" {
 		http.Error(w, "File hash not provided", http.StatusBadRequest)
 		return
 	}
-	fmt.Println("before getting file data from dht:")
-
+	
 	// Retrieve the file data from the DHT using the file hash
 	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash)
 	if err != nil {

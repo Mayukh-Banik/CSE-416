@@ -8,12 +8,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 )
 
 /*
-	voting system is similar to that of stackoverflow and reddit
-	upvote = +1, downvote = -1
+voting system is similar to that of stackoverflow and reddit
+upvote = +1, downvote = -1
 */
+var fileMutex sync.Mutex // used by cloud-node
 
 // Handle voting for both upvotes and downvotes
 func handleVote(w http.ResponseWriter, r *http.Request) {
@@ -139,6 +141,9 @@ func handleGetRating(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateRatingLocally(fileHash string, voteType string) error {
+	fileMutex.Lock()
+	defer fileMutex.Unlock()
+
 	// check if directory and file exist
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		return fmt.Errorf("utils directory doesnt exist --> cannot vote %v", err)
