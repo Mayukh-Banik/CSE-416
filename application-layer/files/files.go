@@ -98,6 +98,7 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+
 	fmt.Println("UPLOAD FILE HANDLER: FILEHASH ", requestBody.Hash)
 
 	var filePath string
@@ -116,7 +117,6 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update publishing info - reflects if user is currently providing or not
 	PublishFile(requestBody)
 
 	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Name)

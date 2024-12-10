@@ -356,15 +356,16 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 			Rating:            0,
 			Hash:              currentInfo.Hash,
 		}
+		currentMetadata.Providers = make(map[string]models.Provider)
 	}
 
-	currentMetadata.Providers = make(map[string]models.Provider)
-	// Add the new provider to the list of current providers
+	// create a new provider
 	provider := models.Provider{
 		PeerAddr: DHT.Host().Addrs()[0].String(),
 		IsActive: currentInfo.IsPublished,
 		Fee:      currentInfo.Fee,
-		Rating:   currentInfo.VoteType,
+		// if new provider then it has not voted yet so voteType is ""
+		// Rating:   currentInfo.VoteType,
 	}
 
 	// Check if the provider already exists in the metadata by PeerID
@@ -374,18 +375,27 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 		// Update the provider in the map
 		currentMetadata.Providers[PeerID] = existingProvider
 	} else {
-		// adding new provider or republishing provider so account for their vote that disappeared?
-		if provider.Rating == "upvote" {
-			currentMetadata.Rating++
-			currentMetadata.NumRaters++
-		} else if provider.Rating == "downvote" {
-			currentMetadata.Rating--
-			currentMetadata.NumRaters++
-		}
 		// If provider does not exist, add the new provider
 		currentMetadata.Providers[PeerID] = provider
 	}
 
+	// if not updating provider status, then we are either publishing a new file or republishing an old file
+	// for republishing, we assume that it is only called on start up and not while user is currently online 
+	provider = currentMetadata.Providers[PeerID] // Retrieve the provider from the map
+
+	if provider.Rating == "" {  // if node hasnt rated yet...
+		if currentInfo.VoteType == "upvote" {
+			currentMetadata.Rating++
+			currentMetadata.NumRaters++
+			provider.Rating = "upvote" // Update the provider's rating
+		} else if currentInfo.VoteType == "downvote" {
+			currentMetadata.Rating--
+			currentMetadata.NumRaters++
+			provider.Rating = "downvote" // Update the provider's rating
+		}
+		currentMetadata.Providers[PeerID] = provider // Reassign the modified provider back to the map
+	}
+	
 	// Marshal the updated metadata
 	dhtMetadataBytes, err := json.Marshal(currentMetadata)
 	if err != nil {
