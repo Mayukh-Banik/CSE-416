@@ -231,6 +231,30 @@ func (bc *BtcController) DeleteAccountHandler(w http.ResponseWriter, r *http.Req
 	respondWithJSON(w, http.StatusOK, response)
 }
 
+// GetMiningAddressAndBalanceHandler handles the retrieval of the mining address and its associated Bitcoin balance.
+func (bc *BtcController) GetMiningAddressAndBalanceHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetMiningAddressAndBalanceHandler called")
+
+	// Call the GetMiningAddressAndBalance method from BtcService
+	miningAddress, balance, err := bc.Service.GetMiningAddressAndBalance()
+	if err != nil {
+		// Respond with an error if retrieval fails
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Respond with the mining address and balance if successful
+	response := struct {
+		MiningAddress string `json:"mining_address"`
+		Balance       string `json:"balance"`
+	}{
+		MiningAddress: miningAddress,
+		Balance:       balance,
+	}
+	respondWithJSON(w, http.StatusOK, response)
+}
+
+
 
 
 

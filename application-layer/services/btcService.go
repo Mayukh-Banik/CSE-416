@@ -1261,8 +1261,6 @@ func (bs *BtcService) DeleteAccount() (string, error) {
 
 
 
-
-
 // GetBalance is a function to get the wallet balance
 func (bs *BtcService) GetBalance() (string, error) {
 	// Check if btcd and btcwallet are running
@@ -1347,6 +1345,28 @@ func (bs *BtcService) GetReceivedByAddress(walletAddress string) (string, error)
 	receivedAmount := strings.TrimSpace(output.String())
 	fmt.Printf("Received amount for address %s: %s\n", walletAddress, receivedAmount)
 	return receivedAmount, nil
+}
+
+// GetMiningAddressAndBalance retrieves the mining address and its associated Bitcoin balance.
+func (bs *BtcService) GetMiningAddressAndBalance() (string, string, error) {
+	// Step 1: Extract the mining address from the temp file
+	miningAddress, err := getMiningAddressFromTemp()
+	if err != nil {
+		fmt.Printf("Failed to retrieve mining address: %v\n", err)
+		return "", "", fmt.Errorf("failed to retrieve mining address: %w", err)
+	}
+	fmt.Printf("Mining address retrieved: %s\n", miningAddress)
+
+	// Step 2: Extract the amount of Bitcoin associated with the mining address
+	receivedAmount, err := bs.GetReceivedByAddress(miningAddress)
+	if err != nil {
+		fmt.Printf("Failed to retrieve Bitcoin amount for address %s: %v\n", miningAddress, err)
+		return "", "", fmt.Errorf("failed to retrieve Bitcoin amount for address %s: %w", miningAddress, err)
+	}
+	fmt.Printf("Received amount for address %s: %s\n", miningAddress, receivedAmount)
+
+	// Step 3: Return the mining address and the associated balance
+	return miningAddress, receivedAmount, nil
 }
 
 // GetBlockCount is a function to get the current block count

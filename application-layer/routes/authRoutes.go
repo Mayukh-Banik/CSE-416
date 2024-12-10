@@ -17,5 +17,6 @@ func RegisterAuthRoutes(router *mux.Router, authController *controllers.BtcContr
 	authRouter.HandleFunc("/login", authController.LoginHandler).Methods("POST") // Add this line
 	authRouter.HandleFunc("/logout", authController.LogoutHandler).Methods("POST")
 	authRouter.HandleFunc("/delete", authController.DeleteAccountHandler).Methods("POST")
+	authRouter.HandleFunc("/getMiningAddressAndBalance", authController.GetMiningAddressAndBalanceHandler).Methods("GET")
 }
 
