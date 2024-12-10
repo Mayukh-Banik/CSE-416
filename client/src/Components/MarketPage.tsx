@@ -136,20 +136,34 @@ const MarketplacePage: React.FC = () => {
   const handleSearchRequest = async (searchTerm: string) => {
     await resetStates();
     setSearchResults([])
+
     if (!searchTerm || searchTerm.length === 0) {
       setSearchResults(marketResults);
       return;
     }
-    setFileHash(searchTerm);
-    await getFileByHash(searchTerm);
 
-    if (selectedFile) {
-      setSearchResults([selectedFile])
+    setFileHash(searchTerm);
+
+    const fileFoundByHash = await getFileByHash(searchTerm);
+    if (fileFoundByHash) {
+      setSearchResults([fileFoundByHash]);
+      return;
     }
+    
+    const filesFoundByName = await getFilesByName(searchTerm);
+    if (filesFoundByName && filesFoundByName.length > 0) {
+      setSearchResults(filesFoundByName);
+    } else {
+      setNotification({ open: true, message: "No file found", severity: "error" });
+    }
+
+    // if (selectedFile) {
+    //   setSearchResults([selectedFile])
+    // }
     // setOpen(true);
   }
 
-  const getFileByHash = async (hash: string) => {
+  const getFileByHash = async (hash: string): Promise<DHTMetadata | null> => {
     await resetStates()
     setLoadingSearch(true)
     try {
@@ -176,14 +190,45 @@ const MarketplacePage: React.FC = () => {
         setFileHash(data.FileHash)
         setProviders(data.Providers);
         console.log("getFileByHash: providers for file ", hash, data.Providers)
-        setSearchResults([data])
+        // setSearchResults([data])
+        return data;
     } catch (error) {
         console.error("Error:", error);
-        setNotification({ open: true, message: "File not found", severity: "error" });
+        return null;
+        // setNotification({ open: true, message: "File not found", severity: "error" });
     } finally {
       setLoadingSearch(false)
     }
   };
+
+  const getFilesByName = async (name: string): Promise<DHTMetadata[] | null> => {
+    setLoadingSearch(true);
+    try {
+      const encodedName = encodeURIComponent(name);
+      const url = `http://localhost:8081/files/searchByName?name=${encodedName}`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.log("no files found by name");
+        return null
+      }
+
+      const data: DHTMetadata[] = await response.json();
+      console.log(`files with name ${name}: ${data}`);
+      return data;
+    } catch (error) {
+      console.error("error:", error)
+      return null
+    } finally {
+      setLoadingSearch(false)
+    }
+  }
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);

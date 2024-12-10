@@ -439,3 +439,8 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// func handleGetFilesByName(w http.ResponseWriter, r *http.Request) {
+// 	name := r.URL.Query().Get("name")
+
+// }

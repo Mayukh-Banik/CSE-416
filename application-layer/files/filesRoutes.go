@@ -15,5 +15,6 @@ func InitFileRoutes() *mux.Router {
 	r.HandleFunc("/files/getTransactions", getTransactions).Methods("GET")
 	r.HandleFunc("/files/vote", handleVote).Methods("POST")
 	r.HandleFunc("/files/getRating", handleGetRating).Methods("GET")
+	// r.HandleFunc("/files/searchByName", handleGetFilesByName).Methods("GET")
 	return r
 }
