@@ -374,7 +374,7 @@ const MiningPage: React.FC = () => {
                                 <Typography variant="h6" gutterBottom>
                                     Balance
                                 </Typography>
-                                <Typography variant="body1">{balance}</Typography>
+                                <Typography variant="body1">{balance} BTC</Typography>
                             </CardContent>
                         </Card>
                     </Grid>
