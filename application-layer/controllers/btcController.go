@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type BtcController struct {
@@ -58,7 +60,7 @@ func respondWithError(w http.ResponseWriter, status int, message string) {
 	respondWithJSON(w, status, resp)
 }
 
-// generate wallet button
+// SignupHandler processes signup requests.
 func (bc *BtcController) SignupHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("SignupHandler called")
 
@@ -68,31 +70,47 @@ func (bc *BtcController) SignupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check if passphrase is empty
+	// Check if the passphrase is empty
 	if req.Passphrase == "" {
 		respondWithError(w, http.StatusBadRequest, "Passphrase is required")
 		return
 	}
 
-	// create wallet
-	newAddress, err := bc.Service.CreateWallet(req.Passphrase)
-	if err != nil {
-		// respond with error
+	// Create channels to receive results
+	resultCh := make(chan SignupResponse)
+	errorCh := make(chan error)
+
+	// Execute wallet creation in a separate goroutine
+	go func() {
+		newAddress, err := bc.Service.CreateWallet(req.Passphrase)
+		if err != nil {
+			errorCh <- err
+			return
+		}
+		// Replace with actual private key generation logic
+		privateKey := "generated-private-key"
+		response := SignupResponse{
+			Address:    newAddress,
+			PrivateKey: privateKey,
+			Message:    "Wallet successfully created.",
+		}
+		resultCh <- response
+	}()
+
+	// Set a 30-second timeout
+	select {
+	case res := <-resultCh:
+		respondWithJSON(w, http.StatusOK, res)
+	case err := <-errorCh:
 		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
+	case <-time.After(30 * time.Second):
+		// Stop processes on timeout
+		log.Println("SignupHandler: Request timed out.")
+		stopWalletMsg := bc.Service.StopBtcwallet()
+		stopBtcdMsg := bc.Service.StopBtcd()
+		errorMessage := fmt.Sprintf("Request timed out. %s %s", stopWalletMsg, stopBtcdMsg)
+		respondWithError(w, http.StatusGatewayTimeout, errorMessage)
 	}
-
-	// generate private key (replace with actual private key generation logic)
-	privateKey := "generated-private-key"
-
-	// generate response
-	response := SignupResponse{
-		Address:    newAddress,
-		PrivateKey: privateKey,
-		Message:    "Wallet successfully created.",
-	}
-
-	respondWithJSON(w, http.StatusOK, response)
 }
 
 // placeholder for login handler
