@@ -210,6 +210,28 @@ func (bc *BtcController) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, response)
 }
 
+// DeleteAccountHandler handles the account deletion process for users.
+func (bc *BtcController) DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("DeleteAccountHandler called")
+
+	// Call the DeleteAccount method from BtcService
+	result, err := bc.Service.DeleteAccount()
+	if err != nil {
+		// Respond with an error if account deletion fails
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Respond with a success message
+	response := struct {
+		Message string `json:"message"`
+	}{
+		Message: result,
+	}
+	respondWithJSON(w, http.StatusOK, response)
+}
+
+
 
 
 func (bc *BtcController) TransactionHandler(w http.ResponseWriter, r *http.Request) {

@@ -45,6 +45,39 @@ const SettingPage: React.FC<SettingPageProps> = ({ darkMode, toggleTheme }) => {
     }
   };
 
+  // Delete Account handler
+  const handleDeleteAccount = async () => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete your account? This action cannot be undone."
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const response = await fetch("http://localhost:8080/api/auth/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        console.error("Delete account failed:", errorMessage);
+        alert("Account deletion failed. Please try again.");
+        return;
+      }
+
+      const data = await response.json();
+      console.log("Delete account response:", data.message);
+      alert("Account deleted successfully!");
+      navigate("/signup"); // Redirect to signup page after account deletion
+    } catch (err) {
+      console.error("Error during account deletion:", err);
+      alert("An error occurred. Please try again.");
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -89,6 +122,7 @@ const SettingPage: React.FC<SettingPageProps> = ({ darkMode, toggleTheme }) => {
             variant="outlined"
             color="error"
             startIcon={<DeleteIcon />}
+            onClick={handleDeleteAccount}
             sx={{ width: '50%' }}
           >
             Delete Account

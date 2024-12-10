@@ -1182,6 +1182,85 @@ func (bs *BtcService) Logout() (string, error) {
 
 }
 
+// DeleteAccount is a function to delete the account wallet
+func (bs *BtcService) DeleteAccount() (string, error) {
+    // Step 1: Check and stop btcwallet
+    fmt.Println("Checking if btcwallet is running...")
+    if isProcessRunning("btcwallet") {
+        btcwalletStopResult := bs.StopBtcwallet()
+        if btcwalletStopResult != "btcwallet stopped successfully" {
+            fmt.Printf("Failed to stop btcwallet: %s\n", btcwalletStopResult)
+            return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
+        }
+        fmt.Println("btcwallet stopped successfully.")
+    } else {
+        fmt.Println("btcwallet is not running.")
+    }
+
+    // Step 2: Check and stop btcd
+    fmt.Println("Checking if btcd is running...")
+    if isProcessRunning("btcd") {
+        btcdStopResult := bs.StopBtcd()
+        if btcdStopResult != "btcd stopped successfully" {
+            fmt.Printf("Failed to stop btcd: %s\n", btcdStopResult)
+            return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
+        }
+        fmt.Println("btcd stopped successfully.")
+    } else {
+        fmt.Println("btcd is not running.")
+    }
+
+    // Step 3: Update the temp file
+    fmt.Println("Updating temporary file...")
+    if err := deleteFromTempFile("miningaddr"); err != nil {
+        fmt.Printf("Failed to delete mining address from temp file: %v\n", err)
+        return "", fmt.Errorf("failed to delete mining address from temp file: %w", err)
+    }
+
+    if err := updateTempFile("status", "uninitialized"); err != nil {
+        fmt.Printf("Failed to update status in temp file: %v\n", err)
+        return "", fmt.Errorf("failed to update status in temp file: %w", err)
+    }
+    fmt.Println("Temporary file updated successfully.")
+
+    // Step 4: Delete the wallet database
+    fmt.Println("Checking if wallet database exists...")
+    var walletDBPath string
+    if runtime.GOOS == "windows" {
+        userProfile := os.Getenv("USERPROFILE")
+        if userProfile == "" {
+            return "", fmt.Errorf("could not determine user profile path on Windows")
+        }
+        walletDBPath = filepath.Join(userProfile, "AppData", "Local", "Btcwallet", "mainnet", "wallet.db")
+    } else if runtime.GOOS == "darwin" {
+        homeDir, err := os.UserHomeDir()
+        if err != nil {
+            return "", fmt.Errorf("could not determine home directory on macOS: %v", err)
+        }
+        walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
+    } else {
+        return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+    }
+
+    // Check if wallet exists
+    if bs.WalletExists() {
+        err := os.Remove(walletDBPath)
+        if err != nil {
+            fmt.Printf("Failed to delete wallet database: %v\n", err)
+            return "", fmt.Errorf("failed to delete wallet database: %w", err)
+        }
+        fmt.Println("Wallet database deleted successfully.")
+    } else {
+        fmt.Println("Wallet database does not exist.")
+    }
+
+    // Step 5: Success
+    fmt.Println("Account deleted successfully. All processes stopped and wallet database removed.")
+    return "Account deleted successfully. All processes stopped and wallet database removed.", nil
+}
+
+
+
 
 
 // GetBalance is a function to get the wallet balance
