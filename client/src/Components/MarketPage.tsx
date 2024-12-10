@@ -81,11 +81,11 @@ const MarketplacePage: React.FC = () => {
   const handleDownloadRequest = async (file: FileMetadata) => {
     if (refresh) {
       console.log('handling download request for file', file.Hash)
-      setFileHash(file.Hash)
       await getFileByHash(file.Hash)
     } else {
       setSelectedFile(file)
     }
+    setFileHash(file.Hash)
     setOpen(true); // Open the modal for provider selection
     setRefresh(false);
   };
@@ -202,6 +202,7 @@ const MarketplacePage: React.FC = () => {
         console.log("file metadata:", data); 
 
         setSelectedFile(data);
+        setFileHash(data.FileHash)
         setProviders(data.Providers);
         console.log("getFileByHash: providers for file ", hash, data.Providers)
         setSearchResults([data])

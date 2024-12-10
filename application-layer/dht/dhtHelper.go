@@ -364,17 +364,24 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 		PeerAddr: DHT.Host().Addrs()[0].String(),
 		IsActive: currentInfo.IsPublished,
 		Fee:      currentInfo.Fee,
-		// leave Rating empty -> no vote
-		// this will be updated when handling upvoting/downvoting
+		Rating:   currentInfo.Rating,
 	}
 
 	// Check if the provider already exists in the metadata by PeerID
 	if existingProvider, exists := currentMetadata.Providers[PeerID]; exists {
 		// Update the IsActive field
-		existingProvider.IsActive = provider.IsActive
+		existingProvider.IsActive = currentInfo.IsPublished
 		// Update the provider in the map
 		currentMetadata.Providers[PeerID] = existingProvider
 	} else {
+		// adding new provider or republishing provider so account for their vote that disappeared?
+		if provider.Rating == "upvote" {
+			currentMetadata.Rating++
+			currentMetadata.NumRaters++
+		} else if provider.Rating == "downvote" {
+			currentMetadata.Rating--
+			currentMetadata.NumRaters++
+		}
 		// If provider does not exist, add the new provider
 		currentMetadata.Providers[PeerID] = provider
 	}

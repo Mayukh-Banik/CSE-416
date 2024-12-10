@@ -10,20 +10,20 @@ import (
 )
 
 var (
-	dirPath             = filepath.Join("..", "utils")
-	uploadedFilePath    = filepath.Join(dirPath, "files.json")
-	downloadedFilePath  = filepath.Join(dirPath, "downloadedFiles.json")
-	transactionFilePath = filepath.Join(dirPath, "transactionFiles.json")
+	DirPath             = filepath.Join("..", "utils")
+	uploadedFilePath    = filepath.Join(DirPath, "files.json")
+	DownloadedFilePath  = filepath.Join(DirPath, "downloadedFiles.json")
+	transactionFilePath = filepath.Join(DirPath, "transactionFiles.json")
 
 	fileCopyPath = filepath.Join("..", "squidcoinFiles")
 	fileMutex    sync.Mutex // used by cloud-node
 )
 
 // use for user uploaded files and user downlaoded files
-func SaveOrUpdateFile(newFileData models.FileMetadata, dirPath, filePath string) (string, error) {
+func SaveOrUpdateFile(newFileData models.FileMetadata, dirPath string, filePath string) (string, error) {
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
-	
+
 	// check if directory and file exist
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {
@@ -85,8 +85,8 @@ func SaveOrUpdateFile(newFileData models.FileMetadata, dirPath, filePath string)
 
 func AddOrUpdateTransaction(transaction models.Transaction) error {
 	// check if directory and file exist
-	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {
+	if _, err := os.Stat(DirPath); os.IsNotExist(err) {
+		if err := os.Mkdir(DirPath, os.ModePerm); err != nil {
 			return fmt.Errorf("failed to create utils directory: %v", err)
 		}
 	}
@@ -100,7 +100,7 @@ func AddOrUpdateTransaction(transaction models.Transaction) error {
 	// read in JSON file
 	data, err := os.ReadFile(transactionFilePath)
 	if err != nil {
-		fmt.Errorf("failed to read files.json: %v", err)
+		return fmt.Errorf("failed to read files.json: %v", err)
 	}
 
 	var transactions []models.Transaction

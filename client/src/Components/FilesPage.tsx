@@ -567,6 +567,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 {/* Table Header */}
                 <TableHead>
                   <TableRow>
+                    <TableCell>Rating</TableCell>
                     <TableCell>Name</TableCell>
                     <TableCell>Hash</TableCell>
                     <TableCell>Size</TableCell>
@@ -579,6 +580,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 <TableBody>
                   {uploadedFiles.map((file, index) => (
                     <TableRow key={index}>
+                      <TableCell>{file.Rating}</TableCell>
                       <TableCell>{file.Name}</TableCell>
                       <TableCell
                         sx={{

@@ -3,6 +3,7 @@ package files
 import (
 	dht_kad "application-layer/dht"
 	"application-layer/models"
+	"application-layer/utils"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -39,7 +40,7 @@ func handleVote(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"message": "Vote '%s' recorded for file %s"}`, voteType, fileHash)
 }
 
-func votingHelper(fileHash, voteType string) error {
+func votingHelper(fileHash string, voteType string) error {
 	// Retrieve metadata from DHT
 	fmt.Println("in voting helper")
 
@@ -99,11 +100,24 @@ func votingHelper(fileHash, voteType string) error {
 		return fmt.Errorf("failed to encode updated metadata: %v", err)
 	}
 	fmt.Println("votingHelper: metadata after updating vote: ", metadata)
+
 	err = dht_kad.DHT.PutValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash, updatedData)
 	fmt.Println("votingHelper: error publishing file to DHT", err)
-	err = dht_kad.DHT.PutValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash, updatedData)
-	fmt.Println("votingHelper: error publishing file to cloud node", err)
-	return err
+
+	// update in local file
+	var newMetadata models.FileMetadata
+	err = json.Unmarshal(data, &newMetadata)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal data into FileMetadata struct: %v", err)
+	}
+	newMetadata.Rating = voteType
+	newMetadata.HasVoted = true
+	_, err = utils.SaveOrUpdateFile(newMetadata, utils.DirPath, utils.DownloadedFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to update rating locally: %v", err)
+	}
+
+	return nil
 }
 
 func handleGetRating(w http.ResponseWriter, r *http.Request) {

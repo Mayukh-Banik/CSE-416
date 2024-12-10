@@ -509,7 +509,8 @@ func receiveFile(node host.Host) error {
 		_, err = UpdateFileInDHT(metadata)
 		if err != nil {
 			// is it a failure if the user receives the file but cannot be added to the dht?
-			fmt.Errorf("failed to update dht metadata")
+			log.Println("failed to update dht metadata:", err)
+			return
 		}
 
 		sendSuccessConfirmation(transaction)
