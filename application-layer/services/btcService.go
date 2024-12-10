@@ -566,7 +566,7 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 	// Allow btcd to stabilize
 	time.Sleep(2 * time.Second)
 
-	// Step 2: Create or overwrite the wallet
+	// Step 2: Create the wallet if it doesn't already exist
 	err := bs.BtcwalletCreate(passphrase)
 	if err != nil {
 		bs.StopBtcd() // Ensure btcd is stopped in case of failure
@@ -1135,6 +1135,38 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	return unlockResult, nil
 }
 
+// Logout stops the btcd and btcwallet processes if they are running.
+func (bs *BtcService) Logout() (string, error) {
+    // Step 1: Check and stop btcwallet
+    fmt.Println("Checking if btcwallet is running...")
+    if isProcessRunning("btcwallet") {
+        btcwalletStopResult := bs.StopBtcwallet()
+        if btcwalletStopResult != "btcwallet stopped successfully" {
+            fmt.Printf("Failed to stop btcwallet: %s\n", btcwalletStopResult)
+            return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
+        }
+        fmt.Println("btcwallet stopped successfully.")
+    } else {
+        fmt.Println("btcwallet is not running.")
+    }
+
+    // Step 2: Check and stop btcd
+    fmt.Println("Checking if btcd is running...")
+    if isProcessRunning("btcd") {
+        btcdStopResult := bs.StopBtcd()
+        if btcdStopResult != "btcd stopped successfully" {
+            fmt.Printf("Failed to stop btcd: %s\n", btcdStopResult)
+            return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
+        }
+        fmt.Println("btcd stopped successfully.")
+    } else {
+        fmt.Println("btcd is not running.")
+    }
+
+    // Step 3: Success
+    fmt.Println("Logout successful. All processes stopped.")
+    return "Logout successful. All processes stopped.", nil
+}
 
 
 

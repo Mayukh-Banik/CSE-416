@@ -185,6 +185,33 @@ func (bc *BtcController) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, response)
 }
 
+// LogoutResponse represents the structure of the logout response payload.
+type LogoutResponse struct {
+	Message string `json:"message"`
+}
+
+// LogoutHandler handles the logout process for users.
+func (bc *BtcController) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("LogoutHandler called")
+
+	// Call the Logout method from BtcService
+	result, err := bc.Service.Logout()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Respond with a success message
+	response := struct {
+		Message string `json:"message"`
+	}{
+		Message: result,
+	}
+	respondWithJSON(w, http.StatusOK, response)
+}
+
+
+
 func (bc *BtcController) TransactionHandler(w http.ResponseWriter, r *http.Request) {
 	var params struct {
 		Passphrase string  `json:"passphrase"`

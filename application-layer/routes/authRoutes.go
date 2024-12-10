@@ -15,5 +15,7 @@ func RegisterAuthRoutes(router *mux.Router, authController *controllers.BtcContr
 	authRouter := router.PathPrefix("/api/auth").Subrouter()
 	authRouter.HandleFunc("/signup", authController.SignupHandler).Methods("POST")
 	authRouter.HandleFunc("/login", authController.LoginHandler).Methods("POST") // Add this line
+	authRouter.HandleFunc("/logout", authController.LogoutHandler).Methods("POST")
+
 }
 
