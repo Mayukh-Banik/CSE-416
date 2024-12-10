@@ -1110,24 +1110,24 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	}
 
 	// Step 4: Stop btcwallet
-	btcwalletStopResult := bs.StopBtcwallet()
-	if btcwalletStopResult != "btcwallet stopped successfully" {
-		fmt.Printf("Failed to stop btcwallet: %s\n", btcwalletStopResult)
-		bs.StopBtcd() // Stop btcd to ensure no orphaned processes
-		return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
-	}
-	fmt.Println("btcwallet stopped successfully.")
+	// btcwalletStopResult := bs.StopBtcwallet()
+	// if btcwalletStopResult != "btcwallet stopped successfully" {
+	// 	fmt.Printf("Failed to stop btcwallet: %s\n", btcwalletStopResult)
+	// 	bs.StopBtcd() // Stop btcd to ensure no orphaned processes
+	// 	return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
+	// }
+	// fmt.Println("btcwallet stopped successfully.")
 
-	// Allow time before stopping btcd
-	time.Sleep(1 * time.Second)
+	// // Allow time before stopping btcd
+	// time.Sleep(1 * time.Second)
 
-	// Step 5: Stop btcd
-	btcdStopResult := bs.StopBtcd()
-	if btcdStopResult != "btcd stopped successfully" {
-		fmt.Printf("Failed to stop btcd: %s\n", btcdStopResult)
-		return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
-	}
-	fmt.Println("btcd stopped successfully.")
+	// // Step 5: Stop btcd
+	// btcdStopResult := bs.StopBtcd()
+	// if btcdStopResult != "btcd stopped successfully" {
+	// 	fmt.Printf("Failed to stop btcd: %s\n", btcdStopResult)
+	// 	return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
+	// }
+	// fmt.Println("btcd stopped successfully.")
 
 
 	// Step 4: Success
