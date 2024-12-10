@@ -32,7 +32,9 @@ var (
 )
 
 const (
-	bootstrapNode = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+	bootstrapNode = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+
+	// bootstrapNode = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
 	// bootstrapNode   = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
 	proxyKeyPrefix  = "/orcanet/proxy/"
 	Cloud_node_addr = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
@@ -353,8 +355,9 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 // handleConnectMethod handles the CONNECT HTTP method for tunneling.
 func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	// Log the incoming request method and URL
-	log.Printf("Received %s request to %s", r.Method, r.URL)
-
+	fmt.Print("INSIDE THE CONNECT METHOD")
+	host_peerid := r.URL.Query().Get("val")
+	fmt.Print("HOST PEER ID", host_peerid)
 	// Check if the request method is POST
 	if r.Method == "POST" {
 		log.Println("Processing POST request")
