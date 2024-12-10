@@ -45,7 +45,7 @@ const LoginPage: React.FC = () => {
             // Process successful login response
             const data = await response.json();
             console.log('Login successful:', data);
-            setSuccessMessage(data.message);
+            setSuccessMessage(`Login success: ${data.message}`);
 
             // Redirect or handle post-login actions
         } catch (err) {
