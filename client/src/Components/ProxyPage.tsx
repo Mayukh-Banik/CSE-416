@@ -10,6 +10,7 @@ interface ProxyHost {
   Statistics: {
     uptime: string;
   };
+  peer_id:string;
   bandwidth: string;
   isEnabled: boolean;
   price: string;
@@ -32,6 +33,7 @@ const ProxyHosts: React.FC = () => {
     logs: [],
     Statistics: { uptime: '' },
     bandwidth: '',
+    peer_id:'',
     isEnabled: false,
     price: '',
     isHost: false
@@ -120,7 +122,6 @@ const ProxyHosts: React.FC = () => {
 
     setProxyHosts(updatedHosts);
     setConnectedProxy(host);
-    console.log("ATTEMPTING TO CONNTECT")
     notifyConnectionToBackend(host);
 
 
@@ -133,14 +134,16 @@ const ProxyHosts: React.FC = () => {
 
   const notifyConnectionToBackend = async (host: ProxyHost) => {
     console.log("Attempting to connect...");
-    console.log(host); // Check if the host data is passed correctly
     try {
-      const response = await fetch('http://localhost:8081/connect-proxy/', {
+      console.log(host.peer_id)
+      const response = await fetch(`http://localhost:8081/connect-proxy?val=${host.peer_id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           hostName: host.name,
           hostLocation: host.location,
+          hostPeerID: host.peer_id,
+       
           timestamp: new Date().toLocaleString(),
         }),
       });
@@ -168,6 +171,7 @@ const ProxyHosts: React.FC = () => {
       name: '',
       location: '',
       logs: [],
+      peer_id:'',
       Statistics: { uptime: '' },
       bandwidth: '',
       isEnabled: false,
