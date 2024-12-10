@@ -66,7 +66,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated }) => {
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([])
-  const [initialFetch, setInitialFetch] = useState(false);
+  const [initialFetch, setInitialFetch] = useState(true);
   const lightTheme = createTheme({
     palette: {
       mode: "light",
@@ -112,7 +112,12 @@ const App: React.FC = () => {
           <Route path="/login" element={<LoginPage />} />
           {/* <Route path="/signup" element={<SignupPage />} /> */}
           <Route path="/market" element={<MarketPage />} />
-          <Route path="/files" element={<FilesPage />} />
+          <Route path="/files" element={<FilesPage 
+            uploadedFiles={uploadedFiles} 
+            setUploadedFiles={setUploadedFiles} 
+            initialFetch={initialFetch} 
+            setInitialFetch={setInitialFetch} 
+          />} />
           <Route path="/global-transactions" element={<GlobalTransactions />} />
           <Route
             path="/settings"

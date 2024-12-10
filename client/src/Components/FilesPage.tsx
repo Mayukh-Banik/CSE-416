@@ -32,7 +32,6 @@ import { useTheme } from '@mui/material/styles';
 import { FileMetadata } from "../models/fileMetadata";
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import ElectronStore from "electron-store";
 
 declare global {
   interface Window {
@@ -42,18 +41,24 @@ declare global {
       };
   }
 }
-// import { saveFileMetadata, getFilesForUser, deleteFileMetadata, updateFileMetadata, FileMetadata } from '../utils/localStorage'
 
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
 const ipcRenderer = window.electron?.ipcRenderer;
 
-const FilesPage: React.FC = () => {
+interface FilesProp {
+  uploadedFiles: FileMetadata[];
+  setUploadedFiles: React.Dispatch<React.SetStateAction<FileMetadata[]>>;
+  initialFetch: boolean;
+  setInitialFetch: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initialFetch, setInitialFetch}) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({}); // Track descriptions
   const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({}); // Track hashes
-  const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([]);
+  // const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([]);
   const [downloadedFiles, setDownloadedFiles] = useState<FileMetadata[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
@@ -67,14 +72,10 @@ const FilesPage: React.FC = () => {
 
   useEffect(() => {
     const fetchAllFiles = async() => {
-      localStorage.setItem("filesLoaded", "false");
-      const hasLoaded = localStorage.getItem("filesLoaded");
-      console.log("Has Loaded from localStorage:", hasLoaded); // Debug log
-      if (!hasLoaded || hasLoaded === "false") {
-        console.log("First load, calling handleRefresh..."); // Debug log
+      if (initialFetch) {
         await fetchFiles("uploaded");
         await fetchFiles("downloaded");
-        localStorage.setItem("filesLoaded", "true");
+        setInitialFetch(false)
       }
     };
     fetchAllFiles(); 
