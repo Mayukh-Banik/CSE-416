@@ -26,9 +26,9 @@ import GlobalTransactions from "./Components/Transactions";
 
 import SearchPage from "./Components/SearchPage";
 import { FileMetadata } from "./models/fileMetadata";
-import SignUpPage from "./Components/SignUpPage";
+import InitPage from "./Components/InitPage";
 
-const isUserLoggedIn = true; // should add the actual login state logic here.
+const isUserLoggedIn = true; // 실제 로그인 상태 로직으로 교체 필요
 
 // Fake data for your wallet (temporary data)
 const walletAddress = "0x1234567890abcdef";
@@ -69,6 +69,7 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([])
   const [initialFetch, setInitialFetch] = useState(false);
+  
   const lightTheme = createTheme({
     palette: {
       mode: "light",
@@ -103,85 +104,54 @@ const App: React.FC = () => {
     setDarkMode((prevMode) => !prevMode);
   };
 
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        console.log("Checking authentication status...");
-
-        const response = await fetch("http://localhost:8080/api/auth/status", {
-          method: 'POST',
-          credentials: 'include', // 쿠키 포함 요청
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        console.log("Response status:", response.status);
-
-        if (!response.ok) {
-          throw new Error(`Server responded with status ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("Authentication response data:", data);
-
-        // 서버의 응답 구조에 맞게 인증 상태를 설정
-        setIsAuthenticated(data.status === "valid");
-
-        if (data.status === "valid") {
-          console.log("User is authenticated.");
-        } else {
-          console.log("User is not authenticated.");
-        }
-      } catch (error) {
-        console.error("Error checking auth status:", error);
-        setIsAuthenticated(false);
-      }
-    };
-
-    checkAuthStatus();
-  }, []);
-  
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline /> {/* This resets CSS to a consistent baseline */}
       <Router>
         <Routes>
-          <Route path="/" element={<SignUpPage />} />   
+          {/* 초기화 페이지 */}
+          <Route path="/" element={<InitPage />} />
+          <Route path="/init" element={<InitPage />} />
+
+          {/* 초기화가 완료되면 SignUpPage로 이동하도록 설정 */}
+          <Route path="/signup" element={<SignupPage />} />
+
+          {/* 나머지 라우트들 */}
           <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
-          {/* <Route path="/signup" element={<SignupPage />} /> */}
           <Route path="/market" element={<MarketPage />} />
-          <Route path="/files" element={<FilesPage 
-              uploadedFiles={uploadedFiles} 
-              setUploadedFiles={setUploadedFiles} 
-              initialFetch={initialFetch} 
-              setInitialFetch={setInitialFetch} 
-            />} />
+          <Route
+            path="/files"
+            element={
+              <FilesPage
+                uploadedFiles={uploadedFiles}
+                setUploadedFiles={setUploadedFiles}
+                initialFetch={initialFetch}
+                setInitialFetch={setInitialFetch}
+              />
+            }
+          />
           <Route path="/global-transactions" element={<GlobalTransactions />} />
           <Route
             path="/settings"
-            element={
-              <SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />
-            }
+            element={<SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />}
           />
           {/* <Route path='/transaction' element={<TransactionPage />} /> */}
           <Route path="/mining" element={<MiningPage />} />
 
-          {/* <Route path='/register' element={<RegisterPage />} /> */}
-
           {/* Routes protected by PrivateRoute */}
           <Route element={<PrivateRoute isAuthenticated={isUserLoggedIn} />}>
-            <Route
-              path="/account"
-            />
+            <Route path="/account" element={<AccountViewPage />} />
+            <Route path="/account/:address" element={<AccountViewPage />} />
           </Route>
+          
           <Route path="/fileview" element={<FileViewPage />} />
-          <Route path="/account" element={<AccountViewPage />} />
-          <Route path="/account/:address" element={<AccountViewPage />} />
           <Route path="/fileview/:fileId" element={<FileViewPage />} />
           <Route path="/search-page" element={<SearchPage />} />
+
+          {/* Fallback route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </ThemeProvider>

@@ -406,3 +406,22 @@ func (bc *BtcController) GetMiningDashboardHandler(w http.ResponseWriter, r *htt
 	}
 	respondWithJSON(w, http.StatusOK, resp)
 }
+
+// InitHandler handles the initialization process
+func (bc *BtcController) InitHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	fmt.Println("InitHandler called")
+
+	result := bc.Service.Init()
+
+	resp := Response{
+		Status:  "success",
+		Message: result,
+	}
+
+	respondWithJSON(w, http.StatusOK, resp)
+}
