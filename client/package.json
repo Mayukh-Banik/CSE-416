@@ -57,12 +57,12 @@
     },
     "scripts": {
         "clean": "rimraf dist build client/build",
-        "start": "DISABLE_ESLINT_PLUGIN=true react-app-rewired start",
+        "start": "cross-env DISABLE_ESLINT_PLUGIN=true react-app-rewired start",
+        "dev": "cross-env DISABLE_ESLINT_PLUGIN=true nodemon",
         "build": "DISABLE_ESLINT_PLUGIN=true react-app-rewired build",
         "test": "react-app-rewired test",
         "eject": "react-scripts eject",
-        "run-build": "DISABLE_ESLINT_PLUGIN=true react-app-rewired build && electron ./main.js",
-        "dev": "nodemon"
+        "run-build": "DISABLE_ESLINT_PLUGIN=true react-app-rewired build && electron ./main.js"
     },
     "eslintConfig": {
         "extends": [
@@ -93,6 +93,7 @@
         "@types/react-router-dom": "^5.3.3",
         "@typescript-eslint/eslint-plugin": "^5.62.0",
         "@typescript-eslint/parser": "^5.62.0",
+        "cross-env": "^7.0.3",
         "customize-cra": "^1.0.0",
         "eslint": "^8.57.1",
         "eslint-config-react-app": "^7.0.1",
