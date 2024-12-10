@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from "./Sidebar";
 import useProxyHostsStyles from '../Stylesheets/ProxyPageStyles';
-import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Box, TextField } from '@mui/material';
+import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, Box, TextField, LinearProgress } from '@mui/material';
 
 interface ProxyHost {
   name: string;
@@ -10,7 +10,7 @@ interface ProxyHost {
   Statistics: {
     uptime: string;
   };
-  peer_id:string;
+  peer_id: string;
   bandwidth: string;
   isEnabled: boolean;
   price: string;
@@ -27,13 +27,15 @@ const ProxyHosts: React.FC = () => {
   const [proxyHistory, setProxyHistory] = useState<{ name: string; location: string; timestamp: string }[]>([]);
   const [showHistoryOnly, setShowHistoryOnly] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false); // Track loading state
+
   const [newProxy, setNewProxy] = useState<ProxyHost>({
     name: '',
     location: '',
     logs: [],
     Statistics: { uptime: '' },
     bandwidth: '',
-    peer_id:'',
+    peer_id: '',
     isEnabled: false,
     price: '',
     isHost: false
@@ -42,6 +44,7 @@ const ProxyHosts: React.FC = () => {
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const response = await fetch('http://localhost:8081/proxy-data/', {
         method: 'GET',
         headers: {
@@ -62,7 +65,10 @@ const ProxyHosts: React.FC = () => {
         return !proxy.name && !proxy.location && !proxy.price && !proxy.Statistics.uptime && !proxy.bandwidth;
       };
       const nonEmptyProxies = proxyData.filter(proxy => !isEmptyProxy(proxy));
-
+      const hostproxy = proxyData.filter(proxy => !isEmptyProxy(proxy) && proxy.isHost);
+      const ip = hostproxy.map(proxy => proxy.address);
+      // Extract the address of the proxy where isHost is true
+      setCurrentIP(ip[0]);
       setProxyHosts(nonEmptyProxies.map(proxy => ({
         name: proxy.name,
         location: proxy.location || proxy.address,
@@ -76,6 +82,9 @@ const ProxyHosts: React.FC = () => {
       })));
     } catch (error) {
       console.error('Error fetching or processing data:', error);
+    }
+    finally {
+      setLoading(false); // Stop loading
     }
   };
   const sendData = async () => {
@@ -100,17 +109,7 @@ const ProxyHosts: React.FC = () => {
   };
 
   useEffect(() => {
-    const fetchIP = async () => {
-      try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        setCurrentIP(data.ip);
-      } catch (error) {
-        console.error("Error fetching IP:", error);
-      }
-    };
 
-    fetchIP();
     fetchData();
   }, []);
 
@@ -143,7 +142,7 @@ const ProxyHosts: React.FC = () => {
           hostName: host.name,
           hostLocation: host.location,
           hostPeerID: host.peer_id,
-       
+
           timestamp: new Date().toLocaleString(),
         }),
       });
@@ -171,7 +170,7 @@ const ProxyHosts: React.FC = () => {
       name: '',
       location: '',
       logs: [],
-      peer_id:'',
+      peer_id: '',
       Statistics: { uptime: '' },
       bandwidth: '',
       isEnabled: false,
@@ -179,9 +178,9 @@ const ProxyHosts: React.FC = () => {
       isHost: false,
     });
 
-
-    // Hide the form after adding
     setShowForm(false);
+    alert('Proxy added successfully!');
+    window.location.reload();
   };
 
   const handleSortByLocation = () => {
@@ -212,156 +211,204 @@ const ProxyHosts: React.FC = () => {
         <Sidebar />
         <Box sx={{ marginTop: 2 }}>
           <Typography variant="h4">Proxy</Typography>
-          <Box className={styles.header}>
-            <Typography variant="h6">Your Current IP: {currentIP}</Typography>
-            {/* Show Proxy History Button */}
-            {!showHistoryOnly && (
-              <Button variant="outlined" onClick={handleClearAndShowHistory}>
-                Show Proxy History
-              </Button>
-            )}
-          </Box>
-          <br />
-          {/* Show the history*/}
-          {showHistoryOnly ? (
-            <>
-              <Box className={styles.historyContainer}>
-                <Typography variant="h5">Proxy Connection History</Typography>
-                <TableContainer className={styles.historyTable}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Name</TableCell>
-                        <TableCell>Location</TableCell>
-                        <TableCell>Connected At</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {proxyHistory.map((entry, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{entry.name}</TableCell>
-                          <TableCell>{entry.location}</TableCell>
-                          <TableCell>{entry.timestamp}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="contained"
-                              onClick={() => {
-                                const host = proxyHosts.find(h => h.location === entry.location);
-                                if (host) handleConnect(host);
-                              }}
-                            >
-                              Connect
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-              <Box sx={{ marginTop: 2 }}>
-                <Button variant="contained" onClick={handleReturn}>Return to Proxy Hosts</Button>
-              </Box>
-            </>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+              <LinearProgress sx={{ width: '100%' }} /> {/* Progress bar when loading is true */}
+            </Box>
           ) : (
             <>
-              <Box className={styles.proxyButton}>
-                {/* Add Yourself as Proxy  */}
-                <Button variant="contained" onClick={() => setShowForm(prev => !prev)}>
-                  {showForm ? 'Hide Form' : 'Add Yourself as Proxy'}
-                </Button>
-
-                {/* Sort Buttons */}
-                <Box sx={{ display: 'flex', gap: '10px' }}>
-                  <Button variant="outlined" onClick={handleSortByLocation}>Sort by Location</Button>
-                  <Button variant="outlined" onClick={handleSortByPrice}>Sort by Price</Button>
-                </Box>
+              <Box className={styles.header}>
+                <Typography variant="h6">Your Current IP: {currentIP}</Typography>
+                {!showHistoryOnly && (
+                  <Button variant="outlined" onClick={handleClearAndShowHistory}>
+                    Show Proxy History
+                  </Button>
+                )}
               </Box>
-
-              {/* Expandable Form Section */}
-              {showForm && (
-                <Box sx={{ marginTop: 1 }} className={styles.form}>
-                  <Typography variant="h6">Fill in your proxy details</Typography>
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    <TextField
-                      label="Name"
-                      variant="outlined"
-                      value={newProxy.name}
-                      onChange={(e) => setNewProxy({ ...newProxy, name: e.target.value })}
-                    />
-                    <TextField
-                      label="Location"
-                      variant="outlined"
-                      value={newProxy.location}
-                      onChange={(e) => setNewProxy({ ...newProxy, location: e.target.value })}
-                    />
-                    <TextField
-                      label="Price ($)"
-                      variant="outlined"
-                      type="number"
-                      value={newProxy.price}
-                      onChange={(e) => setNewProxy({ ...newProxy, price: e.target.value })}
-                      InputProps={{ inputProps: { min: 0 } }}
-                    />
-                    <TextField
-                      label="Uptime (%)"
-                      variant="outlined"
-                      value={newProxy.Statistics.uptime}
-                      onChange={(e) => setNewProxy({ ...newProxy, Statistics: { ...newProxy.Statistics, uptime: e.target.value } })}
-                    />
-                    <TextField
-                      label="Bandwidth"
-                      variant="outlined"
-                      value={newProxy.bandwidth}
-                      onChange={(e) => setNewProxy({ ...newProxy, bandwidth: e.target.value })}
-                    />
-                    <Button variant="contained" className={styles.submitButton} onClick={handleAddProxy}>Add Proxy</Button>
+              <br />
+              {/* Show the history */}
+              {showHistoryOnly ? (
+                <>
+                  <Box className={styles.historyContainer}>
+                    <Typography variant="h5">Proxy Connection History</Typography>
+                    <TableContainer className={styles.historyTable}>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Location</TableCell>
+                            <TableCell>Connected At</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {proxyHistory.map((entry, index) => (
+                            <TableRow key={index}>
+                              <TableCell>{entry.name}</TableCell>
+                              <TableCell>{entry.location}</TableCell>
+                              <TableCell>{entry.timestamp}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="contained"
+                                  onClick={() => {
+                                    const host = proxyHosts.find(
+                                      (h) => h.location === entry.location
+                                    );
+                                    if (host) handleConnect(host);
+                                  }}
+                                >
+                                  Connect
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
                   </Box>
-                </Box>
+                  <Box sx={{ marginTop: 2 }}>
+                    <Button variant="contained" onClick={handleReturn}>
+                      Return to Proxy Hosts
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                <>
+                  <Box className={styles.proxyButton}>
+                    {/* Add Yourself as Proxy */}
+                    <Button
+                      variant="contained"
+                      onClick={() => setShowForm((prev) => !prev)}
+                    >
+                      {showForm ? 'Hide Form' : 'Add Yourself as Proxy'}
+                    </Button>
+                    {/* Sort Buttons */}
+                    <Box sx={{ display: 'flex', gap: '10px' }}>
+                      <Button variant="outlined" onClick={handleSortByLocation}>
+                        Sort by Location
+                      </Button>
+                      <Button variant="outlined" onClick={handleSortByPrice}>
+                        Sort by Price
+                      </Button>
+                    </Box>
+                  </Box>
+                  {/* Expandable Form Section */}
+                  {showForm && (
+                    <Box sx={{ marginTop: 1 }} className={styles.form}>
+                      <Typography variant="h6">
+                        Fill in your proxy details
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 2 }}>
+                        <TextField
+                          label="Name"
+                          variant="outlined"
+                          value={newProxy.name}
+                          onChange={(e) =>
+                            setNewProxy({ ...newProxy, name: e.target.value })
+                          }
+                        />
+                        <TextField
+                          label="Location"
+                          variant="outlined"
+                          value={newProxy.location}
+                          onChange={(e) =>
+                            setNewProxy({ ...newProxy, location: e.target.value })
+                          }
+                        />
+                        <TextField
+                          label="Price ($)"
+                          variant="outlined"
+                          type="number"
+                          value={newProxy.price}
+                          onChange={(e) =>
+                            setNewProxy({ ...newProxy, price: e.target.value })
+                          }
+                          InputProps={{ inputProps: { min: 0 } }}
+                        />
+                        <TextField
+                          label="Uptime (%)"
+                          variant="outlined"
+                          value={newProxy.Statistics.uptime}
+                          onChange={(e) =>
+                            setNewProxy({
+                              ...newProxy,
+                              Statistics: {
+                                ...newProxy.Statistics,
+                                uptime: e.target.value,
+                              },
+                            })
+                          }
+                        />
+                        <TextField
+                          label="Bandwidth"
+                          variant="outlined"
+                          value={newProxy.bandwidth}
+                          onChange={(e) =>
+                            setNewProxy({ ...newProxy, bandwidth: e.target.value })
+                          }
+                        />
+                        <Button
+                          variant="contained"
+                          className={styles.submitButton}
+                          onClick={handleAddProxy}
+                        >
+                          Add Proxy
+                        </Button>
+                      </Box>
+                    </Box>
+                  )}
+                  <TableContainer className={styles.proxyTable}>
+                    <Table className={styles.table}>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Name</TableCell>
+                          <TableCell>Location</TableCell>
+                          <TableCell>Price</TableCell>
+                          <TableCell>Uptime</TableCell>
+                          <TableCell>Bandwidth</TableCell>
+                          <TableCell>Logs</TableCell>
+                          <TableCell>Action</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {proxyHosts.map((host, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{host.name}</TableCell>
+                            <TableCell>{host.location}</TableCell>
+                            <TableCell>{host.price}</TableCell>
+                            <TableCell>
+                              {host.Statistics && host.Statistics.uptime
+                                ? host.Statistics.uptime
+                                : 'N/A'}
+                            </TableCell>
+                            <TableCell>{host.bandwidth}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="text"
+                                onClick={() => alert(host.logs.join('\n'))}
+                              >
+                                View Logs
+                              </Button>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="contained"
+                                onClick={() => handleConnect(host)}
+                              >
+                                Connect
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </>
               )}
-
-              <TableContainer className={styles.proxyTable}>
-                <Table className={styles.table}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Location</TableCell>
-                      <TableCell>Price</TableCell>
-                      <TableCell>Uptime</TableCell>
-                      <TableCell>Bandwidth</TableCell>
-                      <TableCell>Logs</TableCell>
-                      <TableCell>Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {proxyHosts.map((host, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{host.name}</TableCell>
-                        <TableCell>{host.location}</TableCell>
-                        <TableCell>{host.price}</TableCell>
-                        <TableCell>{host.Statistics && host.Statistics.uptime ? host.Statistics.uptime : 'N/A'}</TableCell>
-                        <TableCell>{host.bandwidth}</TableCell>
-                        <TableCell>
-                          <Button variant="text" onClick={() => alert(host.logs.join('\n'))}>
-                            View Logs
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="contained" onClick={() => handleConnect(host)}>
-                            Connect
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
             </>
           )}
         </Box>
       </Box>
     </div>
   );
-};
-
+}
 export default ProxyHosts;

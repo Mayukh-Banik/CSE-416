@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -125,6 +126,11 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 				return
 			}
 
+			proxy.Address, _ = getPrivateIP()
+
+			if proxy.PeerID == localPeerID.String() {
+				proxy.IsHost = true
+			}
 			// Avoid duplicates by checking the PeerID
 			if _, seen := seenProxies[proxy.PeerID]; !seen {
 				mu.Lock()
@@ -138,13 +144,7 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if !isEmptyProxy(localProxy) {
-			mu.Lock()
-			fmt.Println("Local proxy", localProxy)
-			proxies = append(proxies, localProxy)
-			mu.Unlock()
-			log.Printf("Debug: Added local proxy information")
-		}
+
 	}()
 
 	go func() {
@@ -293,7 +293,6 @@ func handlePeerExchange(node host.Host) {
 // Retrieveing proxies data, and adding yourself as host
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
-	go dht_kad.ConnectToPeer(node, dht_kad.Bootstrap_node_addr)
 	// go dht_kad.ConnectToPeer(node, Cloud_node_addr)
 	globalCtx = context.Background()
 	if r.Method == "POST" {
@@ -308,7 +307,8 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 
 		newProxy.Address = node.Addrs()[0].String()
 		newProxy.PeerID = node.ID().String()
-		log.Printf("Debug: New proxy created with PeerID: %s", newProxy.PeerID)
+		newProxy.IsHost = true
+		log.Print("Debug: New proxy  info", newProxy)
 
 		if err := saveProxyToDHT(newProxy); err != nil {
 			log.Printf("Debug: Failed to save proxy to DHT: %v", err)
@@ -329,13 +329,12 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Debug: Error encoding proxy data: %v", err)
 			http.Error(w, fmt.Sprintf("Error encoding proxy data: %v", err), http.StatusInternalServerError)
 		}
+		go pollPeerAddresses(node)
 		return
 	}
 
 	log.Printf("Debug: Connecting to bootstrap node")
 	getAdjacentNodeProxiesMetadata(w, r)
-
-	go pollPeerAddresses(node)
 
 	if r.Method == "GET" {
 		// clearAllProxies()
@@ -371,13 +370,15 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	fmt.Print("INSIDE THE CONNECT METHOD")
 	host_peerid := r.URL.Query().Get("val")
 	fmt.Print("HOST PEER ID", host_peerid)
+	fmt.Print("HOST PEER ID", host_peerid)
+
 	// Check if the request method is POST
-	if r.Method == "POST" {
-		log.Println("Processing POST request")
+	if r.Method == "GET" {
+		log.Println("Processing GET request")
 
 		// Parse the destination from the CONNECT request
 		node := dht_kad.Host
-		destination := r.URL.Host
+		destination := host_peerid
 
 		// Check if the destination is empty and log the error if so
 		if destination == "" {
@@ -435,7 +436,9 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 // tunnelDataBetweenClientAndPeer relays data between the client and the destination peer.
 func tunnelDataBetweenClientAndPeer(node host.Host, peerID peer.ID, clientReader io.Reader, w http.ResponseWriter) {
 	// Open a stream to the connected peer (destination)
-	stream, err := node.NewStream(globalCtx, peerID, "/http-temp-protocol")
+	var ctx = context.Background()
+	stream, err := node.NewStream(network.WithAllowLimitedConn(ctx, "/http-temp-protocol"), peerID, "/http-temp-protocol")
+	fmt.Print("STREAM OPENED")
 	if err != nil {
 		log.Printf("Failed to open stream to peer %s: %v", peerID, err)
 		return
@@ -457,6 +460,36 @@ func tunnelDataBetweenClientAndPeer(node host.Host, peerID peer.ID, clientReader
 	}
 }
 
+func getPrivateIP() (string, error) {
+	// Get all network interfaces
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", fmt.Errorf("error retrieving network interfaces: %v", err)
+	}
+
+	// Iterate over interfaces to find a non-loopback IP address
+	for _, iface := range interfaces {
+		addresses, err := iface.Addrs()
+		if err != nil {
+			return "", fmt.Errorf("error getting addresses for interface %v: %v", iface.Name, err)
+		}
+
+		for _, addr := range addresses {
+			// Ignore loopback IPs
+			ip, ok := addr.(*net.IPNet)
+			if !ok || ip.IP.IsLoopback() {
+				continue
+			}
+
+			// IPv4 check and return the first non-loopback IP found
+			if ip := ip.IP.To4(); ip != nil {
+				return ip.String(), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no private IP found")
+}
 func saveProxyToDHT(proxy models.Proxy) error {
 	ctx := context.Background()
 	key := "/orcanet/proxy/" + proxy.PeerID
@@ -475,6 +508,8 @@ func saveProxyToDHT(proxy models.Proxy) error {
 			// If they are the same, either update or reject
 			existingProxy.Name = proxy.Name
 			existingProxy.Location = proxy.Location
+			fmt.Println("PRXOYS PRIVATE IP:", proxy.Address)
+			existingProxy.Address, _ = getPrivateIP()
 			existingProxy.Price = proxy.Price
 			existingProxy.Statistics = proxy.Statistics
 			existingProxy.Bandwidth = proxy.Bandwidth
@@ -495,8 +530,10 @@ func saveProxyToDHT(proxy models.Proxy) error {
 		}
 	} else {
 		// Proxy doesn't exist, add it as a new entry
+		proxy.IsHost = isHost
+		proxy.Address, _ = getPrivateIP()
+		fmt.Println("PRXOYS PRIVATE IP:", proxy.Address)
 		proxyJSON, err := json.Marshal(proxy)
-
 		if err != nil {
 			return fmt.Errorf("failed to serialize new proxy data: %v", err)
 		}

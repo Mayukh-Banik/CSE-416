@@ -7,7 +7,6 @@ type Proxy struct {
 	Statistics struct {
 		Uptime string `json:"uptime"`
 	}
-	Providers map[string]Provider
 	Bandwidth string `json:"bandwidth"`
 	Address   string `json:"address"`
 	PeerID    string `json:"peer_id"`
