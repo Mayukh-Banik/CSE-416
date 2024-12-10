@@ -11,6 +11,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -89,6 +91,7 @@ func getKnownProxyKeys() []string {
 
 	return keys
 }
+
 func isEmptyProxy(p models.Proxy) bool {
 	return p.Name == "" && p.Location == "" && p.PeerID == "" && p.Address == ""
 }
@@ -156,31 +159,42 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 func pollPeerAddresses(node host.Host) {
 	if isHost {
 		httpHostToClient(node)
-	}
-	for {
-		if len(Peer_Addresses) > 0 {
-			fmt.Println("Peer addresses are not empty, setting up proxy.")
-			fmt.Println(Peer_Addresses)
+	} else {
+		fmt.Println("RIGHT BEFORE ACCESSING PEER ADDRESSES1")
+		for len(Peer_Addresses) == 0 {
+			time.Sleep(3 * time.Second)
+		}
+		var ip string
+		var err error
+		fmt.Println("RIGHT BEFORE ACCESSING PEER ADDRESSES2")
+		for _, val := range Peer_Addresses {
+			ip, err = val.ValueForProtocol(ma.P_IP4)
+			if err != nil {
+				continue
+			}
+			break
+		}
+		var script string
+		var args []string
+		script = "proxy/client.py"
+		args = []string{"--remote-host", ip}
 
-			// Hosting
-			if !(isHost) {
-				fmt.Println("In Client part")
+		// Function to run the command
+		runCommand := func(pythonCmd string) error {
+			cmd := exec.Command(pythonCmd, append([]string{script}, args...)...)
+			cmd.Stdout = os.Stderr // Redirect standard output to stderr
+			cmd.Stderr = os.Stderr // Redirect standard error to stderr
+			return cmd.Run()
+		}
 
-				// Start an HTTP server on port 9900
-				http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-					// Send the received HTTP request to the peer
-					clientHTTPRequestToHost(node, peer_id, r, w)
-				})
-
-				// Listen on port 9900
-				serverAddr := ":8081"
-				fmt.Printf("HTTP server listening on %s\n", serverAddr)
-				if err := http.ListenAndServe(serverAddr, nil); err != nil {
-					log.Fatalf("Failed to start HTTP server: %s", err)
-				}
+		// Try running with `python`
+		if err := runCommand("python"); err != nil {
+			fmt.Println("`python` not found or failed, trying `python3`...")
+			// If `python` fails, try `python3`
+			if err := runCommand("python3"); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to run %s with both `python` and `python3`: %v\n", script, err)
 			}
 		}
-		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -224,7 +238,6 @@ func getAdjacentNodeProxiesMetadata(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(dht_kad.ProxyResponse); err != nil {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
-
 }
 
 func nodeSupportRefreshStreams(peerID peer.ID) bool {
@@ -573,56 +586,27 @@ func clientHTTPRequestToHost(node host.Host, targetpeerid string, req *http.Requ
 }
 
 func httpHostToClient(node host.Host) {
-	node.SetStreamHandler("/http-temp-protocol", func(s network.Stream) {
-		fmt.Println("In host to client")
-		defer s.Close()
+	var script string
+	var args []string
+	script = "proxy/server.py"
+	args = []string{}
 
-		buf := bufio.NewReader(s)
-		// Read the HTTP request from the stream
-		req, err := http.ReadRequest(buf)
-		if err != nil {
-			if err == io.EOF {
-				log.Println("End of request stream.")
-			} else {
-				log.Println("Failed to read HTTP request:", err)
-				s.Reset()
-			}
-			return
+	// Function to run the command
+	runCommand := func(pythonCmd string) error {
+		cmd := exec.Command(pythonCmd, append([]string{script}, args...)...)
+		cmd.Stdout = os.Stderr // Redirect standard output to stderr
+		cmd.Stderr = os.Stderr // Redirect standard error to stderr
+		return cmd.Run()
+	}
+
+	// Try running with `python`
+	if err := runCommand("python"); err != nil {
+		fmt.Println("`python` not found or failed, trying `python3`...")
+		// If `python` fails, try `python3`
+		if err := runCommand("python3"); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to run %s with both `python` and `python3`: %v\n", script, err)
 		}
-		defer req.Body.Close()
-
-		// Modify the request as needed
-		req.URL.Scheme = "http"
-		hp := strings.Split(req.Host, ":")
-		if len(hp) > 1 && hp[1] == "443" {
-			req.URL.Scheme = "https"
-		} else {
-			req.URL.Scheme = "http"
-		}
-		req.URL.Host = req.Host
-
-		outreq := new(http.Request)
-		*outreq = *req
-
-		// Make the request
-		fmt.Printf("Making request to %s\n", req.URL)
-		resp, err := http.DefaultTransport.RoundTrip(outreq)
-		if err != nil {
-			log.Println("Failed to make request:", err)
-			s.Reset()
-			return
-		}
-		defer resp.Body.Close()
-
-		// Write the response back to the stream
-		err = resp.Write(s)
-		if err != nil {
-			log.Println("Failed to write response to stream:", err)
-			s.Reset()
-			return
-		}
-		log.Println("Response successfully written to stream.")
-	})
+	}
 }
 
 func clearAllProxies() {
