@@ -1163,9 +1163,23 @@ func (bs *BtcService) Logout() (string, error) {
         fmt.Println("btcd is not running.")
     }
 
-    // Step 3: Success
+    // Step 3: Update the temp file
+    fmt.Println("Updating temporary file...")
+    if err := deleteFromTempFile("miningaddr"); err != nil {
+        fmt.Printf("Failed to delete mining address from temp file: %v\n", err)
+        return "", fmt.Errorf("failed to delete mining address from temp file: %w", err)
+    }
+
+    if err := updateTempFile("status", "uninitialized"); err != nil {
+        fmt.Printf("Failed to update status in temp file: %v\n", err)
+        return "", fmt.Errorf("failed to update status in temp file: %w", err)
+    }
+    fmt.Println("Temporary file updated successfully.")
+
+	// Step 4: Success
     fmt.Println("Logout successful. All processes stopped.")
     return "Logout successful. All processes stopped.", nil
+
 }
 
 
