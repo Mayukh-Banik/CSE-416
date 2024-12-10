@@ -672,7 +672,7 @@ func isDirectoryInUse(path string) bool {
 		fmt.Printf("Processes using the directory might be running. Checking for usage of %s\n", path)
 		return true
 	}
-	
+
 	// Optionally, attempt to open the directory to verify usage
 	file, err := os.Open(path)
 	if err != nil {
@@ -683,7 +683,6 @@ func isDirectoryInUse(path string) bool {
 
 	return false
 }
-
 
 // Function to get mainnet path based on OS
 func getMainnetPath() string {
@@ -802,7 +801,6 @@ func (bs *BtcService) Init() string {
 	fmt.Println("Initialization and cleanup completed successfully.")
 	return "Initialization and cleanup completed successfully"
 }
-
 
 // UnlockWallet is a function to unlock the wallet
 func (bs *BtcService) UnlockWallet(passphrase string) (string, error) {
@@ -1179,6 +1177,36 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 		return "Wallet does not exist", fmt.Errorf("wallet does not exist at path: %s", walletDBPath)
 	}
 
+	SetupTempFilePath()
+
+	// Get the mainnet path based on the OS
+	mainnetPath := getMainnetPath()
+	fmt.Printf("Attempting to remove path: %s\n", mainnetPath)
+
+	// First, try to terminate processes using the directory
+	if isDirectoryInUse(mainnetPath) {
+		fmt.Println("Directory is in use. Attempting to stop related services...")
+		bs.StopBtcd()
+		bs.StopBtcwallet()
+		time.Sleep(2 * time.Second) // Wait for processes to terminate
+	}
+
+	// Attempt forced deletion
+	err := forceRemoveAll(mainnetPath)
+	if err != nil {
+		fmt.Printf("Failed to remove mainnet directory: %v\n", err)
+		return "Failed to remove mainnet directory", fmt.Errorf("Failed to remove mainnet directory: %w", err)
+	}
+	fmt.Println("Mainnet directory removed successfully.")
+
+	// Initialize temp file
+	err = initializeTempFile()
+	if err != nil {
+		fmt.Printf("Failed to initialize temp file: %v\n", err)
+		return "Failed to initialize temp file", fmt.Errorf("Failed to initialize temp file: %w", err)
+	}
+	fmt.Println("Temporary file initialized successfully.")
+
 	// Step 1: Start btcd with wallet address
 	btcdResult := bs.StartBtcd(walletAddress)
 	time.Sleep(2 * time.Second) // Wait for btcd initialization
@@ -1208,6 +1236,36 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 		bs.StopBtcd()
 		return "Failed to unlock wallet", fmt.Errorf("failed to unlock wallet: %w", err)
 	}
+
+	// Connect to TA server
+	cmd := exec.Command(
+		btcctlPath,
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8334",
+		"--notls",
+		"addnode",
+		"130.245.173.221:8333",
+		"add",
+	)
+
+	// Configure environment for macOS
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error connecting to TA server: %v\n", err)
+		bs.StopBtcd()
+		bs.StopBtcwallet()
+		return "Error connecting to TA server", fmt.Errorf("Error connecting to TA server: %s", output.String())
+	}
+
+	fmt.Println("Connected to TA server successfully.")
 
 	// Step 4: Stop btcwallet
 	// btcwalletStopResult := bs.StopBtcwallet()

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextField, Button, Container, Typography, Link, Box } from '@mui/material';
+import { TextField, Button, Container, Typography, Link, Box, CircularProgress } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import useRegisterPageStyles from '../Stylesheets/RegisterPageStyles';
 import Header from './Header';
@@ -15,14 +15,17 @@ const LoginPage: React.FC = () => {
     const [passphrase, setPassphrase] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false); // New loading state
 
     const handleLogin = async () => {
         setError(null);
         setSuccessMessage(null);
+        setLoading(true); // Start loading
 
         // Validate inputs
         if (!walletAddress || !passphrase) {
             setError('Wallet address and passphrase are required.');
+            setLoading(false); // Stop loading
             return;
         }
 
@@ -47,10 +50,13 @@ const LoginPage: React.FC = () => {
             console.log('Login successful:', data);
             setSuccessMessage(`Login success: ${data.message}`);
 
-            // Redirect or handle post-login actions
+            // Navigate to /market after successful login
+            navigate('/market');
         } catch (err) {
             console.error('Error during login:', err);
             setError('Login failed. Please check your credentials.');
+        } finally {
+            setLoading(false); // Stop loading
         }
     };
 
@@ -69,7 +75,7 @@ const LoginPage: React.FC = () => {
                     </Typography>
                 </Box>
                 {error && <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>}
-                {successMessage && <Typography color="success" sx={{ mt: 2 }}>{successMessage}</Typography>}
+                {successMessage && <Typography color="success.main" sx={{ mt: 2 }}>{successMessage}</Typography>}
                 <Box sx={{ mt: 2 }}>
                     <TextField
                         label="Wallet Address"
@@ -86,8 +92,15 @@ const LoginPage: React.FC = () => {
                         onChange={(e) => setPassphrase(e.target.value)}
                         sx={{ mb: 2 }}
                     />
-                    <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleLogin}>
-                        Login
+                    <Button 
+                        variant="contained" 
+                        fullWidth 
+                        sx={{ mt: 2 }} 
+                        onClick={handleLogin}
+                        disabled={loading} // Disable button when loading
+                        startIcon={loading && <CircularProgress size={20} />} // Show spinner inside button
+                    >
+                        {loading ? 'Logging in...' : 'Login'}
                     </Button>
                 </Box>
                 <Typography sx={{ mt: 2, textAlign: 'center' }}>

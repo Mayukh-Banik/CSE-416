@@ -51,7 +51,7 @@ const InitPage: React.FC = () => {
     useEffect(() => {
         const checkInitialization = async () => {
             const isInitialized = localStorage.getItem("btc_initialized");
-            
+
 
             // if (isInitialized === "true") {
             //     navigate("/signup");
@@ -77,8 +77,9 @@ const InitPage: React.FC = () => {
             }}
         >
             <Typography variant="h4" gutterBottom>
-                Initializing Squid coin Service...
+                Checking Peer Connections...
             </Typography>
+
             {loading && <CircularProgress />}
             {error && (
                 <Box mt={2}>
