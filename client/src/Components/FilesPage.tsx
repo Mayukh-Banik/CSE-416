@@ -217,7 +217,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         Fee: fees[file.name] || 0,
         OriginalUploader: true,
         NameWithExtension: fileExtension,
-        Rating: 0,
+        Rating: "",
         HasVoted: false,
       };
   

@@ -40,28 +40,6 @@ const MarketplacePage: React.FC = () => {
     initializeMarketplace();
   }, []); // Empty dependency array to run only on initial render
   
-
-  useEffect(() => {
-    const fetchRatings = async () => {
-      setRatings({})
-      const updatedRatings: { [key: string]: number } = { ...ratings };
-      console.log('search results: ', searchResults)
-      for (const file of searchResults) {
-        console.log("getting rating of file: ", file)
-        if (file.Rating != null) {
-          updatedRatings[file.Hash] = file.Rating
-        }
-      }
-      setRatings(updatedRatings); // Batch update once all ratings are fetched
-      console.log("all file ratings: ", ratings)
-    };
-  
-    if (searchResults != null) {
-    fetchRatings();
-  }
-  }, [searchResults]); // Runs when search results change
-  
-
   const resetStates = async () => {
     setFileHash("");
     setProviders([]);
