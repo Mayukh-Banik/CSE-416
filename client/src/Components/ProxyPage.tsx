@@ -10,11 +10,33 @@ interface ProxyHost {
   Statistics: {
     uptime: string;
   };
+  address: string,
   peer_id: string;
   bandwidth: string;
   isEnabled: boolean;
   price: string;
   isHost: boolean;
+  
+}
+
+function getPrivateIP(callback: (ip: string | null) => void) {
+  const peerConnection = new RTCPeerConnection({ iceServers: [] });
+  peerConnection.createDataChannel('');
+  peerConnection.createOffer()
+    .then(offer => peerConnection.setLocalDescription(offer))
+    .catch(err => console.error('Error creating offer:', err));
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      const parts = event.candidate.candidate.split(' ');
+      const ip = parts[4]; // Extracts the IP address
+      callback(ip);
+      peerConnection.close();
+    } else {
+      console.log('No candidate found.');
+    }
+  };
+
 }
 
 
@@ -33,6 +55,7 @@ const ProxyHosts: React.FC = () => {
     name: '',
     location: '',
     logs: [],
+    address:'',
     Statistics: { uptime: '' },
     bandwidth: '',
     peer_id: '',
@@ -71,7 +94,8 @@ const ProxyHosts: React.FC = () => {
       setCurrentIP(ip[0]);
       setProxyHosts(nonEmptyProxies.map(proxy => ({
         name: proxy.name,
-        location: proxy.location || proxy.address,
+        location: proxy.location ,
+        address:proxy.address,
         price: proxy.price,
         Statistics: { uptime: proxy.Statistics?.uptime },
         bandwidth: proxy.bandwidth,
@@ -80,6 +104,13 @@ const ProxyHosts: React.FC = () => {
         isHost: proxy.isHost || false,
         peer_id: proxy.peer_id || ''
       })));
+      getPrivateIP((privateIP) => {
+        if (privateIP) {
+          setCurrentIP(privateIP); // Set the private IP if found
+        } else {
+          console.error('Failed to retrieve private IP.');
+        }
+      });
     } catch (error) {
       console.error('Error fetching or processing data:', error);
     }
@@ -109,8 +140,14 @@ const ProxyHosts: React.FC = () => {
   };
 
   useEffect(() => {
-
-    fetchData();
+    getPrivateIP((ip) => {
+      if (ip) {
+        setCurrentIP(ip);
+      } else {
+        console.error('Unable to retrieve private IP');
+      }
+    });
+    fetchData()
   }, []);
 
   const handleConnect = (host: ProxyHost) => {
@@ -134,7 +171,7 @@ const ProxyHosts: React.FC = () => {
     console.log("Attempting to connect...");
     try {
       console.log(host.peer_id)
-      const response = await fetch(`http://localhost:8081/connect-proxy?val=${host.peer_id}`, {
+      const response = await fetch(`http://localhost:8081/connect-proxy?val=${host.peer_id}&ip=${host.address}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -171,6 +208,7 @@ const ProxyHosts: React.FC = () => {
       name: '',
       location: '',
       logs: [],
+      address:'',
       peer_id: '',
       Statistics: { uptime: '' },
       bandwidth: '',

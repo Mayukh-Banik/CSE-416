@@ -130,6 +130,7 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 
 			if proxy.PeerID == localPeerID.String() {
 				proxy.IsHost = true
+
 			}
 			// Avoid duplicates by checking the PeerID
 			if _, seen := seenProxies[proxy.PeerID]; !seen {
@@ -156,25 +157,13 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 	return proxies, nil
 }
 
-func pollPeerAddresses(ProxyIsHost bool) {
+func pollPeerAddresses(ProxyIsHost bool, ip string) {
 	node := dht_kad.Host
 	if ProxyIsHost {
+		fmt.Println("IN HOST", ip)
 		httpHostToClient(node)
 	} else {
-		fmt.Println("RIGHT BEFORE ACCESSING PEER ADDRESSES1")
-		for len(Peer_Addresses) == 0 {
-			time.Sleep(3 * time.Second)
-		}
-		var ip string
-		var err error
-		fmt.Println("RIGHT BEFORE ACCESSING PEER ADDRESSES2")
-		for _, val := range Peer_Addresses {
-			ip, err = val.ValueForProtocol(ma.P_IP4)
-			if err != nil {
-				continue
-			}
-			break
-		}
+		fmt.Println("IN CLIENT")
 		var script string
 		var args []string
 		script = "proxy/client.py"
@@ -330,7 +319,7 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Debug: Error encoding proxy data: %v", err)
 			http.Error(w, fmt.Sprintf("Error encoding proxy data: %v", err), http.StatusInternalServerError)
 		}
-		go pollPeerAddresses(true)
+
 		return
 	}
 
@@ -355,6 +344,8 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 		} else {
 			responseData = proxyInfo
 		}
+		ip, _ := getPrivateIP()
+		go pollPeerAddresses(true, ip)
 
 		if err := json.NewEncoder(w).Encode(responseData); err != nil {
 			http.Error(w, fmt.Sprintf("Error encoding proxy data: %v", err), http.StatusInternalServerError)
@@ -370,7 +361,8 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	// Log the incoming request method and URL
 	fmt.Print("INSIDE THE CONNECT METHOD")
 	host_peerid := r.URL.Query().Get("val")
-	fmt.Print("HOST PEER ID", host_peerid)
+	proxyIP := r.URL.Query().Get("ip")
+	fmt.Print("HOST PEER IP", proxyIP)
 	fmt.Print(dht_kad.Host.ID().String())
 	if host_peerid == dht_kad.Host.ID().String() {
 		log.Println("The peer ID matches the current node ID.")
@@ -380,7 +372,7 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	// Check if the request method is POST
 	if r.Method == "GET" {
 		log.Println("Relaying data between client and peer...")
-		pollPeerAddresses(false)
+		pollPeerAddresses(false, proxyIP)
 		log.Println("Successfully connected to the peer.")
 
 		// Respond with 200 OK to indicate the connection has been established
