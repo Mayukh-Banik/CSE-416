@@ -24,5 +24,6 @@ func RegisterBtcRoutes(router *mux.Router, controller *controllers.BtcController
 	btcRouter.HandleFunc("/listunspent", controller.ListUnspentHandler).Methods("GET")
 	btcRouter.HandleFunc("/getminingstatus", controller.GetMiningStatusHandler).Methods("GET")
 	btcRouter.HandleFunc("/currentaddress", controller.GetCurrentAddressHandler).Methods("GET")
+	btcRouter.HandleFunc("/miningdashboard", controller.GetMiningDashboardHandler).Methods("GET")
 
 }

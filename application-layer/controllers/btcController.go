@@ -369,3 +369,40 @@ func (bc *BtcController) StopMiningHandler(w http.ResponseWriter, r *http.Reques
 	}
 	respondWithJSON(w, http.StatusOK, resp)
 }
+
+// GetMiningDashboardHandler returns the mining dashboard data
+func (bc *BtcController) GetMiningDashboardHandler(w http.ResponseWriter, r *http.Request) {
+	// Get balance
+	balance, err := bc.Service.GetBalance()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get balance: %v", err))
+		return
+	}
+
+	// Get mining info
+	miningInfoRaw, err := bc.Service.GetMiningInfo()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get mining info: %v", err))
+		return
+	}
+
+	// Parse mining info JSON
+	var miningInfo map[string]interface{}
+	if err := json.Unmarshal([]byte(miningInfoRaw), &miningInfo); err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to parse mining info JSON: %v", err))
+		return
+	}
+
+	// Combine results
+	dashboard := map[string]interface{}{
+		"balance":    balance,
+		"miningInfo": miningInfo,
+	}
+
+	// Respond with combined data
+	resp := Response{
+		Status: "success",
+		Data:   dashboard,
+	}
+	respondWithJSON(w, http.StatusOK, resp)
+}
