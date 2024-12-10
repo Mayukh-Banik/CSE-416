@@ -53,10 +53,10 @@ const InitPage: React.FC = () => {
             const isInitialized = localStorage.getItem("btc_initialized");
             
 
-            if (isInitialized === "true") {
-                navigate("/signup");
-                return;
-            }
+            // if (isInitialized === "true") {
+            //     navigate("/signup");
+            //     return;
+            // }
 
             await initializeBtcService();
         };

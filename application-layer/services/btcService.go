@@ -46,7 +46,6 @@ var (
 	tempFilePath        string
 )
 
-
 type BtcService struct{}
 
 // this function is used to check the contents of a directory for development purposes
@@ -259,8 +258,6 @@ func (bs *BtcService) StartBtcd(walletAddress ...string) string {
 		fmt.Println("Invalid number of arguments. Only 0 or 1 argument is allowed.")
 		return "Invalid number of arguments"
 	}
-
-
 
 	// Detached mode with OS-specific handling
 	if runtime.GOOS == "windows" {
@@ -619,12 +616,115 @@ func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
 	return newAddress, nil
 }
 
-// Init is a function to initialize the service
+// Function to remove platform-specific file attributes
+func removeReadonlyAttribute(path string) error {
+	return filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Retrieve file attributes
+		info, err = os.Stat(p)
+		if err != nil {
+			return err
+		}
+
+		// Check if the file is readonly (for Windows)
+		if runtime.GOOS == "windows" && info.Mode()&os.FileMode(0x8000) != 0 {
+			// Remove the readonly attribute
+			newAttrs := info.Mode() &^ os.FileMode(0x8000)
+			if err := os.Chmod(p, newAttrs); err != nil {
+				return fmt.Errorf("failed to remove readonly attribute from %s: %v", p, err)
+			}
+		}
+
+		// For macOS, ensure the file is writable
+		if runtime.GOOS == "darwin" {
+			if err := os.Chmod(p, 0666); err != nil {
+				return fmt.Errorf("failed to make file writable on macOS: %s, error: %v", p, err)
+			}
+		}
+
+		return nil
+	})
+}
+
+// Function for forced deletion (cross-platform)
+func forceRemoveAll(path string) error {
+	// Change file attributes (e.g., remove readonly)
+	err := removeReadonlyAttribute(path)
+	if err != nil {
+		return fmt.Errorf("failed to remove readonly attributes: %v", err)
+	}
+
+	// Attempt to delete the directory
+	err = os.RemoveAll(path)
+	if err != nil {
+		return fmt.Errorf("failed to remove path: %v", err)
+	}
+	return nil
+}
+
+// Function to check if a directory is being used by a process (simple example)
+func isDirectoryInUse(path string) bool {
+	// Check if related processes are running
+	if isProcessRunning("btcd") || isProcessRunning("btcwallet") {
+		fmt.Printf("Processes using the directory might be running. Checking for usage of %s\n", path)
+		return true
+	}
+	
+	// Optionally, attempt to open the directory to verify usage
+	file, err := os.Open(path)
+	if err != nil {
+		fmt.Printf("Failed to open directory %s: %v\n", path, err)
+		return true // Assume the directory is in use if it cannot be opened
+	}
+	defer file.Close()
+
+	return false
+}
+
+
+// Function to get mainnet path based on OS
+func getMainnetPath() string {
+	var mainnetPath string
+	if runtime.GOOS == "windows" {
+		mainnetPath = fmt.Sprintf(`%s\AppData\Local\Btcd\data\mainnet`, os.Getenv("USERPROFILE"))
+	} else if runtime.GOOS == "darwin" {
+		homeDir, _ := os.UserHomeDir()
+		mainnetPath = filepath.Join(homeDir, "Library", "Application Support", "Btcd", "data", "mainnet")
+	} else {
+		mainnetPath = "/var/lib/Btcd/mainnet"
+	}
+	return mainnetPath
+}
+
+// Modified Init function for cross-platform compatibility
 func (bs *BtcService) Init() string {
 	SetupTempFilePath()
 
+	// Get the mainnet path based on the OS
+	mainnetPath := getMainnetPath()
+	fmt.Printf("Attempting to remove path: %s\n", mainnetPath)
+
+	// First, try to terminate processes using the directory
+	if isDirectoryInUse(mainnetPath) {
+		fmt.Println("Directory is in use. Attempting to stop related services...")
+		bs.StopBtcd()
+		bs.StopBtcwallet()
+		time.Sleep(2 * time.Second) // Wait for processes to terminate
+	}
+
+	// Attempt forced deletion
+	err := forceRemoveAll(mainnetPath)
+	if err != nil {
+		fmt.Printf("Failed to remove mainnet directory: %v\n", err)
+		return "Failed to remove mainnet directory"
+	}
+	fmt.Println("Mainnet directory removed successfully.")
+
 	// Initialize temp file
-	err := initializeTempFile()
+	err = initializeTempFile()
 	if err != nil {
 		fmt.Printf("Failed to initialize temp file: %v\n", err)
 		return "Failed to initialize temp file"
@@ -661,6 +761,11 @@ func (bs *BtcService) Init() string {
 		"add",
 	)
 
+	// Configure environment for macOS
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
@@ -674,11 +779,8 @@ func (bs *BtcService) Init() string {
 
 	fmt.Println("Connected to TA server successfully.")
 
-	// Ensure btcwallet is running before stopping it
-	time.Sleep(1 * time.Second) // Allow stabilization
-	if !isProcessRunning("btcwallet") {
-		fmt.Println("btcwallet is not running. Skipping stop step.")
-	} else {
+	// Stop btcwallet
+	if isProcessRunning("btcwallet") {
 		stopBtcwalletResult := bs.StopBtcwallet()
 		if stopBtcwalletResult != "btcwallet stopped successfully" {
 			fmt.Println("Failed to stop btcwallet.")
@@ -687,11 +789,8 @@ func (bs *BtcService) Init() string {
 		fmt.Println("btcwallet stopped successfully.")
 	}
 
-	// Ensure btcd is running before stopping it
-	time.Sleep(1 * time.Second) // Allow stabilization
-	if !isProcessRunning("btcd") {
-		fmt.Println("btcd is not running. Skipping stop step.")
-	} else {
+	// Stop btcd
+	if isProcessRunning("btcd") {
 		stopBtcdResult := bs.StopBtcd()
 		if stopBtcdResult != "btcd stopped successfully" {
 			fmt.Println("Failed to stop btcd.")
@@ -703,6 +802,7 @@ func (bs *BtcService) Init() string {
 	fmt.Println("Initialization and cleanup completed successfully.")
 	return "Initialization and cleanup completed successfully"
 }
+
 
 // UnlockWallet is a function to unlock the wallet
 func (bs *BtcService) UnlockWallet(passphrase string) (string, error) {
@@ -1129,7 +1229,6 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	// }
 	// fmt.Println("btcd stopped successfully.")
 
-
 	// Step 4: Success
 	fmt.Println("Login successful. Wallet unlocked.")
 	return unlockResult, nil
@@ -1137,129 +1236,127 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 
 // Logout stops the btcd and btcwallet processes if they are running.
 func (bs *BtcService) Logout() (string, error) {
-    // Step 1: Check and stop btcwallet
-    fmt.Println("Checking if btcwallet is running...")
-    if isProcessRunning("btcwallet") {
-        btcwalletStopResult := bs.StopBtcwallet()
-        if btcwalletStopResult != "btcwallet stopped successfully" {
-            fmt.Printf("Failed to stop btcwallet: %s\n", btcwalletStopResult)
-            return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
-        }
-        fmt.Println("btcwallet stopped successfully.")
-    } else {
-        fmt.Println("btcwallet is not running.")
-    }
+	// Step 1: Check and stop btcwallet
+	fmt.Println("Checking if btcwallet is running...")
+	if isProcessRunning("btcwallet") {
+		btcwalletStopResult := bs.StopBtcwallet()
+		if btcwalletStopResult != "btcwallet stopped successfully" {
+			fmt.Printf("Failed to stop btcwallet: %s\n", btcwalletStopResult)
+			return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
+		}
+		fmt.Println("btcwallet stopped successfully.")
+	} else {
+		fmt.Println("btcwallet is not running.")
+	}
 
-    // Step 2: Check and stop btcd
-    fmt.Println("Checking if btcd is running...")
-    if isProcessRunning("btcd") {
-        btcdStopResult := bs.StopBtcd()
-        if btcdStopResult != "btcd stopped successfully" {
-            fmt.Printf("Failed to stop btcd: %s\n", btcdStopResult)
-            return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
-        }
-        fmt.Println("btcd stopped successfully.")
-    } else {
-        fmt.Println("btcd is not running.")
-    }
+	// Step 2: Check and stop btcd
+	fmt.Println("Checking if btcd is running...")
+	if isProcessRunning("btcd") {
+		btcdStopResult := bs.StopBtcd()
+		if btcdStopResult != "btcd stopped successfully" {
+			fmt.Printf("Failed to stop btcd: %s\n", btcdStopResult)
+			return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
+		}
+		fmt.Println("btcd stopped successfully.")
+	} else {
+		fmt.Println("btcd is not running.")
+	}
 
-    // Step 3: Update the temp file
-    fmt.Println("Updating temporary file...")
-    if err := deleteFromTempFile("miningaddr"); err != nil {
-        fmt.Printf("Failed to delete mining address from temp file: %v\n", err)
-        return "", fmt.Errorf("failed to delete mining address from temp file: %w", err)
-    }
+	// Step 3: Update the temp file
+	fmt.Println("Updating temporary file...")
+	if err := deleteFromTempFile("miningaddr"); err != nil {
+		fmt.Printf("Failed to delete mining address from temp file: %v\n", err)
+		return "", fmt.Errorf("failed to delete mining address from temp file: %w", err)
+	}
 
-    if err := updateTempFile("status", "uninitialized"); err != nil {
-        fmt.Printf("Failed to update status in temp file: %v\n", err)
-        return "", fmt.Errorf("failed to update status in temp file: %w", err)
-    }
-    fmt.Println("Temporary file updated successfully.")
+	if err := updateTempFile("status", "uninitialized"); err != nil {
+		fmt.Printf("Failed to update status in temp file: %v\n", err)
+		return "", fmt.Errorf("failed to update status in temp file: %w", err)
+	}
+	fmt.Println("Temporary file updated successfully.")
 
 	// Step 4: Success
-    fmt.Println("Logout successful. All processes stopped.")
-    return "Logout successful. All processes stopped.", nil
+	fmt.Println("Logout successful. All processes stopped.")
+	return "Logout successful. All processes stopped.", nil
 
 }
 
 // DeleteAccount is a function to delete the account wallet
 func (bs *BtcService) DeleteAccount() (string, error) {
-    // Step 1: Check and stop btcwallet
-    fmt.Println("Checking if btcwallet is running...")
-    if isProcessRunning("btcwallet") {
-        btcwalletStopResult := bs.StopBtcwallet()
-        if btcwalletStopResult != "btcwallet stopped successfully" {
-            fmt.Printf("Failed to stop btcwallet: %s\n", btcwalletStopResult)
-            return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
-        }
-        fmt.Println("btcwallet stopped successfully.")
-    } else {
-        fmt.Println("btcwallet is not running.")
-    }
+	// Step 1: Check and stop btcwallet
+	fmt.Println("Checking if btcwallet is running...")
+	if isProcessRunning("btcwallet") {
+		btcwalletStopResult := bs.StopBtcwallet()
+		if btcwalletStopResult != "btcwallet stopped successfully" {
+			fmt.Printf("Failed to stop btcwallet: %s\n", btcwalletStopResult)
+			return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
+		}
+		fmt.Println("btcwallet stopped successfully.")
+	} else {
+		fmt.Println("btcwallet is not running.")
+	}
 
-    // Step 2: Check and stop btcd
-    fmt.Println("Checking if btcd is running...")
-    if isProcessRunning("btcd") {
-        btcdStopResult := bs.StopBtcd()
-        if btcdStopResult != "btcd stopped successfully" {
-            fmt.Printf("Failed to stop btcd: %s\n", btcdStopResult)
-            return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
-        }
-        fmt.Println("btcd stopped successfully.")
-    } else {
-        fmt.Println("btcd is not running.")
-    }
+	// Step 2: Check and stop btcd
+	fmt.Println("Checking if btcd is running...")
+	if isProcessRunning("btcd") {
+		btcdStopResult := bs.StopBtcd()
+		if btcdStopResult != "btcd stopped successfully" {
+			fmt.Printf("Failed to stop btcd: %s\n", btcdStopResult)
+			return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
+		}
+		fmt.Println("btcd stopped successfully.")
+	} else {
+		fmt.Println("btcd is not running.")
+	}
 
-    // Step 3: Update the temp file
-    fmt.Println("Updating temporary file...")
-    if err := deleteFromTempFile("miningaddr"); err != nil {
-        fmt.Printf("Failed to delete mining address from temp file: %v\n", err)
-        return "", fmt.Errorf("failed to delete mining address from temp file: %w", err)
-    }
+	// Step 3: Update the temp file
+	fmt.Println("Updating temporary file...")
+	if err := deleteFromTempFile("miningaddr"); err != nil {
+		fmt.Printf("Failed to delete mining address from temp file: %v\n", err)
+		return "", fmt.Errorf("failed to delete mining address from temp file: %w", err)
+	}
 
-    if err := updateTempFile("status", "uninitialized"); err != nil {
-        fmt.Printf("Failed to update status in temp file: %v\n", err)
-        return "", fmt.Errorf("failed to update status in temp file: %w", err)
-    }
-    fmt.Println("Temporary file updated successfully.")
+	if err := updateTempFile("status", "uninitialized"); err != nil {
+		fmt.Printf("Failed to update status in temp file: %v\n", err)
+		return "", fmt.Errorf("failed to update status in temp file: %w", err)
+	}
+	fmt.Println("Temporary file updated successfully.")
 
-    // Step 4: Delete the wallet database
-    fmt.Println("Checking if wallet database exists...")
-    var walletDBPath string
-    if runtime.GOOS == "windows" {
-        userProfile := os.Getenv("USERPROFILE")
-        if userProfile == "" {
-            return "", fmt.Errorf("could not determine user profile path on Windows")
-        }
-        walletDBPath = filepath.Join(userProfile, "AppData", "Local", "Btcwallet", "mainnet", "wallet.db")
-    } else if runtime.GOOS == "darwin" {
-        homeDir, err := os.UserHomeDir()
-        if err != nil {
-            return "", fmt.Errorf("could not determine home directory on macOS: %v", err)
-        }
-        walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
-    } else {
-        return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
-    }
+	// Step 4: Delete the wallet database
+	fmt.Println("Checking if wallet database exists...")
+	var walletDBPath string
+	if runtime.GOOS == "windows" {
+		userProfile := os.Getenv("USERPROFILE")
+		if userProfile == "" {
+			return "", fmt.Errorf("could not determine user profile path on Windows")
+		}
+		walletDBPath = filepath.Join(userProfile, "AppData", "Local", "Btcwallet", "mainnet", "wallet.db")
+	} else if runtime.GOOS == "darwin" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("could not determine home directory on macOS: %v", err)
+		}
+		walletDBPath = filepath.Join(homeDir, "Library", "Application Support", "Btcwallet", "mainnet", "wallet.db")
+	} else {
+		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
 
-    // Check if wallet exists
-    if bs.WalletExists() {
-        err := os.Remove(walletDBPath)
-        if err != nil {
-            fmt.Printf("Failed to delete wallet database: %v\n", err)
-            return "", fmt.Errorf("failed to delete wallet database: %w", err)
-        }
-        fmt.Println("Wallet database deleted successfully.")
-    } else {
-        fmt.Println("Wallet database does not exist.")
-    }
+	// Check if wallet exists
+	if bs.WalletExists() {
+		err := os.Remove(walletDBPath)
+		if err != nil {
+			fmt.Printf("Failed to delete wallet database: %v\n", err)
+			return "", fmt.Errorf("failed to delete wallet database: %w", err)
+		}
+		fmt.Println("Wallet database deleted successfully.")
+	} else {
+		fmt.Println("Wallet database does not exist.")
+	}
 
-    // Step 5: Success
-    fmt.Println("Account deleted successfully. All processes stopped and wallet database removed.")
-    return "Account deleted successfully. All processes stopped and wallet database removed.", nil
+	// Step 5: Success
+	fmt.Println("Account deleted successfully. All processes stopped and wallet database removed.")
+	return "Account deleted successfully. All processes stopped and wallet database removed.", nil
 }
-
-
 
 // GetBalance is a function to get the wallet balance
 func (bs *BtcService) GetBalance() (string, error) {
