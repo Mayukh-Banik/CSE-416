@@ -1,22 +1,22 @@
 import React, { useState } from "react";
 import {
-    Button,
-    Typography,
-    Box,
-    Container,
-    Link,
-    IconButton,
-    Tooltip,
-    Paper,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogContentText,
-    DialogActions,
-    TextField,
-  } from "@mui/material";
+  Button,
+  Typography,
+  Box,
+  Container,
+  Link,
+  IconButton,
+  Tooltip,
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  TextField,
+  CircularProgress,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import useRegisterPageStyles from "../Stylesheets/RegisterPageStyles";
 import Header from "./Header";
@@ -26,7 +26,10 @@ const SignUpPage: React.FC = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [privateKey, setPrivateKey] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false); // State for dialog open/close
+  const [isDialogOpen, setIsDialogOpen] = useState(false); 
+  const [passphrase, setPassphrase] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -34,26 +37,69 @@ const SignUpPage: React.FC = () => {
     navigate("/login");
   };
 
-  // API call to backend to generate wallet
-  const handleSignup = async () => {
+  // Button click handler for "Generate Wallet" button
+  const handleGenerateWalletClick = () => {
+    setIsDialogOpen(true);
+  };
+
+  // Handler for "Create Wallet" button click
+  const handlePassphraseSubmit = async () => {
+    if (!passphrase) {
+      setError("Passphrase is required.");
+      return;
+    }
+
+    setIsLoading(true); // Show loading spinner
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 30000); // 30 seconds timeout
+
     try {
       const response = await fetch("http://localhost:8080/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ passphrase }), // Send passphrase to server
+        signal: controller.signal, // Attach the signal to the fetch request
       });
+
+      clearTimeout(timeoutId); // Clear the timeout since the request completed
+
+      console.log("Server response status:", response.status); // Log response status
 
       if (response.ok) {
         const data = await response.json();
-        setWalletAddress(data.public_key);
-        setPrivateKey(data.private_key);
-        setIsSubmitted(true);
+        console.log("Server response data:", data); // Log response data
+
+        const { address, private_key, message } = data;
+
+        if (message === "Wallet successfully created.") {
+          setWalletAddress(address);
+          setPrivateKey(private_key);
+          setIsSubmitted(true);
+          setIsDialogOpen(false);
+          setPassphrase("");
+          setError(null);
+        }
       } else {
-        console.error("Failed to signup");
+        const errorData = await response.json();
+        setError(errorData.message || "Failed to signup");
+        alert("Failed to signup: " + (errorData.message || "Unknown error"));
       }
-    } catch (error) {
-      console.error("Error during signup:", error);
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        setError("Request timed out. Please try again.");
+        alert("Error: Request timed out. Please try again.");
+      } else {
+        setError("Error during signup");
+        alert("Error during signup: " + error.message);
+      }
+    } finally {
+      clearTimeout(timeoutId); // Ensure the timeout is cleared
+      setIsLoading(false); // Hide loading spinner
     }
   };
 
@@ -70,152 +116,19 @@ const SignUpPage: React.FC = () => {
       const file = new Blob([privateKey], { type: "text/plain" });
       element.href = URL.createObjectURL(file);
       element.download = "privateKey.txt";
-      document.body.appendChild(element); // Required for this to work in FireFox
+      document.body.appendChild(element); // Required for this to work in Firefox
       element.click();
+      document.body.removeChild(element); // Cleanup
     }
   };
 
-  const handleOpenDialog = () => {
-    setIsDialogOpen(true); // Open the dialog
-  };
-
   const handleCloseDialog = () => {
-    setIsDialogOpen(false); // Close the dialog
+    setIsDialogOpen(false); // Close dialog
+    setPassphrase("");
+    setError(null);
   };
 
-
-//   return (
-//     <>
-//       <Header />
-//       <Container className={classes.container}>
-//         <Box sx={{ marginTop: "6rem", textAlign: "center" }}>
-//           <Typography variant="h4" gutterBottom>
-//             Sign Up
-//           </Typography>
-//           <LockOutlinedIcon
-//             className={classes.icon}
-//             sx={{ fontSize: "4rem", marginBottom: "1rem" }}
-//           />
-//         </Box>
-
-//         {!isSubmitted ? (
-//           <Box component="form" className={classes.form}>
-//             <Button
-//               variant="contained"
-//               className={classes.button}
-//               onClick={handleSignup} // Backend signup
-//             >
-//               Generate Wallet
-//             </Button>
-//           </Box>
-//         ) : (
-//           <Box sx={{ mt: 4, width: "70%", margin: "0 auto" }}>
-//             <Paper
-//               elevation={2}
-//               sx={{
-//                 padding: 3,
-//                 textAlign: "center",
-//                 width: "100%",
-//               }}
-//             >
-//               <Box
-//                 sx={{
-//                   display: "flex",
-//                   justifyContent: "space-between",
-//                   alignItems: "center",
-//                   marginBottom: "1rem",
-//                 }}
-//               >
-//                 <Typography variant="body1" sx={{ marginRight: "1rem" }}>
-//                   <strong>Your wallet address (public key):</strong>
-//                 </Typography>
-//                 <Tooltip title="Copy to Clipboard">
-//                   <IconButton onClick={() => copyToClipboard(walletAddress)}>
-//                     <ContentCopyIcon />
-//                   </IconButton>
-//                 </Tooltip>
-//               </Box>
-//               <Typography
-//                 variant="body2"
-//                 sx={{
-//                   whiteSpace: "nowrap",
-//                   overflow: "hidden",
-//                   textOverflow: "ellipsis",
-//                   maxWidth: "100%",
-//                   marginBottom: "1rem",
-//                   fontFamily: "monospace",
-//                   wordBreak: "break-all",
-//                 }}
-//               >
-//                 {walletAddress}
-//               </Typography>
-
-//               <Box
-//                 sx={{
-//                   display: "flex",
-//                   justifyContent: "space-between",
-//                   alignItems: "center",
-//                   marginBottom: "1rem",
-//                 }}
-//               >
-//                 <Typography variant="body1" sx={{ marginRight: "1rem" }}>
-//                   <strong>Your private key:</strong>
-//                 </Typography>
-//                 <Tooltip title="Copy to Clipboard">
-//                   <IconButton onClick={() => copyToClipboard(privateKey)}>
-//                     <ContentCopyIcon />
-//                   </IconButton>
-//                 </Tooltip>
-//               </Box>
-//               <Typography
-//                 variant="body2"
-//                 sx={{
-//                   whiteSpace: "nowrap",
-//                   overflow: "hidden",
-//                   textOverflow: "ellipsis",
-//                   maxWidth: "100%",
-//                   marginBottom: "1rem",
-//                   fontFamily: "monospace",
-//                   color: "red",
-//                   wordBreak: "break-all",
-//                 }}
-//               >
-//                 {privateKey}
-//               </Typography>
-
-//               <Typography
-//                 variant="body2"
-//                 sx={{
-//                   marginBottom: "1rem",
-//                   fontWeight: "bold",
-//                   color: "orange",
-//                 }}
-//               >
-//                 Important: Keep your private key secure and do not share it with
-//                 anyone.
-//               </Typography>
-
-//               <Button
-//                 variant="contained"
-//                 className={classes.button}
-//                 onClick={downloadPrivateKey}
-//               >
-//                 Download Private Key
-//               </Button>
-//             </Paper>
-//           </Box>
-//         )}
-
-//         <Typography sx={{ marginTop: "2rem", textAlign: "center" }}>
-//           <Link onClick={handleLogin} className={classes.link}>
-//             Already have an account? Log In
-//           </Link>
-//         </Typography>
-//       </Container>
-//     </>
-//   );
-
-return (
+  return (
     <>
       <Header />
       <Container
@@ -244,50 +157,7 @@ return (
           </Typography>
         )}
 
-        {/* Add the Connect Button */}
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={handleOpenDialog} // Open dialog on click
-          sx={{
-            mb: 2,
-            width: "100%",
-            padding: "10px 0",
-            fontSize: "1.2rem",
-            borderRadius: "8px",
-          }}
-        >
-          Connect
-        </Button>
-
-        <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
-          <DialogTitle>Connect?</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              You are about to connect to the following server:
-            </DialogContentText>
-            <TextField
-              fullWidth
-              value="cse416squidcoin.xyz"
-              InputProps={{
-                readOnly: true,
-              }}
-              variant="outlined"
-              margin="dense"
-              sx={{ marginTop: "1rem" }}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog} color="primary">
-              Cancel
-            </Button>
-            <Button onClick={handleCloseDialog} color="primary">
-              Connect
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {!isSubmitted ? (
+        {!isSubmitted && (
           <Button
             variant="contained"
             color="primary"
@@ -302,11 +172,14 @@ return (
                 backgroundColor: "#1976d2",
               },
             }}
-            onClick={handleSignup}
+            onClick={handleGenerateWalletClick}
+            disabled={isLoading}
           >
             Generate Wallet
           </Button>
-        ) : (
+        )}
+
+        {isSubmitted && (
           <Box sx={{ mt: 4, width: "100%" }}>
             <Paper
               elevation={4}
@@ -410,7 +283,6 @@ return (
               </Button>
             </Paper>
 
-            {/* Continue to Account Button */}
             <Button
               variant="contained"
               color="success"
@@ -422,7 +294,6 @@ return (
                 borderRadius: "8px",
                 boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
               }}
-            //   onClick={handleContinueToAccount}
             >
               Continue to Account
             </Button>
@@ -441,6 +312,56 @@ return (
             Already have an account? Log In
           </Link>
         </Typography>
+
+        <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
+          <DialogTitle>Enter Passphrase</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Please enter a passphrase to create your wallet. This passphrase is
+              essential for recovering or accessing your wallet, so do not forget
+              it.
+            </DialogContentText>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Passphrase"
+              type="password"
+              fullWidth
+              variant="standard"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              error={!!error}
+              helperText={error}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handlePassphraseSubmit} disabled={!passphrase || isLoading}>
+              Create Wallet
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {isLoading && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 9999,
+            }}
+          >
+            <CircularProgress color="inherit" />
+          </div>
+        )}
       </Container>
     </>
   );

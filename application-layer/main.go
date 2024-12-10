@@ -1,22 +1,49 @@
+// main.go
 package main
 
 import (
+	"application-layer/controllers"
 	dht_kad "application-layer/dht"
 	"application-layer/download"
 	"application-layer/files"
+	"application-layer/routes"
+	"application-layer/services"
 	"application-layer/websocket"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 )
 
 func main() {
+
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	rpcUser := os.Getenv("RPC_USER")
+	rpcPass := os.Getenv("RPC_PASS")
+	if rpcUser == "" || rpcPass == "" {
+		log.Fatal("RPC_USER and RPC_PASS environment variables are required")
+	}
+
 	fmt.Println("Main server started")
 
+	btcService := services.NewBtcService()
+	btcController := controllers.NewBtcController(btcService)
+
+	router := mux.NewRouter()
+	routes.RegisterRoutes(router, btcController) // Register Btc and Auth routes
+
+	// Initialize additional routers
 	fileRouter := files.InitFileRoutes()
 	downloadRouter := download.InitDownloadRoutes()
+
 	go dht_kad.StartDHTService()
 
 	// CORS handler
@@ -32,7 +59,8 @@ func main() {
 	http.Handle("/download/", c.Handler(downloadRouter)) // Download routes under /download
 	http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
 
-	port := ":8081"
+	port := ":8080"
+	handler := c.Handler(router)
 	fmt.Printf("Starting server for file routes and DHT on port %s...\n", port)
-	log.Fatal(http.ListenAndServe(port, nil))
+	log.Fatal(http.ListenAndServe(port, handler))
 }
