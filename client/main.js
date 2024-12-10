@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog} = require('electron');
 const path = require('path');
 const fs = require('fs')
+
 let mainWindow;
 
 function createWindow() {
@@ -61,3 +62,4 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     if (mainWindow === null) createWindow();
 });
+

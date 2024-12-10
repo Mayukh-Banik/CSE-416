@@ -32,6 +32,7 @@ import { useTheme } from '@mui/material/styles';
 import { FileMetadata } from "../models/fileMetadata";
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ElectronStore from "electron-store";
 
 declare global {
   interface Window {
@@ -43,24 +44,16 @@ declare global {
 }
 // import { saveFileMetadata, getFilesForUser, deleteFileMetadata, updateFileMetadata, FileMetadata } from '../utils/localStorage'
 
-// user id/wallet id is hardcoded for now
-
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
 const ipcRenderer = window.electron?.ipcRenderer;
 
-interface FilesProp {
-  uploadedFiles: FileMetadata[];
-  setUploadedFiles: React.Dispatch<React.SetStateAction<FileMetadata[]>>;
-  initialFetch: boolean;
-  setInitialFetch: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initialFetch, setInitialFetch}) => {
+const FilesPage: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({}); // Track descriptions
   const [fileHashes, setFileHashes] = useState<{ [key: string]: string }>({}); // Track hashes
+  const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([]);
   const [downloadedFiles, setDownloadedFiles] = useState<FileMetadata[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
@@ -69,13 +62,20 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const [names, setNames] = useState<{ [key: string]: string }>({}); // Track names of to be uploaded files
   const theme = useTheme();
   const [loading, setLoading] = useState(false); // Loading state for file upload
-  const [ratings, setRatings] = useState<{ [key: string]: number }>({});
+  const [uploadedRatings, setUploadedRatings] = useState<{ [key: string]: number }>({});
+  const [downloadedRatings, setDownloadedRatings] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
     const fetchAllFiles = async() => {
-      await fetchFiles("uploaded");
-      await fetchFiles("downloaded");
-      localStorage.setItem('filesFetched','true')
+      localStorage.setItem("filesLoaded", "false");
+      const hasLoaded = localStorage.getItem("filesLoaded");
+      console.log("Has Loaded from localStorage:", hasLoaded); // Debug log
+      if (!hasLoaded || hasLoaded === "false") {
+        console.log("First load, calling handleRefresh..."); // Debug log
+        await fetchFiles("uploaded");
+        await fetchFiles("downloaded");
+        localStorage.setItem("filesLoaded", "true");
+      }
     };
     fetchAllFiles(); 
   }, [])
@@ -102,19 +102,22 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   };
 
   useEffect(() => {
-    const fetchRatings = async () => {
-      const updatedRatings: { [key: string]: number } = { ...ratings };
+    const fetchRatings = async (files: FileMetadata[], isUploaded: boolean) => {
+      console.log("fetching ratings for", files)
+      let ratings
+      if (isUploaded) {
+        ratings = uploadedRatings
+      } else {
+        ratings = downloadedRatings
+      }
+      const updatedRatings: { [key: string]: number } = {...ratings}
   
-      for (const file of downloadedFiles) {
+      for (const file of files) {
         if (!updatedRatings[file.Hash]) {
           try {
             const ratingData = await getRating(file.Hash);
-            console.log("ratingData: ", ratingData)
-
-            if (ratingData) {
-              console.log(`file hash: ${file.Hash} | rating: ${ratingData}`)
-              updatedRatings[file.Hash] = ratingData;
-            }
+            console.log(`file hash: ${file.Hash} | rating: ${ratingData}`)
+            updatedRatings[file.Hash] = ratingData;
           } catch (error) {
             console.error("Failed to fetch rating:", error);
           }
@@ -122,16 +125,18 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       }
   
       // After fetching all ratings, update the state
-      setRatings(updatedRatings);
+      if (isUploaded) {
+        setUploadedRatings(updatedRatings);
+      } else {
+        setDownloadedRatings(updatedRatings)
+      }
+      console.log("updated ratings: ", updatedRatings)
     };
+
+    fetchRatings(uploadedFiles, true)
+    fetchRatings(downloadedFiles, false); // Call the async function
+  }, [uploadedFiles, downloadedFiles]); //call when uploaded and downloaded files finish republishing 
   
-    fetchRatings(); // Call the async function
-  }, [downloadedFiles]); // Depend only on downloadedFiles
-  
-  
-  useEffect(() => {
-    console.log("Updated ratings:", ratings);
-  }, [ratings]); // This will run whenever ratings change
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -394,7 +399,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       });
 
       if (response.ok) {
-        setRatings(prevRatings => {
+        setDownloadedRatings(prevRatings => {
           const currentRating = prevRatings[fileHash] || 0;
           const newRating =
             voteType === 'upvote' ? currentRating + 1 : currentRating - 1;
@@ -580,7 +585,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 <TableBody>
                   {uploadedFiles.map((file, index) => (
                     <TableRow key={index}>
-                      <TableCell>{file.VoteType}</TableCell>
+                      <TableCell>{uploadedRatings[file.Hash]}</TableCell>
                       <TableCell>{file.Name}</TableCell>
                       <TableCell
                         sx={{
@@ -659,7 +664,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                           </IconButton>
 
                           <Typography variant="body2" sx={{ marginY: 0.5 }}>
-                            {ratings[file.Hash] !== undefined ? ratings[file.Hash] : '0'}
+                            {downloadedRatings[file.Hash] !== undefined ? downloadedRatings[file.Hash] : '0'}
                           </Typography>
 
                           <IconButton color="error" onClick={() => handleVote(file.Hash, 'downvote')}>

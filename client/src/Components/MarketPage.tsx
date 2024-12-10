@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, TablePagination, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, LinearProgress } from '@mui/material';
 import Sidebar from './Sidebar';
 import { useTheme } from '@mui/material/styles';
-import { FileMetadata, Provider, DHTMetadata } from "../models/fileMetadata"
+import { Provider, DHTMetadata } from "../models/fileMetadata"
 import { Transaction } from '../models/transactions';
 
 const drawerWidth = 300;
@@ -11,10 +11,10 @@ const collapsedDrawerWidth = 100;
 const MarketplacePage: React.FC = () => {
   const theme = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<FileMetadata[]>([])
+  const [searchResults, setSearchResults] = useState<DHTMetadata[]>([])
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [selectedFile, setSelectedFile] = useState<FileMetadata | null>(null);
+  const [selectedFile, setSelectedFile] = useState<DHTMetadata | null>(null);
   const [open, setOpen] = useState(false);
   const [fileHash, setFileHash] = useState('');
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
@@ -22,7 +22,7 @@ const MarketplacePage: React.FC = () => {
   const [loadingRequest, setLoadingRequest] = useState(false);
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [refresh, setRefresh] = useState(false);
-  const [marketResults, setMarketResults] = useState<FileMetadata[]>([])
+  const [marketResults, setMarketResults] = useState<DHTMetadata[]>([])
 
   useEffect(() => {
     const initializeMarketplace = async () => {
@@ -54,20 +54,7 @@ const MarketplacePage: React.FC = () => {
   };
   
 
-  // const handleDownloadRequest = async (file: FileMetadata) => {
-  //   console.log("you clicked the download button for file", file.Name)
-  //   if (refresh) {
-  //     console.log('handling download request for file', file.Hash)
-  //     await getFileByHash(file.Hash)
-  //   } else {
-  //     setSelectedFile(file)
-  //   }
-  //   setFileHash(file.Hash)
-  //   setOpen(true); // Open the modal for provider selection
-  //   setRefresh(false);
-  // };
-
-  const handleDownloadRequest = async (file: FileMetadata) => {
+  const handleDownloadRequest = async (file: DHTMetadata) => {
     console.log("you clicked the download button for file", file.Name)
     await getFileByHash(file.Hash)
     setFileHash(file.Hash)
@@ -314,7 +301,7 @@ const MarketplacePage: React.FC = () => {
             {selectedFile.Description && (
               <Typography>Description: {selectedFile.Description}</Typography>
             )}
-            <Typography>Rating: {selectedFile.VoteType}</Typography>
+            <Typography>Rating: {selectedFile.Rating}</Typography>
           </Box>
         )}
   

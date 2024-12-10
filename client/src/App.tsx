@@ -112,12 +112,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<LoginPage />} />
           {/* <Route path="/signup" element={<SignupPage />} /> */}
           <Route path="/market" element={<MarketPage />} />
-          <Route path="/files" element={<FilesPage 
-              uploadedFiles={uploadedFiles} 
-              setUploadedFiles={setUploadedFiles} 
-              initialFetch={initialFetch} 
-              setInitialFetch={setInitialFetch} 
-            />} />
+          <Route path="/files" element={<FilesPage />} />
           <Route path="/global-transactions" element={<GlobalTransactions />} />
           <Route
             path="/settings"
