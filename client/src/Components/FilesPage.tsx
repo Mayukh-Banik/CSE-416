@@ -71,12 +71,12 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const [downloadedRatings, setDownloadedRatings] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
-    const fetchAllFiles = async() => {
-      if (initialFetch) {
+    const fetchAllFiles = async () => {
+      // if (initialFetch) {
         await fetchFiles("uploaded");
         await fetchFiles("downloaded");
-        setInitialFetch(false)
-      }
+      //   setInitialFetch(false)
+      // }
     };
     fetchAllFiles(); 
   }, [])

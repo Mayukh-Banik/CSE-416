@@ -506,7 +506,7 @@ func receiveFile(node host.Host) error {
 		utils.AddOrUpdateTransaction(transaction)
 
 		// ProvideKey(GlobalCtx, DHT, metadata.Hash) // must be published - update dht with new provider
-		_, err = UpdateFileInDHT(metadata)
+		updatedMetadata, err := UpdateFileInDHT(metadata)
 		if err != nil {
 			// is it a failure if the user receives the file but cannot be added to the dht?
 			log.Println("failed to update dht metadata:", err)
@@ -514,6 +514,11 @@ func receiveFile(node host.Host) error {
 		}
 
 		sendSuccessConfirmation(transaction)
+
+		err = SendCloudNodeFiles(updatedMetadata)
+		if err != nil {
+			log.Println("failed to send updated metadata to cloud node:", err)
+		}
 	})
 	return nil
 }

@@ -3,11 +3,11 @@ package files
 import (
 	dht_kad "application-layer/dht"
 	"application-layer/models"
-	"application-layer/utils"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
 
 /*
@@ -106,18 +106,7 @@ func votingHelper(fileHash string, voteType string) error {
 		fmt.Println("votingHelper: error publishing file to DHT", err)
 	}
 
-	// update in local file
-	var newMetadata models.FileMetadata
-	err = json.Unmarshal(data, &newMetadata)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal data into FileMetadata struct: %v", err)
-	}
-	newMetadata.VoteType = voteType
-	newMetadata.HasVoted = true
-	_, err = utils.SaveOrUpdateFile(newMetadata, utils.DirPath, utils.DownloadedFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to update rating locally: %v", err)
-	}
+	updateRatingLocally(fileHash, voteType)
 
 	return nil
 }
@@ -147,4 +136,46 @@ func handleGetRating(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(metadata.Rating); err != nil {
 		http.Error(w, "Failed to encode file rating", http.StatusInternalServerError)
 	}
+}
+
+func updateRatingLocally(fileHash string, voteType string) error {
+	// check if directory and file exist
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		return fmt.Errorf("utils directory doesnt exist --> cannot vote %v", err)
+	}
+
+	if _, err := os.Stat(DownloadedFilePath); os.IsNotExist(err) {
+		return fmt.Errorf("downloaded file path does not exist --> cannot vote: %v", err)
+	}
+
+	// read in JSON file
+	data, err := os.ReadFile(DownloadedFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read downloadedFiles.json: %v", err)
+	}
+
+	var files []models.FileMetadata
+	if err := json.Unmarshal(data, &files); err != nil {
+		return fmt.Errorf("failed to parse JSON: %v", err)
+	}
+
+	for i := range files {
+		if files[i].Hash == fileHash {
+			files[i].HasVoted = true
+			files[i].VoteType = voteType
+			break
+		}
+	}
+
+	// convert updated list of files back to JSON
+	updatedData, err := json.MarshalIndent(files, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %v", err)
+	}
+
+	if err := os.WriteFile(DownloadedFilePath, updatedData, 0644); err != nil {
+		return fmt.Errorf("failed to write updated data to files.json: %v", err)
+	}
+
+	return nil
 }

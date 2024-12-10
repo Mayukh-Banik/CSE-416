@@ -370,20 +370,22 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 
 	// Check if the provider already exists in the metadata by PeerID
 	if existingProvider, exists := currentMetadata.Providers[PeerID]; exists {
+		fmt.Println("provider already exists")
 		// Update the IsActive field
 		existingProvider.IsActive = currentInfo.IsPublished
 		// Update the provider in the map
 		currentMetadata.Providers[PeerID] = existingProvider
 	} else {
+		fmt.Println("adding new provider")
 		// If provider does not exist, add the new provider
 		currentMetadata.Providers[PeerID] = provider
 	}
 
 	// if not updating provider status, then we are either publishing a new file or republishing an old file
-	// for republishing, we assume that it is only called on start up and not while user is currently online 
+	// for republishing, we assume that it is only called on start up and not while user is currently online
 	provider = currentMetadata.Providers[PeerID] // Retrieve the provider from the map
 
-	if provider.Rating == "" {  // if node hasnt rated yet...
+	if provider.Rating == "" { // if node hasnt rated yet...
 		if currentInfo.VoteType == "upvote" {
 			currentMetadata.Rating++
 			currentMetadata.NumRaters++
@@ -395,7 +397,8 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 		}
 		currentMetadata.Providers[PeerID] = provider // Reassign the modified provider back to the map
 	}
-	
+
+	fmt.Println("metadata to be added to DHT: ", currentMetadata)
 	// Marshal the updated metadata
 	dhtMetadataBytes, err := json.Marshal(currentMetadata)
 	if err != nil {
