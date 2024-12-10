@@ -183,11 +183,11 @@ def main():
     parser = argparse.ArgumentParser(description='HTTPS Proxy Server')
     parser.add_argument('-p', '--port', 
                         type=int, 
-                        default=8888, 
-                        help='Port number to listen on (default: 8888)')
+                        default=19483, 
+                        help='Port number to listen on (default: 19483)')
     parser.add_argument('-H', '--host', 
                         default='0.0.0.0', 
-                        help='Host IP to bind the proxy server (default: 127.0.0.1)')
+                        help='Host IP to bind the proxy server (default: 0.0.0.0)')
     
     # Parse arguments
     args = parser.parse_args()

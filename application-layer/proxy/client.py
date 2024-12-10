@@ -139,15 +139,15 @@ def main():
                         help='Local host to bind (default: 0.0.0.0)')
     parser.add_argument('-lp', '--local-port', 
                         type=int, 
-                        default=9999, 
-                        help='Local port to listen on (default: 9999)')
+                        default=19484, 
+                        help='Local port to listen on (default: 19484)')
     parser.add_argument('-rh', '--remote-host', 
                         required=True,
                         help='Remote proxy server host IP')
     parser.add_argument('-rp', '--remote-port', 
                         type=int, 
-                        default=8888, 
-                        help='Remote proxy server port (default: 8888)')
+                        default=19483, 
+                        help='Remote proxy server port (default: 19483)')
     
     # Parse arguments
     args = parser.parse_args()
