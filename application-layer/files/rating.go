@@ -102,7 +102,9 @@ func votingHelper(fileHash string, voteType string) error {
 	fmt.Println("votingHelper: metadata after updating vote: ", metadata)
 
 	err = dht_kad.DHT.PutValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash, updatedData)
-	fmt.Println("votingHelper: error publishing file to DHT", err)
+	if err != nil {
+		fmt.Println("votingHelper: error publishing file to DHT", err)
+	}
 
 	// update in local file
 	var newMetadata models.FileMetadata
@@ -110,7 +112,7 @@ func votingHelper(fileHash string, voteType string) error {
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal data into FileMetadata struct: %v", err)
 	}
-	newMetadata.Rating = voteType
+	newMetadata.VoteType = voteType
 	newMetadata.HasVoted = true
 	_, err = utils.SaveOrUpdateFile(newMetadata, utils.DirPath, utils.DownloadedFilePath)
 	if err != nil {

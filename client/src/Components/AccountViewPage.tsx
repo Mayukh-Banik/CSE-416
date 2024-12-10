@@ -141,7 +141,7 @@ const AccountViewPage: React.FC = () => {
                   <TableCell>{file.Name}</TableCell>
                   <TableCell>{file.Size}</TableCell>
                   <TableCell>{file.CreatedAt}</TableCell>
-                  <TableCell>{file.Rating}</TableCell>
+                  <TableCell>{file.VoteType}</TableCell>
                   <TableCell>
                     <Button
                       onClick={() => handleVote(file.Hash, "upvote")}

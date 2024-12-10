@@ -364,7 +364,7 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 		PeerAddr: DHT.Host().Addrs()[0].String(),
 		IsActive: currentInfo.IsPublished,
 		Fee:      currentInfo.Fee,
-		Rating:   currentInfo.Rating,
+		Rating:   currentInfo.VoteType,
 	}
 
 	// Check if the provider already exists in the metadata by PeerID

@@ -22,7 +22,6 @@ const MarketplacePage: React.FC = () => {
   const [loadingRequest, setLoadingRequest] = useState(false);
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [refresh, setRefresh] = useState(false);
-  const [ratings, setRatings] = useState<{ [key: string]: number }>({}); // Store ratings by file hash
   const [marketResults, setMarketResults] = useState<FileMetadata[]>([])
 
   useEffect(() => {
@@ -48,7 +47,6 @@ const MarketplacePage: React.FC = () => {
     setLoadingRequest(false);
     setLoadingSearch(false);
     setSearchResults(marketResults)
-    setRatings({})
   }
 
   const handleCloseNotification = () => {
@@ -56,16 +54,24 @@ const MarketplacePage: React.FC = () => {
   };
   
 
+  // const handleDownloadRequest = async (file: FileMetadata) => {
+  //   console.log("you clicked the download button for file", file.Name)
+  //   if (refresh) {
+  //     console.log('handling download request for file', file.Hash)
+  //     await getFileByHash(file.Hash)
+  //   } else {
+  //     setSelectedFile(file)
+  //   }
+  //   setFileHash(file.Hash)
+  //   setOpen(true); // Open the modal for provider selection
+  //   setRefresh(false);
+  // };
+
   const handleDownloadRequest = async (file: FileMetadata) => {
-    if (refresh) {
-      console.log('handling download request for file', file.Hash)
-      await getFileByHash(file.Hash)
-    } else {
-      setSelectedFile(file)
-    }
+    console.log("you clicked the download button for file", file.Name)
+    await getFileByHash(file.Hash)
     setFileHash(file.Hash)
     setOpen(true); // Open the modal for provider selection
-    setRefresh(false);
   };
 
   const handleProviderSelect = async (provider: string) => {
@@ -184,10 +190,6 @@ const MarketplacePage: React.FC = () => {
         setProviders(data.Providers);
         console.log("getFileByHash: providers for file ", hash, data.Providers)
         setSearchResults([data])
-
-        const updatedRatings: { [key: string]: number } = {};
-        updatedRatings[hash] = data.Rating
-        setRatings(updatedRatings)
     } catch (error) {
         console.error("Error:", error);
         setNotification({ open: true, message: "File not found", severity: "error" });
@@ -312,7 +314,7 @@ const MarketplacePage: React.FC = () => {
             {selectedFile.Description && (
               <Typography>Description: {selectedFile.Description}</Typography>
             )}
-            <Typography>Rating: {selectedFile.Rating}</Typography>
+            <Typography>Rating: {selectedFile.VoteType}</Typography>
           </Box>
         )}
   

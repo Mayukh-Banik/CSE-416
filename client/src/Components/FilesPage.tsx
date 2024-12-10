@@ -217,7 +217,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         Fee: fees[file.name] || 0,
         OriginalUploader: true,
         NameWithExtension: fileExtension,
-        Rating: "",
+        VoteType: "",
         HasVoted: false,
       };
   
@@ -580,7 +580,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 <TableBody>
                   {uploadedFiles.map((file, index) => (
                     <TableRow key={index}>
-                      <TableCell>{file.Rating}</TableCell>
+                      <TableCell>{file.VoteType}</TableCell>
                       <TableCell>{file.Name}</TableCell>
                       <TableCell
                         sx={{

@@ -12,7 +12,7 @@ type FileMetadata struct {
 	Fee               int64  `json:"Fee"`
 	CreatedAt         string `json:"CreatedAt"`
 	OriginalUploader  bool   `json:"OriginalUploader"`
-	Rating            string  `json:"Rating"` // either "", upvote, or downvote
+	VoteType          string `json:"Rating"` // either "", upvote, or downvote
 	HasVoted          bool   `json:"HasVoted"`
 }
 
