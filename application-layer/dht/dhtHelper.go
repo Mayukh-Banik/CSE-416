@@ -416,7 +416,7 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 	if err != nil {
 		return models.DHTMetadata{}, fmt.Errorf("failed to updated file in dht: %w", err)
 	}
-	fmt.Println("successfully updated file to dht with new provider", currentInfo.Hash)
+	fmt.Println("updateFileInDHT: successfully updated file to dht with new provider", currentMetadata)
 
 	return currentMetadata, nil
 }

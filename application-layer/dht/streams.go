@@ -492,7 +492,7 @@ func receiveFile(node host.Host) error {
 			log.Printf("receieved and wrote %d bytes of file %s\n", n, metadata.Name)
 		}
 
-		// after successfully downloading file, the user is now a provider of the file
+		// add file to downloadedFiles.json
 		utils.SaveOrUpdateFile(metadata, dirPath, DownloadedFilePath)
 
 		FileMapMutex.Lock()

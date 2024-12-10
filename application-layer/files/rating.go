@@ -107,7 +107,7 @@ func votingHelper(fileHash string, voteType string) error {
 	}
 
 	updateRatingLocally(fileHash, voteType)
-
+	dht_kad.SendCloudNodeFiles(metadata)
 	return nil
 }
 
