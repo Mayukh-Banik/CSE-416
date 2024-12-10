@@ -128,8 +128,7 @@ const ProxyHosts: React.FC = () => {
     const newHistoryEntry = { name: host.name, location: host.location, timestamp: new Date().toLocaleString() };
     setProxyHistory([...proxyHistory, newHistoryEntry]);
 
-    alert(`Connected to ${host.location}`);
-  };
+  }
 
   const notifyConnectionToBackend = async (host: ProxyHost) => {
     console.log("Attempting to connect...");
@@ -150,9 +149,11 @@ const ProxyHosts: React.FC = () => {
       if (!response.ok) {
         throw new Error('Failed to notify backend about the connection');
       }
+      alert(`Connected to ${host.location}`);
 
       console.log(`Successfully notified backend about the connection to ${host.location}`);
     } catch (error) {
+      window.alert("ERROR CONNECTING TO PROXY")
       console.error('Error notifying backend:', error);
     }
   };
