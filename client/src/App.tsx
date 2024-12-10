@@ -1,16 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
-  Container,
-  Typography,
-  Button,
   ThemeProvider,
   createTheme,
   CssBaseline,
 } from "@mui/material";
 import { HashRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 
-import GeneralTheme from "./Stylesheets/GeneralTheme";
-import WelcomePage from "./Components/WelcomePage";
+
 import RegisterPage from "./Components/RegisterPage";
 import LoginPage from "./Components/LoginPage";
 import SignupPage from "./Components/SignUpPage";
@@ -21,40 +17,13 @@ import MarketPage from "./Components/MarketPage";
 import FileViewPage from "./Components/FileViewPage";
 import AccountViewPage from "./Components/AccountViewPage";
 import ProxyPage from "./Components/ProxyPage";
-// import GlobalTransactions from "./Components/GlobalTransactions";
 import GlobalTransactions from "./Components/Transactions";
 
 import SearchPage from "./Components/SearchPage";
 import { FileMetadata } from "./models/fileMetadata";
 import InitPage from "./Components/InitPage";
 
-const isUserLoggedIn = true; // 실제 로그인 상태 로직으로 교체 필요
-
-// Fake data for your wallet (temporary data)
-const walletAddress = "0x1234567890abcdef";
-const balance = 100;
-const transactions = [
-  {
-    id: "tx001",
-    sender: "0xsender001",
-    receiver: "0xreceiver001",
-    amount: 10,
-    timestamp: "2023-10-01T10:00:00",
-    status: "completed",
-    file: "file001.pdf"
-  },
-  {
-    id: "tx009",
-    sender: "0xsender009",
-    receiver: "0xreceiver009",
-    amount: 90,
-    timestamp: "2023-10-09T17:20:00",
-    status: "completed",
-    file: "file009.docx"
-  },
-  // Add other transactions...
-];
-
+const isUserLoggedIn = true; 
 
 interface PrivateRouteProps {
   isAuthenticated: boolean;
@@ -66,7 +35,6 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ isAuthenticated }) => {
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([])
   const [initialFetch, setInitialFetch] = useState(false);
   
@@ -106,17 +74,14 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
-      <CssBaseline /> {/* This resets CSS to a consistent baseline */}
+      <CssBaseline /> 
       <Router>
         <Routes>
-          {/* 초기화 페이지 */}
           <Route path="/" element={<InitPage />} />
           <Route path="/init" element={<InitPage />} />
 
-          {/* 초기화가 완료되면 SignUpPage로 이동하도록 설정 */}
           <Route path="/signup" element={<SignupPage />} />
 
-          {/* 나머지 라우트들 */}
           <Route path="/proxy" element={<ProxyPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
