@@ -1,9 +1,9 @@
 # btcwallet_create.ps1
 
-# 로그 파일 경로 설정 (디버깅 용도)
+# Set the path for the log file (for debugging purposes)
 $logPath = "C:\dev\workspace\CSE-416\btcwallet\btcwallet_create.log"
 
-# 로그 기록 함수
+# Function to log messages
 function Log-Message {
     param([string]$message)
     Add-Content -Path $logPath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
@@ -11,15 +11,15 @@ function Log-Message {
 
 Log-Message "Starting btcwallet creation process."
 
-# 현재 실행 정책 저장
+# Save the current execution policy
 $currentExecutionPolicy = Get-ExecutionPolicy -Scope CurrentUser
 Log-Message "Current Execution Policy: $currentExecutionPolicy"
 
-# 실행 정책 변경 (자동으로 'Yes' 응답)
+# Change the execution policy (auto-confirm with 'Yes')
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 Log-Message "Execution Policy set to RemoteSigned."
 
-# 필요한 어셈블리 로드
+# Load required assemblies
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -35,55 +35,55 @@ public class Win32 {
 
 Add-Type -AssemblyName System.Windows.Forms
 
-# btcwallet 실행 경로
-$btcwalletPath = "C:\dev\workspace\CSE-416\btcwallet\btcwallet.exe"
+# Path to the btcwallet executable
+$btcwalletPath = "../btcwallet/btcwallet"
 
-# btcwallet 프로세스 시작
+# Start the btcwallet process
 $process = Start-Process -FilePath $btcwalletPath -ArgumentList "--create" -WindowStyle Normal -PassThru
 
 Log-Message "btcwallet process started."
 
-# btcwallet 창이 열릴 시간을 기다림
+# Wait for the btcwallet window to open
 Start-Sleep -Seconds 3
 
-# btcwallet 창 핸들 찾기 (창 제목을 실제로 나타나는 제목으로 변경하세요.)
+# Find the btcwallet window handle (replace with the actual window title)
 $hwnd = [Win32]::FindWindow($null, "Btcwallet") 
 
 if ($hwnd -ne 0) {
-    # 창을 포그라운드로 설정
+    # Set the window to the foreground
     [Win32]::SetForegroundWindow($hwnd)
     Log-Message "btcwallet window found and activated."
 } else {
     Log-Message "btcwallet window not found."
 }
 
-# 환경 변수에서 비밀번호 가져오기 (보안 강화)
+# Retrieve the passphrase from environment variables (for security)
 $passphrase = $env:BTCWALLET_PASSPHRASE
 $confirmPassphrase = $env:BTCWALLET_PASSPHRASE
 $addEncryption = "no"
 $existingSeed = "no"
 $confirmOK = "OK"
 
-# 입력 시뮬레이션
+# Simulate inputs
 $inputs = @(
-    "$passphrase{ENTER}"        # 비밀번호 입력 및 엔터
-    "$confirmPassphrase{ENTER}" # 비밀번호 확인 및 엔터
-    "$addEncryption{ENTER}"     # 추가 암호화 없음
-    "$existingSeed{ENTER}"      # 기존 지갑 시드 없음
-    "$confirmOK{ENTER}"         # 시드 저장 확인
+    "$passphrase{ENTER}"        # Enter the passphrase and press Enter
+    "$confirmPassphrase{ENTER}" # Confirm the passphrase and press Enter
+    "$addEncryption{ENTER}"     # Select no additional encryption
+    "$existingSeed{ENTER}"      # Select no existing wallet seed
+    "$confirmOK{ENTER}"         # Confirm seed saving
 )
 
 foreach ($input in $inputs) {
     [System.Windows.Forms.SendKeys]::SendWait($input)
     Log-Message "Sent input: $input"
-    Start-Sleep -Seconds 2 # 각 입력 사이에 더 긴 지연을 줌
+    Start-Sleep -Seconds 2 # Add a longer delay between inputs
 }
 
-# 프로세스가 종료될 때까지 대기
+# Wait for the process to exit
 $process.WaitForExit()
 
 Log-Message "btcwallet creation process completed."
 
-# 실행 정책 복원
+# Restore the original execution policy
 Set-ExecutionPolicy -ExecutionPolicy $currentExecutionPolicy -Scope CurrentUser -Force
 Log-Message "Execution Policy restored to $currentExecutionPolicy."

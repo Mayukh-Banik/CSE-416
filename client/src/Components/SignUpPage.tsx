@@ -15,7 +15,6 @@ import {
   DialogActions,
   TextField,
   CircularProgress,
-  Backdrop,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -38,66 +37,42 @@ const SignUpPage: React.FC = () => {
     navigate("/login");
   };
 
-  const checkWalletExistence = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/api/wallet/check", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ passphrase }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.exists;
-      } else {
-        console.error("Failed to check wallet existence.");
-        return false;
-      }
-    } catch (error) {
-      console.error("Error checking wallet existence:", error);
-      return false;
-    }
-  };
-
-  // button click handler for "Generate Wallet" button
+  // Button click handler for "Generate Wallet" button
   const handleGenerateWalletClick = () => {
     setIsDialogOpen(true);
   };
 
-  // hadler for "Create Wallet" button click
+  // Handler for "Create Wallet" button click
   const handlePassphraseSubmit = async () => {
     if (!passphrase) {
       setError("Passphrase is required.");
       return;
     }
 
-    setIsLoading(true); // show loading spinner
+    setIsLoading(true); // Show loading spinner
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 30000); // 30 seconds timeout
 
     try {
-      const walletExists = await checkWalletExistence();
-
-      if (walletExists) {
-        alert("이미 지갑이 존재합니다. 로그인 페이지로 이동합니다.");
-        setIsDialogOpen(false);
-        navigate("/login"); // send user to login page
-        return;
-      }
-
       const response = await fetch("http://localhost:8080/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ passphrase }), // send passphrase to server
+        body: JSON.stringify({ passphrase }), // Send passphrase to server
+        signal: controller.signal, // Attach the signal to the fetch request
       });
 
-      console.log("서버 응답 상태:", response.status); // response status log
+      clearTimeout(timeoutId); // Clear the timeout since the request completed
+
+      console.log("Server response status:", response.status); // Log response status
 
       if (response.ok) {
         const data = await response.json();
-        console.log("서버 응답 데이터:", data); // response data log
+        console.log("Server response data:", data); // Log response data
 
         const { address, private_key, message } = data;
 
@@ -114,11 +89,17 @@ const SignUpPage: React.FC = () => {
         setError(errorData.message || "Failed to signup");
         alert("Failed to signup: " + (errorData.message || "Unknown error"));
       }
-    } catch (error) {
-      setError("Error during signup");
-      alert("Error during signup: " + error);
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        setError("Request timed out. Please try again.");
+        alert("Error: Request timed out. Please try again.");
+      } else {
+        setError("Error during signup");
+        alert("Error during signup: " + error.message);
+      }
     } finally {
-      setIsLoading(false); // hide loading spinner
+      clearTimeout(timeoutId); // Ensure the timeout is cleared
+      setIsLoading(false); // Hide loading spinner
     }
   };
 
@@ -135,14 +116,14 @@ const SignUpPage: React.FC = () => {
       const file = new Blob([privateKey], { type: "text/plain" });
       element.href = URL.createObjectURL(file);
       element.download = "privateKey.txt";
-      document.body.appendChild(element); // Required for this to work in FireFox
+      document.body.appendChild(element); // Required for this to work in Firefox
       element.click();
       document.body.removeChild(element); // Cleanup
     }
   };
 
   const handleCloseDialog = () => {
-    setIsDialogOpen(false); // close dialog
+    setIsDialogOpen(false); // Close dialog
     setPassphrase("");
     setError(null);
   };
@@ -378,10 +359,9 @@ const SignUpPage: React.FC = () => {
               zIndex: 9999,
             }}
           >
-            <img src="/images/loading.gif" alt="Loading" />
+            <CircularProgress color="inherit" />
           </div>
         )}
-
       </Container>
     </>
   );

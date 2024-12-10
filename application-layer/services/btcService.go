@@ -878,6 +878,40 @@ func (bs *BtcService) ListReceivedByAddress() ([]map[string]interface{}, error) 
 	return addresses, nil
 }
 
+func (bs *BtcService) GetMiningInfo() (string, error) {
+	// btcctl command
+	cmd := exec.Command(
+		btcctlPath,
+		"--wallet",
+		"--rpcuser=user",
+		"--rpcpass=password",
+		"--rpcserver=127.0.0.1:8332",
+		"--notls",
+		"getmininginfo",
+	)
+
+	// Add macOS-specific environment setup
+	if runtime.GOOS == "darwin" {
+		cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+	}
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	// execute command
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Error executing btcctl getmininginfo: %v\n", err)
+		return "", fmt.Errorf("error executing btcctl getmininginfo: %w", err)
+	}
+
+	// get result
+	result := output.String()
+	fmt.Printf("getmininginfo output: %s\n", result)
+
+	return result, nil
+}
+
 // getMiningStatus is a function to check the mining status
 func (bs *BtcService) GetMiningStatus() (bool, error) {
 	// btcctl command
@@ -970,7 +1004,7 @@ func (bs *BtcService) StopMining() string {
 		return "Error checking mining status"
 	}
 
-	time.Sleep(time.Second) // 1 second
+	time.Sleep(1000)
 
 	// if mining is not running, no action needed
 	if !isMining {
@@ -986,7 +1020,7 @@ func (bs *BtcService) StopMining() string {
 	}
 	fmt.Printf("Retrieved mining address: %s\n", miningAddress)
 
-	time.Sleep(time.Second) // 1 second
+	time.Sleep(1000)
 
 	// stop btcd and btcwallet
 	stopBtcwalletResult := bs.StopBtcwallet()
@@ -995,7 +1029,7 @@ func (bs *BtcService) StopMining() string {
 		return stopBtcwalletResult
 	}
 
-	time.Sleep(time.Second) // 1 second
+	time.Sleep(1000)
 
 	stopBtcdResult := bs.StopBtcd()
 	if stopBtcdResult != "btcd stopped successfully" {
@@ -1003,7 +1037,7 @@ func (bs *BtcService) StopMining() string {
 		return stopBtcdResult
 	}
 
-	time.Sleep(time.Second) // 1 second
+	time.Sleep(1000)
 
 	// restart btcd and btcwallet with mining address
 	startBtcdResult := bs.StartBtcd(miningAddress)
@@ -1012,7 +1046,7 @@ func (bs *BtcService) StopMining() string {
 		return startBtcdResult
 	}
 
-	time.Sleep(time.Second) // 1 second
+	time.Sleep(1000)
 
 	startBtcwalletResult := bs.StartBtcwallet()
 	if startBtcwalletResult != "btcwallet started successfully" {

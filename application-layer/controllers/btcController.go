@@ -1,10 +1,16 @@
+// application-layer/controllers/btcController.go
 package controllers
 
 import (
 	"application-layer/services"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"time"
 )
 
 type BtcController struct {
@@ -54,7 +60,7 @@ func respondWithError(w http.ResponseWriter, status int, message string) {
 	respondWithJSON(w, status, resp)
 }
 
-// generate wallet button
+// SignupHandler processes signup requests.
 func (bc *BtcController) SignupHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("SignupHandler called")
 
@@ -64,31 +70,47 @@ func (bc *BtcController) SignupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check if passphrase is empty
+	// Check if the passphrase is empty
 	if req.Passphrase == "" {
 		respondWithError(w, http.StatusBadRequest, "Passphrase is required")
 		return
 	}
 
-	// create wallet
-	newAddress, err := bc.Service.CreateWallet(req.Passphrase)
-	if err != nil {
-		// respond with error
+	// Create channels to receive results
+	resultCh := make(chan SignupResponse)
+	errorCh := make(chan error)
+
+	// Execute wallet creation in a separate goroutine
+	go func() {
+		newAddress, err := bc.Service.CreateWallet(req.Passphrase)
+		if err != nil {
+			errorCh <- err
+			return
+		}
+		// Replace with actual private key generation logic
+		privateKey := "generated-private-key"
+		response := SignupResponse{
+			Address:    newAddress,
+			PrivateKey: privateKey,
+			Message:    "Wallet successfully created.",
+		}
+		resultCh <- response
+	}()
+
+	// Set a 30-second timeout
+	select {
+	case res := <-resultCh:
+		respondWithJSON(w, http.StatusOK, res)
+	case err := <-errorCh:
 		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
+	case <-time.After(30 * time.Second):
+		// Stop processes on timeout
+		log.Println("SignupHandler: Request timed out.")
+		stopWalletMsg := bc.Service.StopBtcwallet()
+		stopBtcdMsg := bc.Service.StopBtcd()
+		errorMessage := fmt.Sprintf("Request timed out. %s %s", stopWalletMsg, stopBtcdMsg)
+		respondWithError(w, http.StatusGatewayTimeout, errorMessage)
 	}
-
-	// generate private key (replace with actual private key generation logic)
-	privateKey := "generated-private-key"
-
-	// generate response
-	response := SignupResponse{
-		Address:    newAddress,
-		PrivateKey: privateKey,
-		Message:    "Wallet successfully created.",
-	}
-
-	respondWithJSON(w, http.StatusOK, response)
 }
 
 // placeholder for login handler
@@ -330,6 +352,41 @@ func (bc *BtcController) ListUnspentHandler(w http.ResponseWriter, r *http.Reque
 	respondWithJSON(w, http.StatusOK, resp)
 }
 
+func (bc *BtcController) GetCurrentAddressHandler(w http.ResponseWriter, r *http.Request) {
+	var tempFilePath string
+	if os.Getenv("OS") == "Windows_NT" {
+		tempFilePath = filepath.Join(os.Getenv("TEMP"), "btc_temp.json")
+	} else {
+		tempFilePath = "/tmp/btcd_temp.json"
+	}
+	content, err := ioutil.ReadFile(tempFilePath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to read temp file: %v", err))
+		return
+	}
+
+	var data map[string]string
+	if err := json.Unmarshal(content, &data); err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to parse JSON: %v", err))
+		return
+	}
+
+	currentAddress, exists := data["miningaddr"]
+	if !exists {
+		respondWithError(w, http.StatusNotFound, tempFilePath+" does not contain the current address.")
+		return
+	}
+
+	resp := Response{
+		Status: "success",
+		Data:   currentAddress,
+	}
+
+	// Debugging
+	fmt.Println("Current address: ", currentAddress)
+	respondWithJSON(w, http.StatusOK, resp)
+}
+
 func (bc *BtcController) GetMiningStatusHandler(w http.ResponseWriter, r *http.Request) {
 	status, err := bc.Service.GetMiningStatus()
 	if err != nil {
@@ -375,5 +432,61 @@ func (bc *BtcController) StopMiningHandler(w http.ResponseWriter, r *http.Reques
 		Status:  "success",
 		Message: result,
 	}
+	respondWithJSON(w, http.StatusOK, resp)
+}
+
+// GetMiningDashboardHandler returns the mining dashboard data
+func (bc *BtcController) GetMiningDashboardHandler(w http.ResponseWriter, r *http.Request) {
+	// Get balance
+	balance, err := bc.Service.GetBalance()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get balance: %v", err))
+		return
+	}
+
+	// Get mining info
+	miningInfoRaw, err := bc.Service.GetMiningInfo()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get mining info: %v", err))
+		return
+	}
+
+	// Parse mining info JSON
+	var miningInfo map[string]interface{}
+	if err := json.Unmarshal([]byte(miningInfoRaw), &miningInfo); err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to parse mining info JSON: %v", err))
+		return
+	}
+
+	// Combine results
+	dashboard := map[string]interface{}{
+		"balance":    balance,
+		"miningInfo": miningInfo,
+	}
+
+	// Respond with combined data
+	resp := Response{
+		Status: "success",
+		Data:   dashboard,
+	}
+	respondWithJSON(w, http.StatusOK, resp)
+}
+
+// InitHandler handles the initialization process
+func (bc *BtcController) InitHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	fmt.Println("InitHandler called")
+
+	result := bc.Service.Init()
+
+	resp := Response{
+		Status:  "success",
+		Message: result,
+	}
+
 	respondWithJSON(w, http.StatusOK, resp)
 }
