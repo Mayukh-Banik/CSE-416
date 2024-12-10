@@ -1,10 +1,14 @@
+// application-layer/controllers/btcController.go
 package controllers
 
 import (
 	"application-layer/services"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 )
 
 type BtcController struct {
@@ -280,6 +284,41 @@ func (bc *BtcController) ListUnspentHandler(w http.ResponseWriter, r *http.Reque
 		Status: "success",
 		Data:   utxos,
 	}
+	respondWithJSON(w, http.StatusOK, resp)
+}
+
+func (bc *BtcController) GetCurrentAddressHandler(w http.ResponseWriter, r *http.Request) {
+	var tempFilePath string
+	if os.Getenv("OS") == "Windows_NT" {
+		tempFilePath = filepath.Join(os.Getenv("TEMP"), "btc_temp.json")
+	} else {
+		tempFilePath = "/tmp/btcd_temp.json"
+	}
+	content, err := ioutil.ReadFile(tempFilePath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to read temp file: %v", err))
+		return
+	}
+
+	var data map[string]string
+	if err := json.Unmarshal(content, &data); err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to parse JSON: %v", err))
+		return
+	}
+
+	currentAddress, exists := data["miningaddr"]
+	if !exists {
+		respondWithError(w, http.StatusNotFound, tempFilePath+" does not contain the current address.")
+		return
+	}
+
+	resp := Response{
+		Status: "success",
+		Data:   currentAddress,
+	}
+
+	// Debugging
+	fmt.Println("Current address: ", currentAddress)
 	respondWithJSON(w, http.StatusOK, resp)
 }
 
