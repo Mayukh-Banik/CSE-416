@@ -7,21 +7,16 @@ interface ProxyHost {
   name: string;
   location: string;
   logs: string[];
-  Statistics: {
-    uptime: string;
-  };
-  peer_id:string;
-  bandwidth: string;
+  peer_id: string;
   isEnabled: boolean;
   price: string;
   isHost: boolean;
 }
 
-
 const ProxyHosts: React.FC = () => {
-  const [data, setData] = useState<ProxyHost[]>([]); // Corrected to ProxyHost array
+  const [data, setData] = useState<ProxyHost[]>([]);
   const [input, setInput] = useState<string>('');
-  const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([]); // State to store proxy hosts
+  const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([]);
   const [currentIP, setCurrentIP] = useState<string>('');
   const [connectedProxy, setConnectedProxy] = useState<ProxyHost | null>(null);
   const [proxyHistory, setProxyHistory] = useState<{ name: string; location: string; timestamp: string }[]>([]);
@@ -31,12 +26,10 @@ const ProxyHosts: React.FC = () => {
     name: '',
     location: '',
     logs: [],
-    Statistics: { uptime: '' },
-    bandwidth: '',
-    peer_id:'',
+    peer_id: '',
     isEnabled: false,
     price: '',
-    isHost: false
+    isHost: false,
   });
   const styles = useProxyHostsStyles();
 
@@ -56,10 +49,10 @@ const ProxyHosts: React.FC = () => {
       const rawText = await response.text();
       const cleanedText = rawText.replace(/^null\s*/, '').trim();
       const result = JSON.parse(cleanedText);
-      console.log("Parsed reult", result)
+      console.log("Parsed result", result);
       const proxyData = Array.isArray(result) ? result : [result];
       const isEmptyProxy = (proxy: ProxyHost) => {
-        return !proxy.name && !proxy.location && !proxy.price && !proxy.Statistics.uptime && !proxy.bandwidth;
+        return !proxy.name && !proxy.location && !proxy.price;
       };
       const nonEmptyProxies = proxyData.filter(proxy => !isEmptyProxy(proxy));
 
@@ -67,17 +60,16 @@ const ProxyHosts: React.FC = () => {
         name: proxy.name,
         location: proxy.location || proxy.address,
         price: proxy.price,
-        Statistics: { uptime: proxy.Statistics?.uptime },
-        bandwidth: proxy.bandwidth,
         logs: proxy.logs,
         isEnabled: false,
         isHost: proxy.isHost || false,
-        peer_id: proxy.peer_id || ''
+        peer_id: proxy.peer_id || '',
       })));
     } catch (error) {
       console.error('Error fetching or processing data:', error);
     }
   };
+
   const sendData = async () => {
     try {
       const response = await fetch('http://localhost:8081/proxy-data/', {
@@ -124,8 +116,6 @@ const ProxyHosts: React.FC = () => {
     setConnectedProxy(host);
     notifyConnectionToBackend(host);
 
-
-    // Update proxy history
     const newHistoryEntry = { name: host.name, location: host.location, timestamp: new Date().toLocaleString() };
     setProxyHistory([...proxyHistory, newHistoryEntry]);
 
@@ -135,7 +125,7 @@ const ProxyHosts: React.FC = () => {
   const notifyConnectionToBackend = async (host: ProxyHost) => {
     console.log("Attempting to connect...");
     try {
-      console.log(host.peer_id)
+      console.log(host.peer_id);
       const response = await fetch(`http://localhost:8081/connect-proxy?val=${host.peer_id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -143,7 +133,6 @@ const ProxyHosts: React.FC = () => {
           hostName: host.name,
           hostLocation: host.location,
           hostPeerID: host.peer_id,
-       
           timestamp: new Date().toLocaleString(),
         }),
       });
@@ -159,7 +148,7 @@ const ProxyHosts: React.FC = () => {
   };
 
   const handleAddProxy = async () => {
-    if (newProxy.location.trim() === '' || newProxy.price.trim() === '' || newProxy.Statistics.uptime === '' || newProxy.bandwidth.trim() === '') {
+    if (newProxy.location.trim() === '' || newProxy.price.trim() === '') {
       alert('Please fill in all fields.');
       return;
     }
@@ -171,16 +160,12 @@ const ProxyHosts: React.FC = () => {
       name: '',
       location: '',
       logs: [],
-      peer_id:'',
-      Statistics: { uptime: '' },
-      bandwidth: '',
+      peer_id: '',
       isEnabled: false,
       price: '',
       isHost: false,
     });
 
-
-    // Hide the form after adding
     setShowForm(false);
   };
 
@@ -199,11 +184,11 @@ const ProxyHosts: React.FC = () => {
   };
 
   const handleClearAndShowHistory = () => {
-    setShowHistoryOnly(true); // Show history
+    setShowHistoryOnly(true);
   };
 
   const handleReturn = () => {
-    setShowHistoryOnly(false); // Return
+    setShowHistoryOnly(false);
   };
 
   return (
@@ -214,7 +199,6 @@ const ProxyHosts: React.FC = () => {
           <Typography variant="h4">Proxy</Typography>
           <Box className={styles.header}>
             <Typography variant="h6">Your Current IP: {currentIP}</Typography>
-            {/* Show Proxy History Button */}
             {!showHistoryOnly && (
               <Button variant="outlined" onClick={handleClearAndShowHistory}>
                 Show Proxy History
@@ -222,7 +206,6 @@ const ProxyHosts: React.FC = () => {
             )}
           </Box>
           <br />
-          {/* Show the history*/}
           {showHistoryOnly ? (
             <>
               <Box className={styles.historyContainer}>
@@ -266,19 +249,16 @@ const ProxyHosts: React.FC = () => {
           ) : (
             <>
               <Box className={styles.proxyButton}>
-                {/* Add Yourself as Proxy  */}
                 <Button variant="contained" onClick={() => setShowForm(prev => !prev)}>
                   {showForm ? 'Hide Form' : 'Add Yourself as Proxy'}
                 </Button>
 
-                {/* Sort Buttons */}
                 <Box sx={{ display: 'flex', gap: '10px' }}>
                   <Button variant="outlined" onClick={handleSortByLocation}>Sort by Location</Button>
                   <Button variant="outlined" onClick={handleSortByPrice}>Sort by Price</Button>
                 </Box>
               </Box>
 
-              {/* Expandable Form Section */}
               {showForm && (
                 <Box sx={{ marginTop: 1 }} className={styles.form}>
                   <Typography variant="h6">Fill in your proxy details</Typography>
@@ -303,32 +283,19 @@ const ProxyHosts: React.FC = () => {
                       onChange={(e) => setNewProxy({ ...newProxy, price: e.target.value })}
                       InputProps={{ inputProps: { min: 0 } }}
                     />
-                    <TextField
-                      label="Uptime (%)"
-                      variant="outlined"
-                      value={newProxy.Statistics.uptime}
-                      onChange={(e) => setNewProxy({ ...newProxy, Statistics: { ...newProxy.Statistics, uptime: e.target.value } })}
-                    />
-                    <TextField
-                      label="Bandwidth"
-                      variant="outlined"
-                      value={newProxy.bandwidth}
-                      onChange={(e) => setNewProxy({ ...newProxy, bandwidth: e.target.value })}
-                    />
-                    <Button variant="contained" className={styles.submitButton} onClick={handleAddProxy}>Add Proxy</Button>
                   </Box>
+                  <br />
+                  <Button variant="contained" onClick={handleAddProxy}>Add Proxy</Button>
                 </Box>
               )}
 
               <TableContainer className={styles.proxyTable}>
-                <Table className={styles.table}>
+                <Table>
                   <TableHead>
                     <TableRow>
                       <TableCell>Name</TableCell>
                       <TableCell>Location</TableCell>
                       <TableCell>Price</TableCell>
-                      <TableCell>Uptime</TableCell>
-                      <TableCell>Bandwidth</TableCell>
                       <TableCell>Logs</TableCell>
                       <TableCell>Action</TableCell>
                     </TableRow>
@@ -339,17 +306,13 @@ const ProxyHosts: React.FC = () => {
                         <TableCell>{host.name}</TableCell>
                         <TableCell>{host.location}</TableCell>
                         <TableCell>{host.price}</TableCell>
-                        <TableCell>{host.Statistics && host.Statistics.uptime ? host.Statistics.uptime : 'N/A'}</TableCell>
-                        <TableCell>{host.bandwidth}</TableCell>
                         <TableCell>
                           <Button variant="text" onClick={() => alert(host.logs.join('\n'))}>
                             View Logs
                           </Button>
                         </TableCell>
                         <TableCell>
-                          <Button variant="contained" onClick={() => handleConnect(host)}>
-                            Connect
-                          </Button>
+                          <Button variant="contained" onClick={() => handleConnect(host)}>Connect</Button>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -31,6 +31,8 @@ var (
 	Peer_Addresses []ma.Multiaddr
 	isHost         = true
 	fileMutex      sync.Mutex
+	cancel         context.CancelFunc
+	stopFlag       bool
 )
 
 const (
@@ -293,9 +295,10 @@ func handlePeerExchange(node host.Host) {
 // Retrieveing proxies data, and adding yourself as host
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
-	go dht_kad.ConnectToPeer(node, dht_kad.Bootstrap_node_addr)
+	// go dht_kad.ConnectToPeer(node, dht_kad.Bootstrap_node_addr)
 	// go dht_kad.ConnectToPeer(node, Cloud_node_addr)
-	globalCtx = context.Background()
+	globalCtx, cancel = context.WithCancel(context.Background())
+	stopFlag = false
 	if r.Method == "POST" {
 		isHost = true
 		var newProxy models.Proxy
@@ -372,7 +375,7 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	host_peerid := r.URL.Query().Get("val")
 	fmt.Print("HOST PEER ID", host_peerid)
 	// Check if the request method is POST
-	if r.Method == "POST" {
+	if r.Method == "GET" {
 		log.Println("Processing POST request")
 
 		// Parse the destination from the CONNECT request
