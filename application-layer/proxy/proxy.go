@@ -126,8 +126,6 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 				return
 			}
 
-			proxy.Address, _ = getPrivateIP()
-			fmt.Print(("PROXYS IP ADDRESS"))
 			if proxy.PeerID == localPeerID.String() {
 				proxy.IsHost = true
 
