@@ -35,7 +35,6 @@ func main() {
 	http.Handle("/proxy-data/", c.Handler(proxyRouter))
 	http.Handle("/connect-proxy/", c.Handler(proxyRouter))
 	http.Handle("/proxy-history/", c.Handler(proxyRouter))
-	http.Handle("/update-history/", c.Handler(proxyRouter))
 	http.Handle("/disconnect-from-proxy/", c.Handler(proxyRouter))
 	http.Handle("/stop-hosting/", c.Handler(proxyRouter))
 

@@ -501,6 +501,7 @@ func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
+	fmt.Print("RETRIEVED PROXY INFO", proxyInfo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error retrieving proxy info: %v", err), http.StatusInternalServerError)
 		return
