@@ -16,7 +16,7 @@ interface ProxyHost {
   isEnabled: boolean;
   price: string;
   isHost: boolean;
-  
+
 }
 
 function getPrivateIP(callback: (ip: string | null) => void) {
@@ -55,7 +55,7 @@ const ProxyHosts: React.FC = () => {
     name: '',
     location: '',
     logs: [],
-    address:'',
+    address: '',
     Statistics: { uptime: '' },
     bandwidth: '',
     peer_id: '',
@@ -94,8 +94,8 @@ const ProxyHosts: React.FC = () => {
       setCurrentIP(ip[0]);
       setProxyHosts(nonEmptyProxies.map(proxy => ({
         name: proxy.name,
-        location: proxy.location ,
-        address:proxy.address,
+        location: proxy.location,
+        address: proxy.address,
         price: proxy.price,
         Statistics: { uptime: proxy.Statistics?.uptime },
         bandwidth: proxy.bandwidth,
@@ -147,21 +147,8 @@ const ProxyHosts: React.FC = () => {
         console.error('Unable to retrieve private IP');
       }
     });
-    const fetchHistory = async () => {
-      try {
-          const response = await fetch('http://localhost:8081/proxy-history/',{
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
+    
 
-          });
-          
-          const history = await response.json();
-          setProxyHistory(history);
-      } catch (error) {
-          console.error("Failed to fetch proxy history:", error);
-      }
-  };
-    fetchHistory();
     fetchData()
   }, []);
 
@@ -202,7 +189,7 @@ const ProxyHosts: React.FC = () => {
         throw new Error('Failed to notify backend about the connection');
       }
       alert(`Connected to ${host.location}`);
-      if (response.ok){
+      if (response.ok) {
         setCurrentIP(host.address);
       }
       console.log(`Successfully notified backend about the connection to ${host.location}`);
@@ -225,7 +212,7 @@ const ProxyHosts: React.FC = () => {
       name: '',
       location: '',
       logs: [],
-      address:'',
+      address: '',
       peer_id: '',
       Statistics: { uptime: '' },
       bandwidth: '',
@@ -253,8 +240,29 @@ const ProxyHosts: React.FC = () => {
     setProxyHosts(sortedHosts);
   };
 
+  const fetchHistory = async () => {
+    try {
+      const response = await fetch('http://localhost:8081/proxy-history/', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      console.log(response.json());
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const history = await response.json();
+      setProxyHistory(history); // Assuming setProxyHistory is defined elsewhere
+    } catch (error) {
+      console.error("Failed to fetch proxy history:", error);
+    }
+  };
   const handleClearAndShowHistory = () => {
     setShowHistoryOnly(true); // Show history
+    fetchHistory();
+
   };
 
   const handleReturn = () => {
