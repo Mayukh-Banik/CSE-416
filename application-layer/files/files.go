@@ -87,15 +87,25 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 // add new file or update existing file
 func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("uploadFileHandler")
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
 
+	isNewFile := r.URL.Query().Get("val")
+	fmt.Println("isNewFile:", isNewFile)
 	var requestBody models.FileMetadata
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		fmt.Println("invalid request body", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	data, _ := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+requestBody.Hash)
+	fmt.Println("file already in dht: ", data)
+	if data != nil && isNewFile == "true" {
+		w.WriteHeader(http.StatusBadRequest) // 400 for client error
+		json.NewEncoder(w).Encode(map[string]string{"error": "File already uploaded"})
 		return
 	}
 
@@ -158,7 +168,7 @@ func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "File hash not provided", http.StatusBadRequest)
 		return
 	}
-	
+
 	// Retrieve the file data from the DHT using the file hash
 	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash)
 	if err != nil {
@@ -254,25 +264,34 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func removeProvider(hash string, isDelete bool) error {
+	fmt.Println("removing provider from dht - deleting from dht", isDelete)
 	var metadata models.DHTMetadata
 
 	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, hash)
+	fmt.Println("removeProvider: data after dht getvalue:", data)
 	if err != nil {
+		fmt.Println("dht error: ", err)
 		return fmt.Errorf("failed to get file from dht for provider updating: %v", err)
 	}
 
 	err = json.Unmarshal(data, &metadata)
+	fmt.Println("removeProvider: updating", metadata)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal data: %v", err)
 	}
 
-	// delete the provider or set inactive
+	// delete the provider
 	if isDelete {
+		fmt.Println("before deleting provider:", metadata.Providers)
 		delete(metadata.Providers, dht_kad.PeerID)
+		fmt.Println("after deleting provider:", metadata.Providers)
 	} else {
+		// mark unavailable
+		fmt.Println("before marking provider as inactive:", metadata.Providers)
 		if value, exists := metadata.Providers[dht_kad.PeerID]; exists {
 			value.IsActive = false
 			metadata.Providers[dht_kad.PeerID] = value // Reassign after modification
+			fmt.Println("after marking provider as inactive:", metadata.Providers)
 		}
 	}
 	return nil
@@ -317,6 +336,7 @@ func deleteFileFromJSON(fileHash string, filePath string) (string, error) {
 		return "", fmt.Errorf("failed to write updated data to files.json: %v", err)
 	}
 
+	fmt.Println("successfully deleted file from json")
 	return "deleted", nil
 }
 

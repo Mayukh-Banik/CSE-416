@@ -240,14 +240,19 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       }
   
       // Send metadata to backend
-      const response = await fetch("http://localhost:8081/files/upload", {
+      let newFile = true;
+      const response = await fetch(`http://localhost:8081/files/upload?val=${newFile}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(metadata),
       });
+
+      console.log(response )
   
       if (!response.ok) {
-        throw new Error(`Failed to upload metadata for: ${file.name}`);
+        const errorMessage = await response.text(); // Read the server's error message
+        setNotification({ open: true, message: errorMessage, severity: "error" });
+        throw new Error(errorMessage);
       }
   
       console.log("File metadata uploaded:", file.name);
@@ -334,8 +339,9 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
 
     console.log("updated metadata: ", updatedMetadata)
 
+    let newFile = false;
     try {
-        const response = await fetch("http://localhost:8081/files/upload", {
+        const response = await fetch(`http://localhost:8081/files/upload?val=${newFile}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
