@@ -47,7 +47,7 @@ const ProxyHosts: React.FC = () => {
   const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([]); // State to store proxy hosts
   const [currentIP, setCurrentIP] = useState<string>('');
   const [connectedProxy, setConnectedProxy] = useState<ProxyHost | null>(null);
-  const [proxyHistory, setProxyHistory] = useState<{ peerId: string; timestamp: string }[]>([]);
+  const [proxyHistory, setProxyHistory] = useState<{ client_peer_id: string; timestamp: string }[]>([]);
   const [showHistoryOnly, setShowHistoryOnly] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false); // Track loading state
@@ -157,7 +157,7 @@ const ProxyHosts: React.FC = () => {
   const handleDisconnect = (host: ProxyHost) => {
     setConnectedProxy(host);
     notifyDisConnectionToBackend(host);
-    const newHistoryEntry = { peerId: host.peer_id, timestamp: new Date().toLocaleString() };
+    const newHistoryEntry = { client_peer_id: host.peer_id, timestamp: new Date().toLocaleString() };
     setProxyHistory([...proxyHistory, newHistoryEntry]);
   }
 
@@ -206,7 +206,7 @@ const ProxyHosts: React.FC = () => {
 
     // Update proxy history
     const newHistoryEntry = {
-      peerId: host.peer_id,
+      client_peer_id: host.peer_id,
       location: host.location,
       timestamp: new Date().toLocaleString()
     };
@@ -332,6 +332,7 @@ const ProxyHosts: React.FC = () => {
       }
 
       const history = await response.json();
+      console.log(history)
       setProxyHistory(history); // Assuming setProxyHistory is defined elsewhere
     } catch (error) {
       console.error("Failed to fetch proxy history:", error);
@@ -403,7 +404,7 @@ const ProxyHosts: React.FC = () => {
                         <TableBody>
                           {proxyHistory.map((entry, index) => (
                             <TableRow key={index}>
-                              <TableCell>{entry.peerId}</TableCell>
+                              <TableCell>{entry.client_peer_id}</TableCell>
                               <TableCell>{entry.timestamp}</TableCell>
                             </TableRow>
                           ))}
