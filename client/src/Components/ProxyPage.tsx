@@ -147,6 +147,21 @@ const ProxyHosts: React.FC = () => {
         console.error('Unable to retrieve private IP');
       }
     });
+    const fetchHistory = async () => {
+      try {
+          const response = await fetch('http://localhost:8081/proxy-history/',{
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+
+          });
+          
+          const history = await response.json();
+          setProxyHistory(history);
+      } catch (error) {
+          console.error("Failed to fetch proxy history:", error);
+      }
+  };
+    fetchHistory();
     fetchData()
   }, []);
 
@@ -170,7 +185,7 @@ const ProxyHosts: React.FC = () => {
   const notifyConnectionToBackend = async (host: ProxyHost) => {
     console.log("Attempting to connect...");
     try {
-      console.log(host.peer_id)
+      console.log(host.address)
       const response = await fetch(`http://localhost:8081/connect-proxy?val=${host.peer_id}&ip=${host.address}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -187,7 +202,9 @@ const ProxyHosts: React.FC = () => {
         throw new Error('Failed to notify backend about the connection');
       }
       alert(`Connected to ${host.location}`);
-
+      if (response.ok){
+        setCurrentIP(host.address);
+      }
       console.log(`Successfully notified backend about the connection to ${host.location}`);
     } catch (error) {
       window.alert("ERROR CONNECTING TO PROXY")

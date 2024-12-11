@@ -34,6 +34,7 @@ func main() {
 	http.Handle("/download/", c.Handler(downloadRouter)) // Download routes under /download
 	http.Handle("/proxy-data/", c.Handler(proxyRouter))
 	http.Handle("/connect-proxy/", c.Handler(proxyRouter))
+	http.Handle("/proxy-history/", c.Handler(proxyRouter))
 
 	http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
 

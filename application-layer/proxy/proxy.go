@@ -31,7 +31,8 @@ var (
 	globalCtx      context.Context
 	Peer_Addresses []ma.Multiaddr
 	isHost         = true
-	fileMutex      sync.Mutex
+	proxyHistory   []models.ProxyHistoryEntry
+	historyMutex   sync.Mutex
 )
 
 const (
@@ -162,6 +163,7 @@ func pollPeerAddresses(ProxyIsHost bool, ip string) {
 		httpHostToClient(node)
 	} else {
 		fmt.Println("IN CLIENT")
+		fmt.Println("IP", ip)
 		var script string
 		var args []string
 		script = "proxy/client.py"
@@ -281,6 +283,7 @@ func handlePeerExchange(node host.Host) {
 // Retrieveing proxies data, and adding yourself as host
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
+
 	// go dht_kad.ConnectToPeer(node, Cloud_node_addr)
 	globalCtx = context.Background()
 	if r.Method == "POST" {
@@ -343,6 +346,7 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 			responseData = proxyInfo
 		}
 		ip, _ := getPrivateIP()
+		fmt.Println("BEFORE POLLING", ip)
 		go pollPeerAddresses(true, ip)
 
 		if err := json.NewEncoder(w).Encode(responseData); err != nil {
@@ -370,6 +374,15 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	// Check if the request method is POST
 	if r.Method == "GET" {
 		log.Println("Relaying data between client and peer...")
+		historyMutex.Lock()
+		proxyHistory = append(proxyHistory, models.ProxyHistoryEntry{
+			Name:      "Client Proxy", // Placeholder name, replace with actual client name if available
+			Location:  proxyIP,        // Client's IP address
+			Timestamp: time.Now(),     // Connection timestamp
+		})
+		historyMutex.Unlock()
+
+		log.Printf("Added to history: Client %s at %s\n", host_peerid, proxyIP)
 		pollPeerAddresses(false, proxyIP)
 		log.Println("Successfully connected to the peer.")
 
@@ -382,6 +395,32 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Unsupported request method: %s", r.Method)
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
+}
+func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
+	// Allow only GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Acquire lock to ensure thread-safe access to `proxyHistory`
+	historyMutex.Lock()
+	defer historyMutex.Unlock()
+
+	// Log the history retrieval
+	log.Println("Retrieving proxy connection history...")
+
+	// Set response headers
+	w.Header().Set("Content-Type", "application/json")
+
+	// Encode `proxyHistory` to JSON and write to the response
+	if err := json.NewEncoder(w).Encode(proxyHistory); err != nil {
+		log.Printf("Failed to encode history: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to encode history: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Proxy connection history successfully sent.")
 }
 
 func getPrivateIP() (string, error) {
