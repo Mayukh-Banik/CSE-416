@@ -441,27 +441,70 @@ func updateHostProxyInfo(clientPeerID string) {
 
 	log.Printf("Updated host proxy info with new connected peer: %s", clientPeerID)
 }
-func handleGetConnectedPeers(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+
+// Function to add a new history entry
+func addProxyHistoryEntry(hostPeerID, proxyIP string) {
+	historyMutex.Lock()
+	defer historyMutex.Unlock()
+
+	newEntry := models.ProxyHistoryEntry{
+		HostPeerID: hostPeerID,
+		ProxyIP:    proxyIP,
+		Timestamp:  time.Now(),
 	}
 
-	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
+	proxyHistory = append(proxyHistory, newEntry)
+}
+
+// Function to send the history to the host
+func sendHistoryToHost(hostAddress string) error {
+	historyMutex.Lock()
+	defer historyMutex.Unlock()
+
+	historyData, err := json.Marshal(proxyHistory)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error retrieving proxy info: %v", err), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("failed to marshal history data: %v", err)
 	}
 
-	var proxy models.Proxy
-	err = json.Unmarshal([]byte(proxyInfo), &proxy)
+	req, err := http.NewRequest("POST", hostAddress+"/update-history", bytes.NewReader(historyData))
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error unmarshalling proxy info: %v", err), http.StatusInternalServerError)
+		return fmt.Errorf("failed to create request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	// Sending the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send history to host: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to update history on host, status: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+func handleUpdateHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(proxy.ConnectedPeers)
+	var history []models.ProxyHistoryEntry
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&history)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to decode history data: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Process the history data (e.g., store in a database, etc.)
+	fmt.Printf("Received proxy history: %v\n", history)
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
@@ -476,19 +519,23 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Cannot connect to self.", http.StatusBadRequest)
 		return
 	}
-	// Check if the request method is POST
 	if r.Method == "GET" {
 		log.Println("Relaying data between client and peer...")
 		pollPeerAddresses(false, proxyIP)
-		updateProxyConnections(dht_kad.Host.ID().String(), host_peerid)
+
+		addProxyHistoryEntry(host_peerid, proxyIP)
+		err := sendHistoryToHost("http://host-address") // Use actual host address here
+		if err != nil {
+			log.Printf("Error sending history to host: %v", err)
+			http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)
+			return
+		}
+
 		log.Println("Successfully connected to the peer.")
 
-		// Respond with 200 OK to indicate the connection has been established
 		w.WriteHeader(http.StatusOK)
 
-		// Now relay data between client and peer asynchronously
 	} else {
-		// If the method is not POST, log it and return method not allowed
 		log.Printf("Unsupported request method: %s", r.Method)
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
