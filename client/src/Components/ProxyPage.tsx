@@ -19,6 +19,10 @@ interface ProxyHost {
   WalletAddressToSend: string; // New field
 
 }
+interface ConnectPopupProps {
+  onClose: () => void; // Function type for onClose
+  onConfirm: () => void; // Function type for onConfirm
+}
 
 function getPrivateIP(callback: (ip: string | null) => void) {
   const peerConnection = new RTCPeerConnection({ iceServers: [] });
@@ -44,6 +48,8 @@ function getPrivateIP(callback: (ip: string | null) => void) {
 const ProxyHosts: React.FC = () => {
   const [data, setData] = useState<ProxyHost[]>([]); // Corrected to ProxyHost array
   const [input, setInput] = useState<string>('');
+  const [showPopup, setShowPopup] = useState(false);
+  const [selectedHost, setSelectedHost] = useState<ProxyHost | null>(null);
   const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([]); // State to store proxy hosts
   const [currentIP, setCurrentIP] = useState<string>('');
   const [connectedProxy, setConnectedProxy] = useState<ProxyHost | null>(null);
@@ -172,7 +178,7 @@ const ProxyHosts: React.FC = () => {
     try {
       console.log(host.peer_id)
       console.log(host.address)
-      const response = await fetch(`http://localhost:8081/disconnect-from-proxy/`, {
+      const response = await fetch(`http://localhost:8081/disconnect-from-proxy?val=${host.peer_id}&ip=${host.address}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -198,10 +204,27 @@ const ProxyHosts: React.FC = () => {
       console.error('Error notifying backend:', error);
     }
   };
+  const handlePopup = () => {
+    setShowPopup(true);
+  };
+
+  const ConnectPopup: React.FC<ConnectPopupProps> = ({ onClose, onConfirm }) => {
+    const styles = useProxyHostsStyles();
+    return (
+      <Box className={styles.popup}>
+        <Typography>Are you sure you want to connect?</Typography>
+        <Box>
+          <Button onClick={onConfirm}>OK</Button>
+          <Button onClick={onClose}>Cancel</Button>
+        </Box>
+      </Box>
+    );
+  };
+  
 
   const handleConnect = (host: ProxyHost) => {
-    console.log('Input 1:', input1);
-    console.log('Input 2:', input2);
+    setSelectedHost(host);
+    setShowPopup(true);
     const updatedHosts = proxyHosts.map(h => ({
       ...h,
       isEnabled: h.location === host.location ? true : h.isEnabled,
@@ -217,6 +240,37 @@ const ProxyHosts: React.FC = () => {
     setProxyHistory([...proxyHistory, newHistoryEntry]);
 
   }
+
+  const handlePopupConfirm = async () => {
+    setShowPopup(false);
+    if (!selectedHost) return;
+    console.log("Is this being checked");
+    try {
+        // Check user's balance
+        const response = await fetch('http://localhost:8081/check-balance/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                hostPrice: selectedHost.price
+            }),
+        });
+
+        if (response.ok) {
+            // Ask for password
+            const passphrase = prompt("Please enter your passphrase:");
+            if (passphrase) {
+                // Proceed with connection
+                notifyConnectionToBackend(selectedHost);
+            }
+        } else {
+            alert("Your balance is not enough to connect to this proxy.");
+        }
+    } catch (error) {
+        console.error('Error checking balance:', error);
+        alert('An error occurred while checking your balance.');
+    }
+};
+
 
   const notifyConnectionToBackend = async (host: ProxyHost) => {
     console.log("Attempting to connect...");
@@ -369,6 +423,13 @@ const ProxyHosts: React.FC = () => {
                 )}
               </Box>
               <br />
+              {showPopup && (
+                <ConnectPopup
+                  onClose={() => setShowPopup(false)}
+                  onConfirm={handlePopupConfirm}
+                />
+              )}
+
               {/* Show the history */}
               {showHistoryOnly ? (
                 <>
