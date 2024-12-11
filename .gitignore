@@ -1,11 +1,13 @@
 # dependencies
 /node_modules
+/node_modules 2/
 /.pnp
 .pnp.js
 
 ipfs-server-data
 electron/
 node_modules/
+node_modules 2/
 private_key.pem
 
 /.vscode/launch.json

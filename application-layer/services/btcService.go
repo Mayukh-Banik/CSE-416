@@ -593,6 +593,45 @@ func (bs *BtcService) StopBtcwallet() string {
 	return "btcwallet stopped successfully"
 }
 
+// SetupMainnetDirectoryForMac ensures that the mainnet directory is properly set up on macOS.
+func SetupMainnetDirectoryForMac() error {
+	// Get the current user's home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user home directory: %w", err)
+	}
+
+	// Construct the paths dynamically
+	btcdPath := filepath.Join(homeDir, "Library", "Application Support", "Btcd")
+	mainnetPath := filepath.Join(btcdPath, "data", "mainnet")
+
+	// Remove the mainnet directory if it exists
+	fmt.Printf("Removing mainnet directory: %s\n", mainnetPath)
+	err = os.RemoveAll(mainnetPath)
+	if err != nil {
+		return fmt.Errorf("failed to remove mainnet directory: %w", err)
+	}
+	fmt.Println("Mainnet directory removed successfully.")
+
+	// Recreate the mainnet directory
+	fmt.Printf("Creating mainnet directory: %s\n", mainnetPath)
+	err = os.MkdirAll(mainnetPath, 0777)
+	if err != nil {
+		return fmt.Errorf("failed to create mainnet directory: %w", err)
+	}
+	fmt.Println("Mainnet directory created successfully.")
+
+	// Ensure correct permissions for the Btcd directory
+	fmt.Printf("Setting permissions for Btcd directory: %s\n", btcdPath)
+	err = os.Chmod(btcdPath, 0777)
+	if err != nil {
+		return fmt.Errorf("failed to set permissions for Btcd directory: %w", err)
+	}
+	fmt.Println("Permissions for Btcd directory set successfully.")
+
+	return nil
+}
+
 // CreateWallet creates a new wallet by starting btcd, creating the wallet, starting btcwallet, generating a new address, stopping btcd and btcwallet, and returning the new address.
 // CreateWallet creates a new wallet, generates a new address, and ensures proper cleanup of btcd and btcwallet processes.
 func (bs *BtcService) CreateWallet(passphrase string) (string, error) {
@@ -744,38 +783,48 @@ func getMainnetPath() string {
 	return mainnetPath
 }
 
-// Modified Init function for cross-platform compatibility
+// Modified Init function with cross-platform compatibility and proper mainnet setup
 func (bs *BtcService) Init() string {
 	SetupTempFilePath()
 
-	// Get the mainnet path based on the OS
-	mainnetPath := getMainnetPath()
-	fmt.Printf("Attempting to remove path: %s\n", mainnetPath)
+	// Step 0: Ensure mainnet directory is set up based on OS
+	if runtime.GOOS == "darwin" {
+		fmt.Println("Initializing mainnet directory for macOS...")
+		err := SetupMainnetDirectoryForMac()
+		if err != nil {
+			fmt.Printf("Failed to set up mainnet directory: %v\n", err)
+			return "Failed to set up mainnet directory"
+		}
+	} else {
+		mainnetPath := getMainnetPath()
+		fmt.Printf("Attempting to remove path: %s\n", mainnetPath)
 
-	// First, try to terminate processes using the directory
-	if isDirectoryInUse(mainnetPath) {
-		fmt.Println("Directory is in use. Attempting to stop related services...")
-		bs.StopBtcd()
-		bs.StopBtcwallet()
-		time.Sleep(2 * time.Second) // Wait for processes to terminate
+		// First, try to terminate processes using the directory
+		if isDirectoryInUse(mainnetPath) {
+			fmt.Println("Directory is in use. Attempting to stop related services...")
+			bs.StopBtcd()
+			bs.StopBtcwallet()
+			time.Sleep(2 * time.Second) // Wait for processes to terminate
+		}
+
+		// Attempt forced deletion
+		err := forceRemoveAll(mainnetPath)
+		if err != nil {
+			fmt.Printf("Failed to remove mainnet directory: %v\n", err)
+			return "Failed to remove mainnet directory"
+		}
+		fmt.Println("Mainnet directory removed successfully.")
 	}
 
-	// Attempt forced deletion
-	err := forceRemoveAll(mainnetPath)
-	if err != nil {
-		fmt.Printf("Failed to remove mainnet directory: %v\n", err)
-	}
-	fmt.Println("Mainnet directory removed successfully.")
-
-	// Initialize temp file
-	err = initializeTempFile()
+	// Step 1: Initialize temporary file
+	err := initializeTempFile()
 	if err != nil {
 		fmt.Printf("Failed to initialize temp file: %v\n", err)
 		return "Failed to initialize temp file"
 	}
 	fmt.Println("Temporary file initialized successfully.")
 
-	// Start btcd
+	// Step 2: Start btcd
 	btcdResult := bs.StartBtcd()
 	if btcdResult != "btcd started successfully" {
 		bs.StopBtcd()
@@ -783,8 +832,9 @@ func (bs *BtcService) Init() string {
 		fmt.Println("Failed to start btcd.")
 		return btcdResult
 	}
+	fmt.Println("btcd started successfully.")
 
-	// Start btcwallet
+	// Step 3: Start btcwallet
 	btcwalletResult := bs.StartBtcwallet()
 	if btcwalletResult != "btcwallet started successfully" {
 		bs.StopBtcd()
@@ -792,8 +842,9 @@ func (bs *BtcService) Init() string {
 		fmt.Println("Failed to start btcwallet.")
 		return btcwalletResult
 	}
+	fmt.Println("btcwallet started successfully.")
 
-	// Connect to TA server
+	// Step 4: Connect to TA server
 	cmd := exec.Command(
 		btcctlPath,
 		"--rpcuser=user",
@@ -820,10 +871,9 @@ func (bs *BtcService) Init() string {
 		bs.StopBtcwallet()
 		return fmt.Sprintf("Error connecting to TA server: %s", output.String())
 	}
-
 	fmt.Println("Connected to TA server successfully.")
 
-	// Stop btcwallet
+	// Stop btcwallet if running
 	if isProcessRunning("btcwallet") {
 		stopBtcwalletResult := bs.StopBtcwallet()
 		if stopBtcwalletResult != "btcwallet stopped successfully" {
@@ -833,7 +883,7 @@ func (bs *BtcService) Init() string {
 		fmt.Println("btcwallet stopped successfully.")
 	}
 
-	// Stop btcd
+	// Stop btcd if running
 	if isProcessRunning("btcd") {
 		stopBtcdResult := bs.StopBtcd()
 		if stopBtcdResult != "btcd stopped successfully" {
@@ -1222,6 +1272,15 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 		return "Wallet does not exist", fmt.Errorf("wallet does not exist at path: %s", walletDBPath)
 	}
 
+	// Step 0.1: Ensure mainnet directory is set up for macOS
+	if runtime.GOOS == "darwin" {
+		err := SetupMainnetDirectoryForMac()
+		if err != nil {
+			fmt.Printf("Failed to set up mainnet directory: %v\n", err)
+			return "Failed to set up mainnet directory", fmt.Errorf("failed to set up mainnet directory: %w", err)
+		}
+	}
+
 	SetupTempFilePath()
 
 	// Get the mainnet path based on the OS
@@ -1311,26 +1370,6 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	}
 
 	fmt.Println("Connected to TA server successfully.")
-
-	// Step 4: Stop btcwallet
-	// btcwalletStopResult := bs.StopBtcwallet()
-	// if btcwalletStopResult != "btcwallet stopped successfully" {
-	// 	fmt.Printf("Failed to stop btcwallet: %s\n", btcwalletStopResult)
-	// 	bs.StopBtcd() // Stop btcd to ensure no orphaned processes
-	// 	return "", fmt.Errorf("failed to stop btcwallet: %s", btcwalletStopResult)
-	// }
-	// fmt.Println("btcwallet stopped successfully.")
-
-	// // Allow time before stopping btcd
-	// time.Sleep(1 * time.Second)
-
-	// // Step 5: Stop btcd
-	// btcdStopResult := bs.StopBtcd()
-	// if btcdStopResult != "btcd stopped successfully" {
-	// 	fmt.Printf("Failed to stop btcd: %s\n", btcdStopResult)
-	// 	return "", fmt.Errorf("failed to stop btcd: %s", btcdStopResult)
-	// }
-	// fmt.Println("btcd stopped successfully.")
 
 	// Step 4: Success
 	fmt.Println("Login successful. Wallet unlocked.")
