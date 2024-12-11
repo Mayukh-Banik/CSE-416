@@ -812,7 +812,10 @@ func httpHostToClient(node host.Host) {
 	var args []string
 	script = "../proxy/server.py"
 	args = []string{}
-	hosting = true
+	// hosting = true
+	if !hosting {
+		return
+	}
 	globalCtxC, contextCancel = context.WithCancel(context.Background())
 
 	// Function to run the command
