@@ -127,7 +127,7 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 			}
 
 			proxy.Address, _ = getPrivateIP()
-
+			fmt.Print(("PROXYS IP ADDRESS"))
 			if proxy.PeerID == localPeerID.String() {
 				proxy.IsHost = true
 
@@ -434,8 +434,8 @@ func saveProxyToDHT(proxy models.Proxy) error {
 			// If they are the same, either update or reject
 			existingProxy.Name = proxy.Name
 			existingProxy.Location = proxy.Location
-			fmt.Println("PRXOYS PRIVATE IP:", proxy.Address)
 			existingProxy.Address, _ = getPrivateIP()
+			fmt.Println("PRXOYS PRIVATE IP:", existingProxy.Address)
 			existingProxy.Price = proxy.Price
 			existingProxy.Statistics = proxy.Statistics
 			existingProxy.Bandwidth = proxy.Bandwidth
