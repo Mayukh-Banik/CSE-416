@@ -418,9 +418,13 @@ func contains(slice []string, item string) bool {
 	return false
 }
 func updateProxyHistoryInDHT() error {
-	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
+	fmt.Println("INSIDE UPDATE HISTORY IN DHT")
+	node := dht_kad.Host
+	// Ensure that you're fetching the host's proxy info, not the client’s
+	fmt.Print("node", node.ID())
+	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, node.ID()) // Use the host's peer ID
 	if err != nil {
-		return fmt.Errorf("failed to retrieve proxy info from DHT: %v", err)
+		return fmt.Errorf("failed to retrieve host proxy info from DHT: %v", err)
 	}
 
 	var proxy models.Proxy
@@ -429,16 +433,20 @@ func updateProxyHistoryInDHT() error {
 		return fmt.Errorf("failed to unmarshal proxy info: %v", err)
 	}
 
-	proxy.History = proxyHistory
+	// Append the history to the host's history, not the client’s
+	proxy.History = append(proxy.History, proxyHistory...) // Add history to host's history
+	fmt.Printf("Received history update: %+v\n", proxy.History)
 
+	// Marshal the updated proxy info back to JSON
 	updatedProxyJSON, err := json.Marshal(proxy)
 	if err != nil {
 		return fmt.Errorf("failed to marshal updated proxy info: %v", err)
 	}
 
+	// Update the host's proxy info in the DHT
 	err = dht_kad.DHT.PutValue(context.Background(), "/orcanet/proxy/"+proxy.PeerID, updatedProxyJSON)
 	if err != nil {
-		return fmt.Errorf("failed to update proxy info in DHT: %v", err)
+		return fmt.Errorf("failed to update host proxy info in DHT: %v", err)
 	}
 
 	return nil
