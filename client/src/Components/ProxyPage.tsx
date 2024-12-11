@@ -172,7 +172,7 @@ const ProxyHosts: React.FC = () => {
     try {
       console.log(host.peer_id)
       console.log(host.address)
-      const response = await fetch(`http://localhost:8081/disconnect-from-proxy?val=${host.peer_id}&ip=${host.address}`, {
+      const response = await fetch(`http://localhost:8081/disconnect-from-proxy/`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -536,7 +536,7 @@ const ProxyHosts: React.FC = () => {
                               </Button>
                             </TableCell> */}
                             <TableCell>
-                              <TextField
+                              {/* <TextField
                                 label="Passphrase"
                                 variant="outlined"
                                 value={input1}
@@ -563,7 +563,7 @@ const ProxyHosts: React.FC = () => {
                                   min: 0,
                                   step: "any"
                                 }}
-                              />
+                              /> */}
                               <Button
                                 variant="contained"
                                 onClick={() => handleConnect(host)}
