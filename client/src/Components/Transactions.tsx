@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Box, Table, TableBody, TableCell, TableHead, TableRow,
+  Box, Table, TableBody, TableCell, TableHead, TableRow, TableContainer,
   Typography, Button, Paper,
   TextField, Grid, Alert, CircularProgress, IconButton, InputAdornment,
   Snackbar,
@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Transaction } from '../models/transactions';
 import { UnspentTransaction } from '../models/unspentTransaction';
-import { Visibility, VisibilityOff, ContentCopy } from '@mui/icons-material';
+import { Visibility, VisibilityOff, ContentCopy, Refresh } from '@mui/icons-material';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import MuiAlert from '@mui/material/Alert';
 
@@ -61,28 +61,10 @@ const GlobalTransactions: React.FC = () => {
     setOpenSnackbar(false);
   };
 
-  // Fetch all transactions data
-  // const fetchTransactions = async () => {
-  //   try {
-  //     const response = await fetch("http://localhost:8080/files/getTransactions");
-  //     const data = await response.json();
-  //     if (Array.isArray(data)) {
-  //       console.log("All transactions: ", data);
-  //       setTransactions(data); // Setting up a transaction array
-  //     } else {
-  //       console.error("Unexpected response format:", data);
-  //       setError("Failed to load transaction data.");
-  //     }
-  //   } catch (error) {
-  //     console.error("Failed to fetch all transactions: ", error);
-  //     setError("Failed to load transaction data.");
-  //   }
-  // };
-
   // Fetch unspent transactions data
-  const fetchUnspentTransactions = async () => {
+  const fetchUnspentTransactions = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:8080/api/btc/listunspent");
+      const response = await fetch(`${API_BASE_URL}/api/btc/listunspent`);
       const data = await response.json();
       if (data.status === 'success' && Array.isArray(data.data)) {
         console.log("Unspent Transactions: ", data.data);
@@ -95,12 +77,12 @@ const GlobalTransactions: React.FC = () => {
       console.error("Failed to fetch unspent transactions: ", error);
       setError("Failed to load unspent transaction data.");
     }
-  };
+  }, []);
 
   // Fetch current address
-  const fetchCurrentAddress = async () => {
+  const fetchCurrentAddress = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:8080/api/btc/currentaddress");
+      const response = await fetch(`${API_BASE_URL}/api/btc/currentaddress`);
       const data = await response.json();
       if (data.status === 'success' && typeof data.data === 'string') {
         setCurrentAddress(data.data);
@@ -112,14 +94,13 @@ const GlobalTransactions: React.FC = () => {
       console.error("Failed to fetch current address:", error);
       setError("Failed to load the current address.");
     }
-  };
+  }, []);
 
   // Fetch initial data
   useEffect(() => {
-    // fetchTransactions();
     fetchUnspentTransactions();
     fetchCurrentAddress();
-  }, []);
+  }, [fetchUnspentTransactions, fetchCurrentAddress]);
 
   const handleTransactionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,7 +130,7 @@ const GlobalTransactions: React.FC = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:8080/api/btc/transaction', {
+      const response = await axios.post(`${API_BASE_URL}/api/btc/transaction`, {
         passphrase,
         txid,
         dst,
@@ -177,50 +158,59 @@ const GlobalTransactions: React.FC = () => {
     }
   };
 
-  const renderTable = (data: Transaction[]) => (
-    <Table component={Paper}>
-      <TableHead>
-        <TableRow>
-          <TableCell>Date</TableCell>
-          <TableCell>File Hash</TableCell>
-          <TableCell>Sender</TableCell>
-          <TableCell>Receiver</TableCell>
-          <TableCell>Total Fee</TableCell>
-          <TableCell>Status</TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {data.map((transaction, index) => (
-          <TableRow key={index}>
-            <TableCell>{transaction.CreatedAt}</TableCell>
-            <TableCell>
-              <Button onClick={() => navigate(`/fileview/${transaction.FileHash}`)}>{transaction.FileHash}</Button>
-            </TableCell>
-            <TableCell>
-              <Button onClick={() => navigate(`/account/${transaction.RequesterID}`)}>{transaction.RequesterID}</Button>
-            </TableCell>
-            <TableCell>
-              <Button onClick={() => navigate(`/account/${transaction.TargetID}`)}>{transaction.TargetID}</Button>
-            </TableCell>
-            <TableCell>{transaction.Fee}</TableCell>
-            <TableCell>{transaction.Status}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
+  const handleRefresh = () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    fetchUnspentTransactions().then(() => {
+      fetchCurrentAddress().finally(() => setLoading(false));
+    });
+  };
 
   const renderUnspentTransactionsTable = () => {
     // Filter unspent transactions matching the current address
     const filteredUnspentTxs = unspentTxs.filter(tx => tx.address === currentAddress);
 
+    if (filteredUnspentTxs.length === 0) {
+      return (
+        <Paper sx={{ marginBottom: 4, padding: 2 }}>
+          {/* Display current address */}
+          <Typography variant="h6" gutterBottom>
+            Current Address: {currentAddress}
+          </Typography>
+
+          {/* Empty State Message */}
+          <Box sx={{ textAlign: 'center', padding: 4 }}>
+            <Typography variant="body1" gutterBottom>
+              No unspent transactions available.
+            </Typography>
+            {/* Optional: Add an illustration or icon for empty state */}
+            <img
+              src="/mining.gif" // 수정된 이미지 경로
+              alt="No Data"
+              style={{ marginTop: 16, width: '150px', height: '150px' }}
+            />
+          </Box>
+        </Paper>
+      );
+    }
 
     return (
       <Paper sx={{ marginBottom: 4, padding: 2 }}>
-        {/* Display current address */}
-        <Typography variant="h6" gutterBottom>
-          Current Address: {currentAddress}
-        </Typography>
+        {/* Display current address and Refresh button */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+          <Typography variant="h6">
+            Current Address: {currentAddress}
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<Refresh />}
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={20} /> : 'Refresh'}
+          </Button>
+        </Box>
 
         {/* Copy all data button */}
         <Box sx={{ padding: 2, display: 'flex', justifyContent: 'flex-end' }}>
@@ -238,40 +228,42 @@ const GlobalTransactions: React.FC = () => {
           </CopyToClipboard>
         </Box>
 
-        {/* Table */}
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Transaction ID</TableCell>
-              <TableCell>Amount</TableCell>
-              <TableCell>Confirmations</TableCell>
-              <TableCell>Copy</TableCell> {/* Copy button column */}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredUnspentTxs.map((tx, index) => (
-              <TableRow key={index}>
-                <TableCell>{tx.txid}</TableCell>
-                <TableCell>{tx.amount}</TableCell>
-                <TableCell>{tx.confirmations}</TableCell>
-                <TableCell>
-                  <CopyToClipboard
-                    text={tx.txid} // Copy only txid
-                    onCopy={() => {
-                      setSnackbarMessage('TxID copied successfully!');
-                      setSnackbarSeverity('success');
-                      setOpenSnackbar(true);
-                    }}
-                  >
-                    <IconButton aria-label="copy">
-                      <ContentCopy />
-                    </IconButton>
-                  </CopyToClipboard>
-                </TableCell>
+        {/* Responsive Table Container */}
+        <TableContainer sx={{ maxHeight: 440, overflowX: 'auto' }}>
+          <Table stickyHeader aria-label="unspent transactions table">
+            <TableHead>
+              <TableRow>
+                <TableCell>Transaction ID</TableCell>
+                <TableCell>Amount</TableCell>
+                <TableCell>Confirmations</TableCell>
+                <TableCell>Copy</TableCell> {/* Copy button column */}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {filteredUnspentTxs.map((tx, index) => (
+                <TableRow key={index}>
+                  <TableCell>{tx.txid}</TableCell>
+                  <TableCell>{tx.amount}</TableCell>
+                  <TableCell>{tx.confirmations}</TableCell>
+                  <TableCell>
+                    <CopyToClipboard
+                      text={tx.txid} // Copy only txid
+                      onCopy={() => {
+                        setSnackbarMessage('TxID copied successfully!');
+                        setSnackbarSeverity('success');
+                        setOpenSnackbar(true);
+                      }}
+                    >
+                      <IconButton aria-label="copy">
+                        <ContentCopy />
+                      </IconButton>
+                    </CopyToClipboard>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
     );
   };
@@ -372,11 +364,33 @@ const GlobalTransactions: React.FC = () => {
         </form>
       </Paper>
 
-      {/* Render Unspent Transactions Table */}
+      {/* Render Unspent Transactions Table or Empty State */}
       {unspentTxs.length > 0 ? (
         renderUnspentTransactionsTable()
       ) : (
-        <Typography>No unspent transactions available.</Typography>
+        // Even if unspentTxs is empty, currentAddress should still be displayed
+        <Paper sx={{ marginBottom: 4, padding: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Current Address: {currentAddress}
+          </Typography>
+          <Box sx={{ textAlign: 'center', padding: 4 }}>
+            <Typography variant="body1" gutterBottom>
+              No unspent transactions available.
+            </Typography>
+            {/* Optional: Add an illustration or icon for empty state */}
+            {/* Refresh */}
+            <Box sx={{ marginTop: 2 }}>
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={handleRefresh}
+                disabled={loading}
+              >
+                {loading ? <CircularProgress size={20} /> : 'Refresh'}
+              </Button>
+            </Box>
+          </Box>
+        </Paper>
       )}
 
       {/* List of existing transactions */}
