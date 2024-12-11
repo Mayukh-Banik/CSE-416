@@ -3,6 +3,7 @@ package dht_kad
 import (
 	"application-layer/models"
 	"application-layer/utils"
+	"application-layer/websocket"
 	"bufio"
 	"bytes"
 	"context"
@@ -409,7 +410,11 @@ func receiveDecline(node host.Host) {
 			return
 		}
 		declineMessage.Status = "declined"
+
 		utils.AddOrUpdateTransaction(declineMessage)
+
+		message := "Failed to download file from" + declineMessage.TargetID
+		websocket.SendMessage(message)
 	})
 }
 
@@ -518,6 +523,8 @@ func receiveFile(node host.Host) error {
 		}
 
 		sendSuccessConfirmation(transaction)
+		message := "Successfully downloaded file from " + transaction.TargetID
+		websocket.SendMessage(message)
 
 		err = SendCloudNodeFiles(updatedMetadata)
 		if err != nil {

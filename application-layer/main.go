@@ -5,7 +5,6 @@ import (
 	"application-layer/download"
 	"application-layer/files"
 	proxyService "application-layer/proxy"
-	"application-layer/websocket"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,6 +20,8 @@ func main() {
 	proxyRouter := proxyService.InitProxyRoutes()
 	go dht_kad.StartDHTService()
 
+	// go websocket.BroadcastMessages()
+
 	// CORS handler
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"},        // Frontend's origin
@@ -33,7 +34,7 @@ func main() {
 	http.Handle("/files/", c.Handler(fileRouter))        // File routes under /files
 	http.Handle("/download/", c.Handler(downloadRouter)) // Download routes under /download
 	http.Handle("/proxy-data/", c.Handler(proxyRouter))  // Download routes under /download
-	http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
+	// http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
 
 	port := ":8081"
 	fmt.Printf("Starting server for file routes and DHT on port %s...\n", port)

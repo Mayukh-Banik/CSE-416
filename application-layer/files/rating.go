@@ -107,7 +107,7 @@ func votingHelper(fileHash string, voteType string) error {
 	if err != nil {
 		fmt.Println("votingHelper: error publishing file to DHT", err)
 	}
-
+	fmt.Println("just updated metadata in DHT")
 	updateRatingLocally(fileHash, voteType)
 	dht_kad.SendCloudNodeFiles(metadata)
 	return nil

@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import { useTheme } from '@mui/material/styles';
 import { Provider, DHTMetadata } from "../models/fileMetadata"
 import { Transaction } from '../models/transactions';
+import WebSocketComponent from './Websocket';
 
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
@@ -87,8 +88,10 @@ const MarketplacePage: React.FC = () => {
         const responseText = await response.text(); // Get the error message
         setNotification({ open: true, message: responseText, severity: "error" });
       } else {
-        setNotification({ open: true, message: `Request sent to provider ${provider}`, severity: "success" });
-        setOpen(false); // Close the modal after selecting a provider
+        // setNotification({ open: true, message: `Request sent to provider ${provider}`, severity: "success" });
+        // setOpen(false); // Close the modal after selecting a provider
+        setNotification({ open: true, message: `Successfully downloaded file ${fileHash} from ${provider}`, severity: "success" });
+        setOpen(false); // Close the modal after receiving file
         setSearchResults(marketResults)
       }
     } catch (error) {
@@ -380,7 +383,6 @@ const MarketplacePage: React.FC = () => {
           <Button onClick={() => {setOpen(false), setSearchResults(marketResults)}}>Cancel</Button>
         </DialogActions>
       </Dialog>
-
 
       <Snackbar 
         open={notification.open} 
