@@ -456,6 +456,25 @@ func handleUpdateHistory(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+type Transaction struct {
+	Txid      string  `json:"txid"`
+	Amount    float64 `json:"amount"`
+	Spendable bool    `json:"spendable"`
+}
+
+func findTransactionWithAmountGreaterThan(utxos []map[string]interface{}, x float64) string {
+	for _, utxo := range utxos {
+		// Extract fields from the map
+		if amount, ok := utxo["amount"].(float64); ok && amount > x {
+			// Retrieve txid
+			if txid, txidOk := utxo["txid"].(string); txidOk {
+				return txid
+			}
+		}
+	}
+	return "" // Return empty string if no transaction meets the criteria
+}
+
 func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -516,11 +535,21 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)
 		return
 	}
+	a, err := services.NewBtcService().ListUnspent()
+	if err != nil {
+		http.Error(w, "No unspent coins", http.StatusBadRequest)
+		return
+	}
+	b := findTransactionWithAmountGreaterThan(a, data.Amount)
 
 	log.Println("Successfully connected to the peer.")
 	w.WriteHeader(http.StatusOK)
 	clientconnect = true
-	services.NewBtcService().Transaction(data.Passphrase, data.TransactionID, data.DestinationAddress, data.Amount)
+
+	_, err = services.NewBtcService().Transaction(data.Passphrase, b, data.DestinationAddress, data.Amount)
+	if err != nil {
+		clientconnect = false
+	}
 	// Log the incoming request method and URL
 	// fmt.Print("INSIDE THE CONNECT METHOD")
 	// host_peerid := r.URL.Query().Get("val")
