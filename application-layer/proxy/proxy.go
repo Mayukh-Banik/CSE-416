@@ -495,26 +495,39 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
+	// Ensure the method is GET
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error retrieving proxy info: %v", err), http.StatusInternalServerError)
+	// Check if the proxyHistory file exists
+	if _, err := os.Stat(proxyHistoryFilePath); os.IsNotExist(err) {
+		http.Error(w, "Proxy history file not found", http.StatusNotFound)
 		return
 	}
 
-	var proxy models.Proxy
-	err = json.Unmarshal([]byte(proxyInfo), &proxy)
+	// Read the proxyHistory file
+	data, err := os.ReadFile(proxyHistoryFilePath)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error unmarshalling proxy info: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error reading proxy history file: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	// Unmarshal the data into a slice of ProxyHistoryEntry
+	var proxyHistory []models.ProxyHistoryEntry
+	if err := json.Unmarshal(data, &proxyHistory); err != nil {
+		http.Error(w, fmt.Sprintf("Error unmarshalling proxy history: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Set the response header to application/json
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(proxy.ConnectedPeers)
+
+	// Return the proxy history as a JSON response
+	if err := json.NewEncoder(w).Encode(proxyHistory); err != nil {
+		http.Error(w, fmt.Sprintf("Error encoding proxy history to JSON: %v", err), http.StatusInternalServerError)
+	}
 }
 
 func getPrivateIP() (string, error) {
