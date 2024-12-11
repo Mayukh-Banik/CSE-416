@@ -182,7 +182,7 @@ func pollPeerAddresses(ProxyIsHost bool, ip string) {
 		fmt.Println("IP", ip)
 		var script string
 		var args []string
-		script = "proxy/client.py"
+		script = "../proxy/client.py"
 		args = []string{"--remote-host", ip}
 
 		clientconnect = true
@@ -810,7 +810,7 @@ func saveProxyToDHT(proxy models.Proxy) error {
 func httpHostToClient(node host.Host) {
 	var script string
 	var args []string
-	script = "proxy/server.py"
+	script = "../proxy/server.py"
 	args = []string{}
 	hosting = true
 	globalCtxC, contextCancel = context.WithCancel(context.Background())
