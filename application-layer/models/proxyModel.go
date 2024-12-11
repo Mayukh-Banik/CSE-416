@@ -20,7 +20,7 @@ type Proxy struct {
 
 }
 type ProxyHistoryEntry struct {
-	Name      string    `json:"name"`
-	Location  string    `json:"location"`
-	Timestamp time.Time `json:"timestamp"`
+	HostPeerID string    `json:"peer_id"`
+	ProxyIP    string    `json:"address"`
+	Timestamp  time.Time `json:"timestamp"`
 }
