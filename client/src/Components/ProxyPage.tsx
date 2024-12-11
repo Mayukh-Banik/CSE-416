@@ -220,13 +220,14 @@ const ProxyHosts: React.FC = () => {
     try {
       console.log(host.address)
       console.log(host.address)
-      const response = await fetch(`http://localhost:8081/connect-proxy?val=${host.peer_id}&ip=${host.address}/`, {
+      const response = await fetch(`http://localhost:8081/connect-proxy/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           hostName: host.name,
           hostLocation: host.location,
           hostPeerID: host.peer_id,
+          proxyIP: host.address,
           timestamp: new Date().toLocaleString(),
           passphrase: input1,
           transactionID: input2,

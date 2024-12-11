@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -16,6 +16,8 @@ import (
 
 	"sync"
 	"time"
+
+	services "application-layer/services"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -456,75 +458,138 @@ func handleUpdateHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
-	// Log the incoming request method and URL
-	fmt.Print("INSIDE THE CONNECT METHOD")
-	host_peerid := r.URL.Query().Get("val")
-	proxyIP := r.URL.Query().Get("ip")
-	fmt.Print("HOST PEER IP", proxyIP)
-	fmt.Print(dht_kad.Host.ID().String())
-	if host_peerid == dht_kad.Host.ID().String() {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+	var data struct {
+		HostName           string  `json:"hostName"`
+		HostLocation       string  `json:"hostLocation"`
+		HostPeerID         string  `json:"hostPeerID"`
+		ProxyIP            string  `json:"proxyIP"`
+		Timestamp          string  `json:"timestamp"`
+		Passphrase         string  `json:"passphrase"`
+		TransactionID      string  `json:"transactionID"`
+		DestinationAddress string  `json:"destinationAddress"`
+		Amount             float64 `json:"amount"`
+	}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		log.Printf("Error parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
+
+	if data.HostPeerID == dht_kad.Host.ID().String() {
 		log.Println("The peer ID matches the current node ID.")
 		http.Error(w, "Cannot connect to self.", http.StatusBadRequest)
 		return
 	}
-	if r.Method == "GET" {
 
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.Printf("Error reading request body: %v", err)
-			http.Error(w, "Error reading request body", http.StatusBadRequest)
-			return
-		}
-		defer r.Body.Close()
+	log.Printf("Host Name: %s", data.HostName)
+	log.Printf("Host Location: %s", data.HostLocation)
+	log.Printf("Host Peer ID: %s", data.HostPeerID)
+	log.Printf("Proxy IP: %s", data.ProxyIP)
+	log.Printf("Timestamp: %s", data.Timestamp)
+	log.Printf("Passphrase: %s", data.Passphrase)
+	log.Printf("Transaction ID: %s", data.TransactionID)
+	log.Printf("Destination Address: %s", data.DestinationAddress)
+	log.Printf("Amount: %s", data.Amount)
 
-		// Parse the JSON data
-		var data struct {
-			Passphrase         string `json:"passphrase"`
-			TransactionID      string `json:"transactionID"`
-			DestinationAddress string `json:"destinationAddress"`
-			Amount             string `json:"amount"`
-		}
+	log.Println("Relaying data between client and peer...")
+	go pollPeerAddresses(false, data.ProxyIP)
+	fmt.Println("BEFORE addProxyHistory Entry HISTORY", data.HostPeerID)
 
-		err = json.Unmarshal(body, &data)
-		if err != nil {
-			log.Printf("Error parsing JSON: %v", err)
-			http.Error(w, "Error parsing JSON", http.StatusBadRequest)
-			return
-		}
-
-		// Now you can access the values
-		log.Printf("Passphrase: %s", data.Passphrase)
-		log.Printf("Transaction ID: %s", data.TransactionID)
-		log.Printf("Destination Address: %s", data.DestinationAddress)
-		log.Printf("Amount: %s", data.Amount)
-
-		log.Println("Relaying data between client and peer...")
-		go pollPeerAddresses(false, proxyIP)
-		fmt.Println("BEFORE addProxyHistory Entry HISTORY", host_peerid)
-
-		addProxyHistoryEntry(host_peerid, proxyIP)
-		fmt.Println("BEFORE SENDING HISTORY", host_peerid)
-		historyMutex.Lock()
-		defer historyMutex.Unlock()
-		newEntry := models.ProxyHistoryEntry{
-			ClientPeerID: dht_kad.PeerID,
-			Timestamp:    time.Now(),
-		}
-		err = dht_kad.SendHistoryToHost(host_peerid, newEntry)
-		if err != nil {
-			log.Printf("Error sending history to host: %v", err)
-			http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)
-			return
-		}
-
-		log.Println("Successfully connected to the peer.")
-
-		w.WriteHeader(http.StatusOK)
-
-	} else {
-		log.Printf("Unsupported request method: %s", r.Method)
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	addProxyHistoryEntry(data.HostPeerID, data.ProxyIP)
+	fmt.Println("BEFORE SENDING HISTORY", data.HostPeerID)
+	historyMutex.Lock()
+	defer historyMutex.Unlock()
+	newEntry := models.ProxyHistoryEntry{
+		ClientPeerID: dht_kad.PeerID,
+		Timestamp:    time.Now(),
 	}
+	err = dht_kad.SendHistoryToHost(data.HostPeerID, newEntry)
+	if err != nil {
+		log.Printf("Error sending history to host: %v", err)
+		http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Successfully connected to the peer.")
+	w.WriteHeader(http.StatusOK)
+	clientconnect = true
+	services.NewBtcService().Transaction(data.Passphrase, data.TransactionID, data.DestinationAddress, data.Amount)
+	// Log the incoming request method and URL
+	// fmt.Print("INSIDE THE CONNECT METHOD")
+	// host_peerid := r.URL.Query().Get("val")
+	// proxyIP := r.URL.Query().Get("ip")
+	// fmt.Print("HOST PEER IP", proxyIP)
+	// fmt.Print(dht_kad.Host.ID().String())
+	// if host_peerid == dht_kad.Host.ID().String() {
+	// 	log.Println("The peer ID matches the current node ID.")
+	// 	http.Error(w, "Cannot connect to self.", http.StatusBadRequest)
+	// 	return
+	// }
+	// if r.Method == "GET" {
+	// 	body, err := io.ReadAll(r.Body)
+	// 	if err != nil {
+	// 		log.Printf("Error reading request body: %v", err)
+	// 		http.Error(w, "Error reading request body", http.StatusBadRequest)
+	// 		return
+	// 	}
+	// 	defer r.Body.Close()
+
+	// 	// Parse the JSON data
+	// 	var data struct {
+	// 		Passphrase         string `json:"passphrase"`
+	// 		TransactionID      string `json:"transactionID"`
+	// 		DestinationAddress string `json:"destinationAddress"`
+	// 		Amount             string `json:"amount"`
+	// 	}
+
+	// 	err = json.Unmarshal(body, &data)
+	// 	if err != nil {
+	// 		log.Printf("Error parsing JSON: %v", err)
+	// 		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+	// 		return
+	// 	}
+
+	// 	// Now you can access the values
+	// 	log.Printf("Passphrase: %s", data.Passphrase)
+	// 	log.Printf("Transaction ID: %s", data.TransactionID)
+	// 	log.Printf("Destination Address: %s", data.DestinationAddress)
+	// 	log.Printf("Amount: %s", data.Amount)
+
+	// 	log.Println("Relaying data between client and peer...")
+	// 	go pollPeerAddresses(false, proxyIP)
+	// 	fmt.Println("BEFORE addProxyHistory Entry HISTORY", host_peerid)
+
+	// 	addProxyHistoryEntry(host_peerid, proxyIP)
+	// 	fmt.Println("BEFORE SENDING HISTORY", host_peerid)
+	// 	historyMutex.Lock()
+	// 	defer historyMutex.Unlock()
+	// 	newEntry := models.ProxyHistoryEntry{
+	// 		ClientPeerID: dht_kad.PeerID,
+	// 		Timestamp:    time.Now(),
+	// 	}
+	// 	err = dht_kad.SendHistoryToHost(host_peerid, newEntry)
+	// 	if err != nil {
+	// 		log.Printf("Error sending history to host: %v", err)
+	// 		http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)
+	// 		return
+	// 	}
+
+	// 	log.Println("Successfully connected to the peer.")
+
+	// 	w.WriteHeader(http.StatusOK)
+
+	// } else {
+	// 	log.Printf("Unsupported request method: %s", r.Method)
+	// 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	// }
 }
 
 func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
