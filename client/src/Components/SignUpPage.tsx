@@ -4,7 +4,6 @@ import {
   Typography,
   Box,
   Container,
-  Link,
   IconButton,
   Tooltip,
   Paper,
@@ -24,7 +23,6 @@ import Header from "./Header";
 const SignUpPage: React.FC = () => {
   const classes = useRegisterPageStyles();
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [privateKey, setPrivateKey] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false); 
   const [passphrase, setPassphrase] = useState<string>("");
@@ -74,11 +72,10 @@ const SignUpPage: React.FC = () => {
         const data = await response.json();
         console.log("Server response data:", data); // Log response data
 
-        const { address, private_key, message } = data;
+        const { address, message } = data;
 
         if (message === "Wallet successfully created.") {
           setWalletAddress(address);
-          setPrivateKey(private_key);
           setIsSubmitted(true);
           setIsDialogOpen(false);
           setPassphrase("");
@@ -110,18 +107,6 @@ const SignUpPage: React.FC = () => {
     }
   };
 
-  const downloadPrivateKey = () => {
-    if (privateKey) {
-      const element = document.createElement("a");
-      const file = new Blob([privateKey], { type: "text/plain" });
-      element.href = URL.createObjectURL(file);
-      element.download = "privateKey.txt";
-      document.body.appendChild(element); // Required for this to work in Firefox
-      element.click();
-      document.body.removeChild(element); // Cleanup
-    }
-  };
-
   const handleCloseDialog = () => {
     setIsDialogOpen(false); // Close dialog
     setPassphrase("");
@@ -138,7 +123,7 @@ const SignUpPage: React.FC = () => {
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          height: "75vh",
+          minHeight: "75vh",
           textAlign: "center",
           marginTop: "2rem",
         }}
@@ -158,25 +143,44 @@ const SignUpPage: React.FC = () => {
         )}
 
         {!isSubmitted && (
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{
-              mb: 2,
-              width: "100%",
-              padding: "15px 0",
-              fontSize: "1.2rem",
-              borderRadius: "8px",
-              boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
-              "&:hover": {
-                backgroundColor: "#1976d2",
-              },
-            }}
-            onClick={handleGenerateWalletClick}
-            disabled={isLoading}
-          >
-            Generate Wallet
-          </Button>
+          <>
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{
+                mb: 2,
+                width: "100%",
+                padding: "15px 0",
+                fontSize: "1.2rem",
+                borderRadius: "8px",
+                boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+                "&:hover": {
+                  backgroundColor: "#1976d2",
+                },
+              }}
+              onClick={handleGenerateWalletClick}
+              disabled={isLoading}
+            >
+              Generate Wallet
+            </Button>
+
+            <Button
+              variant="outlined"
+              color="secondary"
+              sx={{
+                mb: 2,
+                width: "100%",
+                padding: "15px 0",
+                fontSize: "1.2rem",
+                borderRadius: "8px",
+                boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+              }}
+              onClick={handleLogin}
+              disabled={isLoading}
+            >
+              Login
+            </Button>
+          </>
         )}
 
         {isSubmitted && (
@@ -201,7 +205,7 @@ const SignUpPage: React.FC = () => {
                 }}
               >
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  Your wallet address (public key):
+                  Your wallet address:
                 </Typography>
                 <Tooltip title="Copy to Clipboard">
                   <IconButton onClick={() => copyToClipboard(walletAddress)}>
@@ -223,38 +227,6 @@ const SignUpPage: React.FC = () => {
                 {walletAddress}
               </Typography>
 
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "1rem",
-                }}
-              >
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  Your private key:
-                </Typography>
-                <Tooltip title="Copy to Clipboard">
-                  <IconButton onClick={() => copyToClipboard(privateKey)}>
-                    <ContentCopyIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-              <Typography
-                variant="body2"
-                sx={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  maxWidth: "100%",
-                  marginBottom: "1rem",
-                  fontFamily: "monospace",
-                  color: "red",
-                }}
-              >
-                {privateKey}
-              </Typography>
-
               <Typography
                 variant="body2"
                 sx={{
@@ -263,55 +235,27 @@ const SignUpPage: React.FC = () => {
                   color: "#ffa726",
                 }}
               >
-                Important: Keep your private key secure and do not share it with
-                anyone.
+                Important: Keep your wallet address secure.
               </Typography>
 
               <Button
                 variant="contained"
-                color="secondary"
+                color="success"
                 sx={{
                   width: "100%",
-                  padding: "10px 0",
-                  fontSize: "1rem",
+                  padding: "12px 0",
+                  fontSize: "1.2rem",
                   borderRadius: "8px",
                   boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+                  mt: 3,
                 }}
-                onClick={downloadPrivateKey}
+                onClick={handleLogin}
               >
-                Download Private Key
+                Continue to Login
               </Button>
             </Paper>
-
-            <Button
-              variant="contained"
-              color="success"
-              sx={{
-                mt: 3,
-                width: "100%",
-                padding: "12px 0",
-                fontSize: "1.2rem",
-                borderRadius: "8px",
-                boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
-              }}
-            >
-              Continue to Account
-            </Button>
           </Box>
         )}
-
-        <Typography sx={{ marginTop: "2rem" }}>
-          <Link
-            onClick={handleLogin}
-            sx={{
-              cursor: "pointer",
-              fontSize: "1rem",
-              textDecoration: "underline",
-            }}
-          >
-            Already have an account? Log In
-          </Link>
-        </Typography>
 
         <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
           <DialogTitle>Enter Passphrase</DialogTitle>
