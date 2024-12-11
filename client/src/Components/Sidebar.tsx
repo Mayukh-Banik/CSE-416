@@ -134,7 +134,7 @@ const Sidebar: React.FC = () => {
           }}
         >
           <ListItemIcon><PublicIcon /></ListItemIcon>
-          <ListItemText primary="Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
+          <ListItemText primary="File Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 
         <ListItem

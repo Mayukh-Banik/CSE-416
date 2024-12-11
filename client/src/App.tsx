@@ -22,7 +22,7 @@ import FileViewPage from "./Components/FileViewPage";
 import AccountViewPage from "./Components/AccountViewPage";
 import ProxyPage from "./Components/ProxyPage";
 // import GlobalTransactions from "./Components/GlobalTransactions";
-import GlobalTransactions from "./Components/Transactions";
+import FileTransactions from "./Components/FileTransactions";
 
 import SearchPage from "./Components/SearchPage";
 import { FileMetadata } from "./models/fileMetadata";
@@ -118,7 +118,7 @@ const App: React.FC = () => {
             initialFetch={initialFetch} 
             setInitialFetch={setInitialFetch} 
           />} />
-          <Route path="/global-transactions" element={<GlobalTransactions />} />
+          <Route path="/global-transactions" element={<FileTransactions />} />
           <Route
             path="/settings"
             element={

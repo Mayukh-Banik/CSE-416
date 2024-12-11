@@ -12,7 +12,7 @@ import { Transaction } from '../models/transactions';
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
-const GlobalTransactions : React.FC = () => {
+const FileTransactions : React.FC = () => {
   const theme = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState<number>(2); // Default to Pending Requests tab
@@ -135,4 +135,4 @@ const GlobalTransactions : React.FC = () => {
   );
 };
 
-export default GlobalTransactions;
+export default FileTransactions;
