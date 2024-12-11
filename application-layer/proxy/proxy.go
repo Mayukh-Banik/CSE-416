@@ -32,6 +32,10 @@ var (
 	Peer_Addresses []ma.Multiaddr
 	isHost         = true
 	fileMutex      sync.Mutex
+	hosting        bool
+	clientconnect  bool
+	globalCtxC     context.Context
+	contextCancel  context.CancelFunc
 )
 
 const (
@@ -162,24 +166,40 @@ func pollPeerAddresses(ProxyIsHost bool, ip string) {
 		httpHostToClient(node)
 	} else {
 		fmt.Println("IN CLIENT")
+		fmt.Println("IP: ", ip)
 		var script string
 		var args []string
 		script = "proxy/client.py"
 		args = []string{"--remote-host", ip}
 
+		clientconnect = true
+		globalCtxC, contextCancel = context.WithCancel(context.Background())
+
 		// Function to run the command
-		runCommand := func(pythonCmd string) error {
-			cmd := exec.Command(pythonCmd, append([]string{script}, args...)...)
+		runCommand := func(ctx context.Context, pythonCmd string) error {
+			cmd := exec.CommandContext(ctx, pythonCmd, append([]string{script}, args...)...)
 			cmd.Stdout = os.Stderr // Redirect standard output to stderr
 			cmd.Stderr = os.Stderr // Redirect standard error to stderr
 			return cmd.Run()
 		}
 
+		tar := func(cancel context.CancelFunc) {
+			for {
+				if !clientconnect {
+					cancel()
+					clientconnect = true
+					break
+				}
+				time.Sleep(10 * time.Second)
+			}
+		}
+
+		go tar(contextCancel)
 		// Try running with `python`
-		if err := runCommand("python"); err != nil {
+		if err := runCommand(globalCtxC, "python"); err != nil {
 			fmt.Println("`python` not found or failed, trying `python3`...")
 			// If `python` fails, try `python3`
-			if err := runCommand("python3"); err != nil {
+			if err := runCommand(globalCtxC, "python3"); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to run %s with both `python` and `python3`: %v\n", script, err)
 			}
 		}
@@ -352,6 +372,24 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+}
+
+func handleDisconnectFromProxy(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("INSIDE DISCONNECT PAGE")
+	if r.Method != "GET" {
+		fmt.Println("R method isn't get for some reason")
+	}
+	clientconnect = false
+	w.WriteHeader(http.StatusOK)
+}
+
+func stopHosting(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("INSIDE DISCONNECT PAGE")
+	if r.Method != "GET" {
+		fmt.Println("R method isn't get for some reason")
+	}
+	hosting = false
+	w.WriteHeader(http.StatusOK)
 }
 
 // handleConnectMethod handles the CONNECT HTTP method for tunneling.
@@ -551,20 +589,34 @@ func httpHostToClient(node host.Host) {
 	var args []string
 	script = "proxy/server.py"
 	args = []string{}
+	hosting = true
+	globalCtxC, contextCancel = context.WithCancel(context.Background())
 
 	// Function to run the command
-	runCommand := func(pythonCmd string) error {
-		cmd := exec.Command(pythonCmd, append([]string{script}, args...)...)
+	runCommand := func(ctx context.Context, pythonCmd string) error {
+		cmd := exec.CommandContext(ctx, pythonCmd, append([]string{script}, args...)...)
 		cmd.Stdout = os.Stderr // Redirect standard output to stderr
 		cmd.Stderr = os.Stderr // Redirect standard error to stderr
 		return cmd.Run()
 	}
 
+	tar := func(cancel context.CancelFunc) {
+		for {
+			if !hosting {
+				cancel()
+				hosting = true
+				break
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}
+
+	go tar(contextCancel)
 	// Try running with `python`
-	if err := runCommand("python"); err != nil {
+	if err := runCommand(globalCtxC, "python"); err != nil {
 		fmt.Println("`python` not found or failed, trying `python3`...")
 		// If `python` fails, try `python3`
-		if err := runCommand("python3"); err != nil {
+		if err := runCommand(globalCtxC, "python3"); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to run %s with both `python` and `python3`: %v\n", script, err)
 		}
 	}

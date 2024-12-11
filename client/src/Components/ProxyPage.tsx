@@ -16,7 +16,7 @@ interface ProxyHost {
   isEnabled: boolean;
   price: string;
   isHost: boolean;
-  
+
 }
 
 function getPrivateIP(callback: (ip: string | null) => void) {
@@ -50,12 +50,13 @@ const ProxyHosts: React.FC = () => {
   const [showHistoryOnly, setShowHistoryOnly] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false); // Track loading state
+  const [isHosting, setIsHosting] = useState<boolean>(false); // Track hosting state
 
   const [newProxy, setNewProxy] = useState<ProxyHost>({
     name: '',
     location: '',
     logs: [],
-    address:'',
+    address: '',
     Statistics: { uptime: '' },
     bandwidth: '',
     peer_id: '',
@@ -94,8 +95,8 @@ const ProxyHosts: React.FC = () => {
       setCurrentIP(ip[0]);
       setProxyHosts(nonEmptyProxies.map(proxy => ({
         name: proxy.name,
-        location: proxy.location ,
-        address:proxy.address,
+        location: proxy.location,
+        address: proxy.address,
         price: proxy.price,
         Statistics: { uptime: proxy.Statistics?.uptime },
         bandwidth: proxy.bandwidth,
@@ -150,6 +151,44 @@ const ProxyHosts: React.FC = () => {
     fetchData()
   }, []);
 
+  const handleDisconnect = (host: ProxyHost) => {
+    setConnectedProxy(host);
+    notifyDisConnectionToBackend(host);
+    const newHistoryEntry = { name: host.name, location: host.location, timestamp: new Date().toLocaleString() };
+    setProxyHistory([...proxyHistory, newHistoryEntry]);
+  }
+
+  const notifyDisConnectionToBackend = async (host: ProxyHost) => {
+    console.log("Attempting to disconnect...");
+    try {
+      console.log(host.peer_id)
+      console.log(host.address)
+      const response = await fetch(`http://localhost:8081/disconnect-from-proxy?val=${host.peer_id}&ip=${host.address}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hostName: host.name,
+          hostLocation: host.location,
+          hostPeerID: host.peer_id,
+
+          timestamp: new Date().toLocaleString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to notify backend about the disconnection');
+      }
+      alert(`Connected to ${host.location}`);
+      if (response.ok) {
+        setCurrentIP(host.address);
+      }
+      console.log(`Successfully notified backend about the disconnection to ${host.location}`);
+    } catch (error) {
+      window.alert("ERROR DISCONNECTING TO PROXY")
+      console.error('Error notifying backend:', error);
+    }
+  };
+
   const handleConnect = (host: ProxyHost) => {
     const updatedHosts = proxyHosts.map(h => ({
       ...h,
@@ -171,6 +210,7 @@ const ProxyHosts: React.FC = () => {
     console.log("Attempting to connect...");
     try {
       console.log(host.peer_id)
+      console.log(host.address)
       const response = await fetch(`http://localhost:8081/connect-proxy?val=${host.peer_id}&ip=${host.address}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -187,7 +227,9 @@ const ProxyHosts: React.FC = () => {
         throw new Error('Failed to notify backend about the connection');
       }
       alert(`Connected to ${host.location}`);
-
+      if (response.ok) {
+        setCurrentIP(host.address);
+      }
       console.log(`Successfully notified backend about the connection to ${host.location}`);
     } catch (error) {
       window.alert("ERROR CONNECTING TO PROXY")
@@ -208,7 +250,7 @@ const ProxyHosts: React.FC = () => {
       name: '',
       location: '',
       logs: [],
-      address:'',
+      address: '',
       peer_id: '',
       Statistics: { uptime: '' },
       bandwidth: '',
@@ -242,6 +284,25 @@ const ProxyHosts: React.FC = () => {
 
   const handleReturn = () => {
     setShowHistoryOnly(false); // Return
+  };
+
+  const handleStopHosting = async () => {
+    try {
+      const response = await fetch('http://localhost:8081/stop-hosting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to stop hosting');
+      }
+
+      alert('Stopped hosting successfully');
+      await fetchData(); // Refresh data to update UI
+    } catch (error) {
+      console.error('Error stopping hosting:', error);
+      alert('Error stopping hosting. Please try again.');
+    }
   };
 
   return (
@@ -319,6 +380,9 @@ const ProxyHosts: React.FC = () => {
                       onClick={() => setShowForm((prev) => !prev)}
                     >
                       {showForm ? 'Hide Form' : 'Add Yourself as Proxy'}
+                    </Button>
+                    <Button variant="outlined" color="error" onClick={handleStopHosting}>
+                      Stop Hosting
                     </Button>
                     {/* Sort Buttons */}
                     <Box sx={{ display: 'flex', gap: '10px' }}>
@@ -434,6 +498,14 @@ const ProxyHosts: React.FC = () => {
                                 onClick={() => handleConnect(host)}
                               >
                                 Connect
+                              </Button>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="contained"
+                                onClick={() => handleDisconnect(host)}
+                              >
+                                Disconnet
                               </Button>
                             </TableCell>
                           </TableRow>
