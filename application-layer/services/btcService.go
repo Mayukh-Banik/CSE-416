@@ -1195,7 +1195,7 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	err := forceRemoveAll(mainnetPath)
 	if err != nil {
 		fmt.Printf("Failed to remove mainnet directory: %v\n", err)
-		return "Failed to remove mainnet directory", fmt.Errorf("Failed to remove mainnet directory: %w", err)
+		return "Failed to remove mainnet directory", fmt.Errorf("failed to remove mainnet directory: %w", err)
 	}
 	fmt.Println("Mainnet directory removed successfully.")
 
@@ -1203,7 +1203,7 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 	err = initializeTempFile()
 	if err != nil {
 		fmt.Printf("Failed to initialize temp file: %v\n", err)
-		return "Failed to initialize temp file", fmt.Errorf("Failed to initialize temp file: %w", err)
+		return "Failed to initialize temp file", fmt.Errorf("failed to initialize temp file: %w", err)
 	}
 	fmt.Println("Temporary file initialized successfully.")
 
@@ -1262,7 +1262,7 @@ func (bs *BtcService) Login(walletAddress, passphrase string) (string, error) {
 		fmt.Printf("Error connecting to TA server: %v\n", err)
 		bs.StopBtcd()
 		bs.StopBtcwallet()
-		return "Error connecting to TA server", fmt.Errorf("Error connecting to TA server: %s", output.String())
+		return "Error connecting to TA server", fmt.Errorf("error connecting to TA server: %s", output.String())
 	}
 
 	fmt.Println("Connected to TA server successfully.")
