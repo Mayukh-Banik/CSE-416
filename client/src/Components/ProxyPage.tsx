@@ -47,11 +47,15 @@ const ProxyHosts: React.FC = () => {
   const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([]); // State to store proxy hosts
   const [currentIP, setCurrentIP] = useState<string>('');
   const [connectedProxy, setConnectedProxy] = useState<ProxyHost | null>(null);
-  const [proxyHistory, setProxyHistory] = useState<{ client_peer_id: string; timestamp: Date }[]>([]);
+  const [proxyHistory, setProxyHistory] = useState<{ name: string; location: string; timestamp: string }[]>([]);
   const [showHistoryOnly, setShowHistoryOnly] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false); // Track loading state
   const [isHosting, setIsHosting] = useState<boolean>(false); // Track hosting state
+  const [input1, setInput1] = useState('');
+  const [input2, setInput2] = useState('');
+  const [input3, setInput3] = useState('');
+  const [input4, setInput4] = useState('');
 
   const [newProxy, setNewProxy] = useState<ProxyHost>({
     name: '',
@@ -157,7 +161,7 @@ const ProxyHosts: React.FC = () => {
   const handleDisconnect = (host: ProxyHost) => {
     setConnectedProxy(host);
     notifyDisConnectionToBackend(host);
-    const newHistoryEntry = { client_peer_id: host.peer_id, timestamp: new Date() };
+    const newHistoryEntry = { name: host.name, location: host.location, timestamp: new Date().toLocaleString() };
     setProxyHistory([...proxyHistory, newHistoryEntry]);
   }
 
@@ -174,7 +178,7 @@ const ProxyHosts: React.FC = () => {
           hostLocation: host.location,
           hostPeerID: host.peer_id,
 
-          timestamp: new Date()
+          timestamp: new Date().toLocaleString(),
         }),
       });
 
@@ -193,11 +197,12 @@ const ProxyHosts: React.FC = () => {
   };
 
   const handleConnect = (host: ProxyHost) => {
+    console.log('Input 1:', input1);
+    console.log('Input 2:', input2);
     const updatedHosts = proxyHosts.map(h => ({
       ...h,
       isEnabled: h.location === host.location ? true : h.isEnabled,
     }));
-
 
     setProxyHosts(updatedHosts);
     setConnectedProxy(host);
@@ -205,25 +210,7 @@ const ProxyHosts: React.FC = () => {
 
 
     // Update proxy history
-    const newHistoryEntry = {
-      client_peer_id: host.peer_id,
-      location: host.location,
-      timestamp: new Date()
-    };
-
-    fetch('http://localhost:8081/update-history/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(newHistoryEntry)
-    }).then(response => {
-      if (!response.ok) {
-        console.error('Failed to update history on host');
-      }
-    }).catch(error => {
-      console.error('Error updating history:', error);
-    });
+    const newHistoryEntry = { name: host.name, location: host.location, timestamp: new Date().toLocaleString() };
     setProxyHistory([...proxyHistory, newHistoryEntry]);
 
   }
@@ -233,15 +220,18 @@ const ProxyHosts: React.FC = () => {
     try {
       console.log(host.address)
       console.log(host.address)
-      const response = await fetch(`http://localhost:8081/connect-proxy?val=${host.peer_id}&ip=${host.address}`, {
+      const response = await fetch(`http://localhost:8081/connect-proxy?val=${host.peer_id}&ip=${host.address}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           hostName: host.name,
           hostLocation: host.location,
           hostPeerID: host.peer_id,
-
-          timestamp: new Date(),
+          timestamp: new Date().toLocaleString(),
+          passphrase: input1,
+          transactionID: input2,
+          destinationAddress: input3,
+          amount: input4
         }),
       });
 
@@ -251,7 +241,6 @@ const ProxyHosts: React.FC = () => {
       alert(`Connected to ${host.location}`);
       if (response.ok) {
         setCurrentIP(host.address);
-        await updateHistoryOnHost(host.peer_id);
       } if (response.ok) {
         setCurrentIP(host.address);
       }
@@ -261,27 +250,11 @@ const ProxyHosts: React.FC = () => {
       console.error('Error notifying backend:', error);
     }
   };
-  const updateHistoryOnHost = async (hostPeerID: string) => {
-    try {
-      const response = await fetch(`http://localhost:8081/update-history?host=${hostPeerID}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(proxyHistory),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update history on host');
-      }
-
-      console.log('Successfully updated history on host');
-    } catch (error) {
-      console.error('Error updating history on host:', error);
-    }
-  };
 
   const handleAddProxy = async () => {
+    newProxy.location = 'nyc'
+    newProxy.Statistics.uptime = '0'
+    newProxy.bandwidth = '0'
     if (newProxy.location.trim() === '' || newProxy.price.trim() === '' || newProxy.Statistics.uptime === '' || newProxy.bandwidth.trim() === '') {
       alert('Please fill in all fields.');
       return;
@@ -294,7 +267,7 @@ const ProxyHosts: React.FC = () => {
       name: '',
       location: '',
       logs: [],
-      address:  '',
+      address: '',
       peer_id: '',
       Statistics: { uptime: '' },
       bandwidth: '',
@@ -308,7 +281,10 @@ const ProxyHosts: React.FC = () => {
     window.location.reload();
   };
 
-
+  const handleSortByLocation = () => {
+    const sortedHosts = [...proxyHosts].sort((a, b) => a.location.localeCompare(b.location));
+    setProxyHosts(sortedHosts);
+  };
 
   const handleSortByPrice = () => {
     const sortedHosts = [...proxyHosts].sort((a, b) => {
@@ -326,18 +302,14 @@ const ProxyHosts: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
       });
 
+      console.log(response.json());
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
       const history = await response.json();
-      const updatedHistory = history.map((entry: { client_peer_id: string; timestamp: string }) => ({
-        ...entry,
-        timestamp: new Date(entry.timestamp).toLocaleString(), // Convert to a readable format
-      }));
-      
-      setProxyHistory(updatedHistory); 
+      setProxyHistory(history); // Assuming setProxyHistory is defined elsewhere
     } catch (error) {
       console.error("Failed to fetch proxy history:", error);
     }
@@ -401,15 +373,30 @@ const ProxyHosts: React.FC = () => {
                       <Table>
                         <TableHead>
                           <TableRow>
-                            <TableCell>PeerID</TableCell>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Location</TableCell>
                             <TableCell>Connected At</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {proxyHistory.map((entry, index) => (
                             <TableRow key={index}>
-                              <TableCell>{entry.client_peer_id}</TableCell>
-                              <TableCell>{entry.timestamp.toLocaleString()}</TableCell>
+                              <TableCell>{entry.name}</TableCell>
+                              <TableCell>{entry.location}</TableCell>
+                              <TableCell>{entry.timestamp}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="contained"
+                                  onClick={() => {
+                                    const host = proxyHosts.find(
+                                      (h) => h.location === entry.location
+                                    );
+                                    if (host) handleConnect(host);
+                                  }}
+                                >
+                                  Connect
+                                </Button>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -437,6 +424,9 @@ const ProxyHosts: React.FC = () => {
                     </Button>
                     {/* Sort Buttons */}
                     <Box sx={{ display: 'flex', gap: '10px' }}>
+                      <Button variant="outlined" onClick={handleSortByLocation}>
+                        Sort by Location
+                      </Button>
                       <Button variant="outlined" onClick={handleSortByPrice}>
                         Sort by Price
                       </Button>
@@ -457,14 +447,14 @@ const ProxyHosts: React.FC = () => {
                             setNewProxy({ ...newProxy, name: e.target.value })
                           }
                         />
-                        <TextField
+                        {/* <TextField
                           label="Location"
                           variant="outlined"
                           value={newProxy.location}
                           onChange={(e) =>
                             setNewProxy({ ...newProxy, location: e.target.value })
                           }
-                        />
+                        /> */}
                         <TextField
                           label="Price ($)"
                           variant="outlined"
@@ -475,7 +465,7 @@ const ProxyHosts: React.FC = () => {
                           }
                           InputProps={{ inputProps: { min: 0 } }}
                         />
-                        <TextField
+                        {/* <TextField
                           label="Uptime (%)"
                           variant="outlined"
                           value={newProxy.Statistics.uptime}
@@ -488,15 +478,15 @@ const ProxyHosts: React.FC = () => {
                               },
                             })
                           }
-                        />
-                        <TextField
+                        /> */}
+                        {/* <TextField
                           label="Bandwidth"
                           variant="outlined"
                           value={newProxy.bandwidth}
                           onChange={(e) =>
                             setNewProxy({ ...newProxy, bandwidth: e.target.value })
                           }
-                        />
+                        /> */}
                         <Button
                           variant="contained"
                           className={styles.submitButton}
@@ -524,23 +514,57 @@ const ProxyHosts: React.FC = () => {
                         {proxyHosts.map((host, index) => (
                           <TableRow key={index}>
                             <TableCell>{host.name}</TableCell>
-                            <TableCell>{host.location}</TableCell>
+                            {/* <TableCell>{host.location}</TableCell> */}
                             <TableCell>{host.price}</TableCell>
-                            <TableCell>
+                            {/* <TableCell>
                               {host.Statistics && host.Statistics.uptime
                                 ? host.Statistics.uptime
                                 : 'N/A'}
-                            </TableCell>
-                            <TableCell>{host.bandwidth}</TableCell>
-                            <TableCell>
+                            </TableCell> */}
+                            {/* <TableCell>{host.bandwidth}</TableCell> */}
+                            {/* <TableCell>
                               <Button
                                 variant="text"
                                 onClick={() => alert(host.logs.join('\n'))}
                               >
                                 View Logs
                               </Button>
-                            </TableCell>
+                            </TableCell> */}
                             <TableCell>
+                              <TextField
+                                label="Passphrase"
+                                variant="outlined"
+                                value={input1}
+                                onChange={(e) => setInput1(e.target.value)}
+                              />
+                              <TextField
+                                label="Transaction ID"
+                                variant="outlined"
+                                value={input2}
+                                onChange={(e) => setInput2(e.target.value)}
+                              />
+                              <TextField
+                                label="Destination Address"
+                                variant="outlined"
+                                value={input3}
+                                onChange={(e) => setInput3(e.target.value)}
+                              />
+                              <TextField
+                                label="Amount"
+                                variant="outlined"
+                                type="number"
+                                value={input4}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || parseFloat(value) >= 0) {
+                                    setInput4(value);
+                                  }
+                                }}
+                                inputProps={{
+                                  min: 0,
+                                  step: "any"
+                                }}
+                              />
                               <Button
                                 variant="contained"
                                 onClick={() => handleConnect(host)}

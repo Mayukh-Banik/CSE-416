@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -324,7 +325,7 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		// clearAllProxies()
-
+		hosting = true
 		proxyInfo, err := getAllProxiesFromDHT(dht_kad.DHT, node.ID(), models.Proxy{})
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error retrieving proxies: %v", err), http.StatusInternalServerError)
@@ -467,6 +468,36 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == "GET" {
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Printf("Error reading request body: %v", err)
+			http.Error(w, "Error reading request body", http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		// Parse the JSON data
+		var data struct {
+			Passphrase         string `json:"passphrase"`
+			TransactionID      string `json:"transactionID"`
+			DestinationAddress string `json:"destinationAddress"`
+			Amount             string `json:"amount"`
+		}
+
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			log.Printf("Error parsing JSON: %v", err)
+			http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+			return
+		}
+
+		// Now you can access the values
+		log.Printf("Passphrase: %s", data.Passphrase)
+		log.Printf("Transaction ID: %s", data.TransactionID)
+		log.Printf("Destination Address: %s", data.DestinationAddress)
+		log.Printf("Amount: %s", data.Amount)
+
 		log.Println("Relaying data between client and peer...")
 		go pollPeerAddresses(false, proxyIP)
 		fmt.Println("BEFORE addProxyHistory Entry HISTORY", host_peerid)
@@ -479,7 +510,7 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 			ClientPeerID: dht_kad.PeerID,
 			Timestamp:    time.Now(),
 		}
-		err := dht_kad.SendHistoryToHost(host_peerid, newEntry)
+		err = dht_kad.SendHistoryToHost(host_peerid, newEntry)
 		if err != nil {
 			log.Printf("Error sending history to host: %v", err)
 			http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)
@@ -495,6 +526,7 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
 }
+
 func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
 	// Debug: Log the incoming request method
 	fmt.Println("Received request method:", r.Method)
