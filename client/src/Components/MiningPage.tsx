@@ -372,7 +372,7 @@ const MiningPage: React.FC = () => {
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>
-                                    Balance
+                                    Available Balance
                                 </Typography>
                                 <Typography variant="body1">{balance} BTC</Typography>
                             </CardContent>
