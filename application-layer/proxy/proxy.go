@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+
 	"sync"
 	"time"
 
@@ -39,6 +40,7 @@ var (
 const (
 	bootstrapNode = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
 
+	proxyHistoryFilePath = "..utils/proxyHistory.json"
 	// bootstrapNode = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
 	// bootstrapNode   = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
 	proxyKeyPrefix  = "/orcanet/proxy/"
@@ -416,39 +418,6 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-func updateHostProxyInfo(clientPeerID string) {
-	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
-	if err != nil {
-		log.Printf("Error retrieving proxy info: %v", err)
-		return
-	}
-
-	var proxy models.Proxy
-	err = json.Unmarshal([]byte(proxyInfo), &proxy)
-	if err != nil {
-		log.Printf("Error unmarshalling proxy info: %v", err)
-		return
-	}
-
-	// Add the new client to the connected peers list
-	proxy.ConnectedPeers = append(proxy.ConnectedPeers, clientPeerID)
-
-	// Save the updated proxy information back to the DHT
-	updatedProxyJSON, err := json.Marshal(proxy)
-	if err != nil {
-		log.Printf("Error marshalling updated proxy info: %v", err)
-		return
-	}
-
-	err = dht_kad.DHT.PutValue(context.Background(), "/orcanet/proxy/"+proxy.PeerID, updatedProxyJSON)
-	if err != nil {
-		log.Printf("Error saving updated proxy info to DHT: %v", err)
-		return
-	}
-
-	log.Printf("Updated host proxy info with new connected peer: %s", clientPeerID)
-}
-
 // Function to add a new history entry
 func addProxyHistoryEntry(hostPeerID, proxyIP string) {
 	historyMutex.Lock()
@@ -498,15 +467,18 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == "GET" {
 		log.Println("Relaying data between client and peer...")
-		pollPeerAddresses(false, proxyIP)
+		go pollPeerAddresses(false, proxyIP)
 		fmt.Println("BEFORE addProxyHistory Entry HISTORY", host_peerid)
 
 		addProxyHistoryEntry(host_peerid, proxyIP)
 		fmt.Println("BEFORE SENDING HISTORY", host_peerid)
 		historyMutex.Lock()
 		defer historyMutex.Unlock()
-
-		err := dht_kad.SendHistoryToHost(host_peerid)
+		newEntry := models.ProxyHistoryEntry{
+			ClientPeerID: dht_kad.PeerID,
+			Timestamp:    time.Now(),
+		}
+		err := dht_kad.SendHistoryToHost(host_peerid, newEntry)
 		if err != nil {
 			log.Printf("Error sending history to host: %v", err)
 			http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)

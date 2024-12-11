@@ -30,7 +30,6 @@ var (
 	ProxyResponse   []models.Proxy
 
 	MarketplaceFiles []models.FileMetadata
-	proxyHistory     []models.ProxyHistoryEntry
 
 	MarketplaceFilesSignal = make(chan struct{})
 	ProxiesSignal          = make(chan struct{}, 1)
@@ -342,23 +341,7 @@ func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
 	fmt.Printf("SendProxyRequest: Successfully received proxy metadata from peer %s\n", peerID)
 }
 
-func handleHistoryStream(stream network.Stream) {
-	defer stream.Close()
-
-	var history []models.ProxyHistoryEntry
-	decoder := json.NewDecoder(stream)
-	if err := decoder.Decode(&history); err != nil {
-		log.Printf("Error decoding history: %v", err)
-		return
-	}
-
-	// Process the received history
-	fmt.Printf("Received proxy history: %v\n", history)
-	// Add your logic to store or process the history
-}
-
-func SendHistoryToHost(hostPeerIDStr string) error {
-
+func SendHistoryToHost(hostPeerIDStr string, proxyHistory models.ProxyHistoryEntry) error {
 	// Decode the peer ID
 	hostPeerID, err := peer.Decode(hostPeerIDStr)
 	if err != nil {
@@ -367,8 +350,8 @@ func SendHistoryToHost(hostPeerIDStr string) error {
 	fmt.Printf("DECODED PEER ID: %s\n", hostPeerID)
 
 	// Attempt to create a stream
-	fmt.Printf("Attempting to create a stream to peer %s using protocol %s\n", hostPeerID, "/orcanet/p2p")
-	stream, err := CreateNewStream(DHT.Host(), hostPeerIDStr, "/orcanet/p2p")
+	fmt.Printf("Attempting to create a stream to peer %s using protocol %s\n", hostPeerID, "/history/p2p")
+	stream, err := CreateNewStream(DHT.Host(), hostPeerIDStr, "/history/p2p")
 	if err != nil {
 		fmt.Printf("ERROR: Failed to create stream to peer %s: %v\n", hostPeerID, err)
 		return fmt.Errorf("failed to create stream: %v", err)
@@ -392,17 +375,20 @@ func SendHistoryToHost(hostPeerIDStr string) error {
 
 // RECEIVING FUNCTIONS
 func receivedHistory(node host.Host) {
-	node.SetStreamHandler("/orcanet/p2p", func(stream network.Stream) {
-		fmt.Println("Received a stream for /orcanet/p2p")
+	node.SetStreamHandler("/history/p2p", func(stream network.Stream) {
+		fmt.Println("Received a stream for /history/p2p")
 		defer stream.Close()
 
 		decoder := json.NewDecoder(stream)
-		var receivedHistory []models.ProxyHistoryEntry // Update YourHistoryType accordingly
+		var receivedHistory models.ProxyHistoryEntry // Update YourHistoryType accordingly
 		if err := decoder.Decode(&receivedHistory); err != nil {
 			fmt.Printf("Error decoding received history: %v\n", err)
 			return
 		}
+
 		fmt.Println("Received history:", receivedHistory)
+		utils.AddOrUpdateProxyHistory(receivedHistory)
+		fmt.Println("added")
 	})
 }
 func receiveDownloadRequest(node host.Host) {
