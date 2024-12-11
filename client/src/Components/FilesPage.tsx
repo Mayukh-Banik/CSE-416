@@ -62,13 +62,16 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const [downloadedFiles, setDownloadedFiles] = useState<FileMetadata[]>([]);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [publishDialogOpen, setPublishDialogOpen] = useState(false); // Control for the modal
-  const [currentFileHash, setCurrentFileHash] = useState<string | null>(null); // Track the file being published
+  const [currentFile, setCurrentFile] = useState<FileMetadata>(); // Track the file being published
+  const [currentFileHash, setCurrentFileHash] = useState(""); // Track the file being published
   const [fees, setFees] = useState<{ [key: string]: number }>({}); // Track fees of to be uploaded files
+  const [newFee, setNewFee] = useState(0);
   const [names, setNames] = useState<{ [key: string]: string }>({}); // Track names of to be uploaded files
   const theme = useTheme();
   const [loading, setLoading] = useState(false); // Loading state for file upload
   const [uploadedRatings, setUploadedRatings] = useState<{ [key: string]: number }>({});
   const [downloadedRatings, setDownloadedRatings] = useState<{ [key: string]: number }>({});
+  const [parsingFiles, setParsingFiles] = useState<FileMetadata[]>([])
 
   useEffect(() => {
     const fetchAllFiles = async () => {
@@ -324,6 +327,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   };
 
   const handleConfirmPublish = async (hash: string, files: FileMetadata[]) => {
+
     const fileToPublish = files.find(file => file.Hash === hash);
     
     if (!fileToPublish) {
@@ -335,6 +339,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     const updatedMetadata = {
       ...fileToPublish,
       IsPublished: !fileToPublish.IsPublished,
+      Fee: newFee,
     };
 
     console.log("updated metadata: ", updatedMetadata)
@@ -354,7 +359,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
             setUploadedFiles(prevFiles => 
               prevFiles.map(currentFile =>
                 currentFile.Hash === hash
-                  ? { ...currentFile, IsPublished: !currentFile.IsPublished }
+                  ? { ...currentFile, IsPublished: !currentFile.IsPublished, Fee: newFee }
                   : currentFile
               )
             );
@@ -362,7 +367,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
             setDownloadedFiles(prevFiles => 
               prevFiles.map(currentFile =>
                 currentFile.Hash === hash
-                  ? { ...currentFile, IsPublished: !currentFile.IsPublished }
+                  ? { ...currentFile, IsPublished: !currentFile.IsPublished, Fee: newFee }
                   : currentFile
               )
             );
@@ -388,7 +393,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         setNotification({ open: true, message: "An error occurred", severity: "error" });
     } finally {
         console.log("Published file:", updatedMetadata);
-        // setPublishDialogOpen(false);
+        setPublishDialogOpen(false);
     }
 };
 
@@ -611,13 +616,23 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <Tooltip title="Publish File" arrow>
-                            <Switch
-                              edge="end"
-                              onChange={() => handleConfirmPublish(file.Hash, uploadedFiles)}
-                              checked={file.IsPublished}
-                              color="primary"
-                              inputProps={{ 'aria-label': `publish ${file.Name}` }}
-                            />
+                          <Switch
+                            edge="end"
+                            onChange={() => {
+                              setCurrentFile(file);
+                              setCurrentFileHash(file.Hash);
+                              if (file.IsPublished) {
+                                handleConfirmPublish(file.Hash, uploadedFiles);
+                                setNewFee(file.Fee)
+                              } else {
+                                setParsingFiles(uploadedFiles);
+                                setPublishDialogOpen(true);
+                              }
+                            }}
+                            checked={file.IsPublished}
+                            color="primary"
+                            inputProps={{ 'aria-label': `publish ${file.Name}` }}
+                          />
                           </Tooltip>
                           <IconButton
                             edge="end"
@@ -628,6 +643,32 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                           </IconButton>
                         </Box>
                       </TableCell>
+
+                      {/* <Dialog open={publishDialogOpen} onClose={() => setPublishDialogOpen(false)}>
+                        <DialogTitle>Set Download Fee</DialogTitle>
+                        <DialogContent>
+                          <TextField
+                            autoFocus
+                            margin="dense"
+                            label="Enter Fee (in Squid Coins)"
+                            type="number"
+                            fullWidth
+                            variant="outlined"
+                            value={newFee}
+                            onChange={(e) => setNewFee(Number(e.target.value))}
+                          />
+                        </DialogContent>
+
+                        <DialogActions>
+                          <Button onClick={() => setPublishDialogOpen(false)} color="secondary">
+                            Cancel
+                          </Button>
+                          <Button onClick={handleConfirmPublish(file.Hash, uploadedFiles) as any} color="primary">
+                            Publish
+                          </Button>
+                        </DialogActions>
+                      </Dialog> */}
+
                     </TableRow>
                   ))}
                 </TableBody>
@@ -697,13 +738,24 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <Tooltip title="Publish File" arrow>
-                            <Switch
-                              edge="end"
-                              onChange={() => handleConfirmPublish(file.Hash, downloadedFiles)}
-                              checked={file.IsPublished}
-                              color="primary"
-                              inputProps={{ 'aria-label': `publish ${file.Name}` }}
-                            />
+                          <Switch
+                            edge="end"
+                            onChange={() => {
+                              setCurrentFile(file);
+                              setCurrentFileHash(file.Hash);
+                              if (file.IsPublished) {
+                                handleConfirmPublish(file.Hash, uploadedFiles);
+                                setNewFee(file.Fee)
+                              } else {
+                                setParsingFiles(downloadedFiles);
+                                setPublishDialogOpen(true);
+                              }
+                            }}
+                            checked={file.IsPublished}
+                            color="primary"
+                            inputProps={{ 'aria-label': `publish ${file.Name}` }}
+                          />
+
                           </Tooltip>
                           <IconButton
                             edge="end"
@@ -714,12 +766,45 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                           </IconButton>
                         </Box>
                       </TableCell>
+
+                      {/* <Dialog open={publishDialogOpen} onClose={() => setPublishDialogOpen(false)}>
+                        <DialogTitle>Set Download Fee</DialogTitle>
+                        <DialogContent>
+                          <TextField
+                            autoFocus
+                            margin="dense"
+                            label="Enter Fee (in Squid Coins)"
+                            type="number"
+                            fullWidth
+                            variant="outlined"
+                            value={newFee}
+                            onChange={(e) => setNewFee(Number(e.target.value))}
+                          />
+                        </DialogContent>
+
+                        <DialogActions>
+                          <Button onClick={() => setPublishDialogOpen(false)} color="secondary">
+                            Cancel
+                          </Button>
+                          <Button onClick={handleConfirmPublish(file.Hash, downloadedFiles) as any} color="primary">
+                            Publish
+                          </Button>
+                        </DialogActions>
+                      </Dialog> */}
+
                     </TableRow>
-                  ))}
+                  
+                ))
+                  
+                  }
                 </TableBody>
               </Table>
             </TableContainer>
+
+            
+
           </Box>
+
         )}
 
       </Box>
@@ -727,7 +812,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       
 
       {/* Publish Modal */}
-      {/* <Dialog open={publishDialogOpen} onClose={() => setPublishDialogOpen(false)}>
+      <Dialog open={publishDialogOpen} onClose={() => setPublishDialogOpen(false)}>
         <DialogTitle>Set Download Fee</DialogTitle>
         <DialogContent>
           <TextField
@@ -737,20 +822,20 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
             type="number"
             fullWidth
             variant="outlined"
-            value={fee}
-
-            onChange={(e) => setFee(Number(e.target.value))}
+            value={newFee}
+            onChange={(e) => setNewFee(Number(e.target.value))}
           />
         </DialogContent>
+
         <DialogActions>
           <Button onClick={() => setPublishDialogOpen(false)} color="secondary">
             Cancel
           </Button>
-          <Button onClick={handleConfirmPublish} color="primary">
+          <Button onClick={() => handleConfirmPublish(currentFileHash, parsingFiles)} color="primary">
             Publish
           </Button>
         </DialogActions>
-      </Dialog> */}
+      </Dialog>
 
       {/* Notification Snackbar */}
       <Snackbar 
