@@ -95,6 +95,7 @@
         "@typescript-eslint/parser": "^5.62.0",
         "cross-env": "^7.0.3",
         "customize-cra": "^1.0.0",
+        "electron-hot-reload": "^0.1.4",
         "eslint": "^8.57.1",
         "eslint-config-react-app": "^7.0.1",
         "eslint-plugin-import": "^2.31.0",
