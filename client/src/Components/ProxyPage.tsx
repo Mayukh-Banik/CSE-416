@@ -332,9 +332,15 @@ const ProxyHosts: React.FC = () => {
       }
 
       const history = await response.json();
-      history.timestamp = new Date(history.timestamp)
-      console.log(history)
-      setProxyHistory(history); // Assuming setProxyHistory is defined elsewhere
+      const updatedHistory = history.map(entry => {
+        return {
+          ...entry,
+          timestamp: new Date(entry.timestamp).toLocaleString() 
+        };
+      });
+      
+      console.log(updatedHistory);
+      setProxyHistory(updatedHistory);// Assuming setProxyHistory is defined elsewhere
     } catch (error) {
       console.error("Failed to fetch proxy history:", error);
     }
