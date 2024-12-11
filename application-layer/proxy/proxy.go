@@ -161,7 +161,6 @@ func pollPeerAddresses(ProxyIsHost bool, ip string) {
 	node := dht_kad.Host
 	if ProxyIsHost {
 		fmt.Println("IN HOST", ip)
-
 		for {
 			if hosting {
 				httpHostToClient(node)
@@ -418,14 +417,11 @@ func contains(slice []string, item string) bool {
 }
 
 func updateHostProxyInfo(clientPeerID string) {
-	fmt.Println("Debug: Entering updateHostProxyInfo function")
-
 	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
 	if err != nil {
 		log.Printf("Error retrieving proxy info: %v", err)
 		return
 	}
-	fmt.Printf("Debug: Retrieved proxy info from DHT: %s\n", proxyInfo)
 
 	var proxy models.Proxy
 	err = json.Unmarshal([]byte(proxyInfo), &proxy)
@@ -433,19 +429,9 @@ func updateHostProxyInfo(clientPeerID string) {
 		log.Printf("Error unmarshalling proxy info: %v", err)
 		return
 	}
-	fmt.Printf("Debug: Unmarshalled proxy info: %+v\n", proxy)
 
 	// Add the new client to the connected peers list
 	proxy.ConnectedPeers = append(proxy.ConnectedPeers, clientPeerID)
-	fmt.Printf("Debug: Added new client %s to connected peers\n", clientPeerID)
-
-	// Add a new entry to the connection history
-	newHistoryEntry := models.ProxyHistoryEntry{
-		ClientPeerID: clientPeerID,
-		Timestamp:    time.Now(),
-	}
-	proxy.ConnectionHistory = append(proxy.ConnectionHistory, newHistoryEntry)
-	fmt.Printf("Debug: Added new history entry: %+v\n", newHistoryEntry)
 
 	// Save the updated proxy information back to the DHT
 	updatedProxyJSON, err := json.Marshal(proxy)
@@ -453,23 +439,57 @@ func updateHostProxyInfo(clientPeerID string) {
 		log.Printf("Error marshalling updated proxy info: %v", err)
 		return
 	}
-	fmt.Printf("Debug: Marshalled updated proxy info: %s\n", string(updatedProxyJSON))
 
 	err = dht_kad.DHT.PutValue(context.Background(), "/orcanet/proxy/"+proxy.PeerID, updatedProxyJSON)
 	if err != nil {
 		log.Printf("Error saving updated proxy info to DHT: %v", err)
 		return
 	}
-	fmt.Printf("Debug: Successfully saved updated proxy info to DHT for PeerID: %s\n", proxy.PeerID)
 
 	log.Printf("Updated host proxy info with new connected peer: %s", clientPeerID)
-	fmt.Println("Debug: Exiting updateHostProxyInfo function")
+}
+
+// Function to add a new history entry
+func addProxyHistoryEntry(hostPeerID, proxyIP string) {
+	historyMutex.Lock()
+	defer historyMutex.Unlock()
+
+	newEntry := models.ProxyHistoryEntry{
+		ClientPeerID: hostPeerID,
+		Timestamp:    time.Now(),
+	}
+
+	proxyHistory = append(proxyHistory, newEntry)
+}
+
+// Function to send the history to the host
+
+func handleUpdateHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var history []models.ProxyHistoryEntry
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&history)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to decode history data: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Process the history data (e.g., store in a database, etc.)
+	fmt.Printf("Received proxy history: %v\n", history)
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	// Log the incoming request method and URL
+	fmt.Print("INSIDE THE CONNECT METHOD")
 	host_peerid := r.URL.Query().Get("val")
 	proxyIP := r.URL.Query().Get("ip")
+	fmt.Print("HOST PEER IP", proxyIP)
 	fmt.Print(dht_kad.Host.ID().String())
 	if host_peerid == dht_kad.Host.ID().String() {
 		log.Println("The peer ID matches the current node ID.")
@@ -480,15 +500,23 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 		log.Println("Relaying data between client and peer...")
 		pollPeerAddresses(false, proxyIP)
 		fmt.Println("BEFORE addProxyHistory Entry HISTORY", host_peerid)
+
+		addProxyHistoryEntry(host_peerid, proxyIP)
 		fmt.Println("BEFORE SENDING HISTORY", host_peerid)
 		historyMutex.Lock()
 		defer historyMutex.Unlock()
 
-		// Add this line to update the host's proxy info
-		updateHostProxyInfo(dht_kad.Host.ID().String())
+		err := dht_kad.SendHistoryToHost(host_peerid)
+		if err != nil {
+			log.Printf("Error sending history to host: %v", err)
+			http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)
+			return
+		}
 
 		log.Println("Successfully connected to the peer.")
+
 		w.WriteHeader(http.StatusOK)
+
 	} else {
 		log.Printf("Unsupported request method: %s", r.Method)
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -501,7 +529,6 @@ func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
-	fmt.Print("RETRIEVED PROXY INFO", proxyInfo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error retrieving proxy info: %v", err), http.StatusInternalServerError)
 		return
