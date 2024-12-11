@@ -29,32 +29,20 @@ var (
 
 // fetch all uploaded files from JSON file
 func getFiles(w http.ResponseWriter, r *http.Request) {
-	// Define a struct to parse the request body
-	type FetchRequest struct {
-		FileType string `json:"fileType"`
-	}
-
-	// Parse the request body
-	var req FetchRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	fileType := req.FileType
-	fmt.Printf("Trying to fetch user's %v files \n", fileType)
+	fileType := r.URL.Query().Get("file")
+	fmt.Printf("trying to fetch user's %v files \n", fileType)
 
 	var filePath string
 	if fileType == "uploaded" {
-		fmt.Println("Getting uploaded files")
+		fmt.Println("getting uploaded files")
 		filePath = UploadedFilePath
 	} else {
-		fmt.Println("Getting downloaded files")
+		fmt.Println("getting downloaded files")
 		filePath = DownloadedFilePath
 	}
 
-	// Read the specified file
 	file, err := os.ReadFile(filePath)
+
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			fmt.Printf("No %s files found for user\n", fileType)
@@ -66,24 +54,22 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse the file data into a slice of FileMetadata
 	var files []models.FileMetadata
 	if err := json.Unmarshal(file, &files); err != nil {
 		http.Error(w, "Failed to parse files data", http.StatusInternalServerError)
 		return
 	}
 
-	// Republish logic
 	republishMutex.Lock()
 	defer republishMutex.Unlock()
-	fmt.Printf("republishedUploaded: %v | republishedDownloaded: %v\n", republishedUploaded, republishedDownloaded)
+	fmt.Printf("republishedUploaded: %v | republishedDownloaded: %v\n ", republishedUploaded, republishedDownloaded)
 	if !republishedUploaded || !republishedDownloaded {
 		if fileType == "uploaded" {
-			fmt.Println("Republishing uploaded files")
+			fmt.Println("republishing uploaded files")
 			republishFiles(UploadedFilePath)
 			republishedUploaded = true
 		} else {
-			fmt.Println("Republishing downloaded files")
+			fmt.Println("republishing downloaded files")
 			republishFiles(DownloadedFilePath)
 			republishedDownloaded = true
 		}
@@ -91,7 +77,6 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("fileHashToPath:", dht_kad.FileHashToPath)
 
-	// Respond with the files data
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(files); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
@@ -100,43 +85,35 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 // add new file or update existing file
-// add new file or update existing file
 func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("uploadFileHandler")
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Decode the request body into the struct
-	var requestBody struct {
-		Val      bool                `json:"val"`
-		Metadata models.FileMetadata `json:"metadata"`
-	}
-
+	isNewFile := r.URL.Query().Get("val")
+	fmt.Println("isNewFile:", isNewFile)
+	var requestBody models.FileMetadata
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		fmt.Println("invalid request body", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	isNewFile := requestBody.Val
-	fmt.Println("isNewFile:", isNewFile)
-
-	// Check if the file already exists in the DHT
-	data, _ := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+requestBody.Metadata.Hash)
+	data, _ := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+requestBody.Hash)
 	fmt.Println("file already in dht: ", data)
-	if data != nil && isNewFile {
+	if data != nil && isNewFile == "true" {
 		w.WriteHeader(http.StatusBadRequest) // 400 for client error
 		json.NewEncoder(w).Encode(map[string]string{"error": "File already uploaded"})
 		return
 	}
 
-	fmt.Println("UPLOAD FILE HANDLER: FILEHASH ", requestBody.Metadata.Hash)
+	fmt.Println("UPLOAD FILE HANDLER: FILEHASH ", requestBody.Hash)
 
 	var filePath string
-	fmt.Println("original uploader: ", requestBody.Metadata.OriginalUploader)
-	if requestBody.Metadata.OriginalUploader {
+	fmt.Println("original uploader: ", requestBody.OriginalUploader)
+	if requestBody.OriginalUploader {
 		fmt.Println("updating uploaded file path")
 		filePath = UploadedFilePath
 	} else {
@@ -144,18 +121,15 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		filePath = DownloadedFilePath
 	}
 	fmt.Println("filePath: ", filePath)
-
-	// Save or update the file
-	action, err := utils.SaveOrUpdateFile(requestBody.Metadata, dirPath, filePath)
+	action, err := utils.SaveOrUpdateFile(requestBody, dirPath, filePath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Publish the file
-	PublishFile(requestBody.Metadata)
+	PublishFile(requestBody)
 
-	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Metadata.Name)
+	responseMsg := fmt.Sprintf("File %s successfully: %s", action, requestBody.Name)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(responseMsg))
 	fmt.Println(responseMsg)
@@ -222,82 +196,68 @@ func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Deleting a file requires removing it from the JSON and "removing" the node as a provider of the file
+// deleting a file requires removing it from the json and "removing" the node as a provider of the file
 func deleteFile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		http.Error(w, "Invalid request methods", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Decode the request body into the struct
-	var requestBody struct {
-		Hash             string `json:"Hash"`
-		OriginalUploader bool   `json:"OriginalUploader"`
-		Name             string `json:"Name"`
-	}
-
-	// Parse the JSON body
-	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-		fmt.Println("Invalid request body:", err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	fmt.Println("request body: ", requestBody)
-
-	// Ensure the file hash and name are provided
-	if requestBody.Hash == "" {
-		http.Error(w, "File hash not provided", http.StatusBadRequest)
+	hash := r.URL.Query().Get("hash")
+	if hash == "" {
+		http.Error(w, "file hash not provided", http.StatusBadRequest)
 		return
 	}
 
-	if requestBody.Name == "" {
-		http.Error(w, "File name not provided", http.StatusBadRequest)
+	originalUploader := r.URL.Query().Get("originalUploader")
+	if originalUploader == "" {
+		http.Error(w, "did not specify is user uplaoded the file or downloaded it", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("user is original uploader?", originalUploader)
 
-	fmt.Println("Attempting to delete file:", requestBody.Name)
-	fmt.Println("User is original uploader?", requestBody.OriginalUploader)
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		http.Error(w, "file name not provided", http.StatusBadRequest)
+		return
+	}
+	fmt.Println("trying to delete file", name)
 
 	var filePath string
-	if requestBody.OriginalUploader {
+	if originalUploader == "true" {
 		filePath = UploadedFilePath
 	} else {
 		filePath = DownloadedFilePath
 	}
 
-	// Delete the file content (using hash now instead of name)
-	err := deleteFileContent(requestBody.Name) // We will still use the name here for file content deletion; consider switching to hash if needed
+	err := deleteFileContent(name) // currently using file name but we should switch to hash
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to delete file content: %s", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprint("failed to delete file from squidcoinFiles", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Lock and delete the file entry from the DHT
 	dht_kad.FileMapMutex.Lock()
-	delete(dht_kad.FileHashToPath, requestBody.Hash) // Delete from the map of file hash to file path
+	delete(dht_kad.FileHashToPath, hash) // delete from map of file hash to file path
 	dht_kad.FileMapMutex.Unlock()
 
-	// Delete from JSON (update file metadata storage)
-	action, err := deleteFileFromJSON(requestBody.Hash, filePath)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to delete file from JSON: %s", err), http.StatusInternalServerError)
+	// update so it works for both uploaded and downloaded files
+	action, err := deleteFileFromJSON(hash, filePath)
+	if err != nil { // will still show up but will not be able to provide
+		http.Error(w, fmt.Sprint("failed to delete file json file", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Remove the node as a provider of the file
-	err = removeProvider(requestBody.Hash, true)
+	err = removeProvider(hash, true)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to remove node as file provider: %s", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprint("failed to remove node as file provider", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Prepare the response
 	response := map[string]string{
 		"status":  action,
 		"message": "File deletion successful",
 	}
 
-	// Send the response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
@@ -470,15 +430,7 @@ func republishFiles(filePath string) {
 
 // transactions page
 func getTransactions(w http.ResponseWriter, r *http.Request) {
-	dir, err := os.Getwd()
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	fmt.Println("Current working directory:", dir)
-	fmt.Println("utils path:", dirPath)
-
-	fmt.Println("getting transaction history from file path: ", transactionFilePath)
+	fmt.Println("getting transaction history")
 	transactionFile, err := os.ReadFile(transactionFilePath)
 
 	if err != nil {

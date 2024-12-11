@@ -33,7 +33,6 @@ import { FileMetadata } from "../models/fileMetadata";
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 
-
 declare global {
   interface Window {
       electron: {
@@ -88,29 +87,23 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const fetchFiles = async (fileType: string) => {
     try {
       console.log(`Getting local user's ${fileType} files`);
-      const response = await fetch("http://localhost:8081/files/fetch", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ fileType }), // Send fileType in the request body
+      const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
+        method: "GET",
       });
-  
       if (!response.ok) throw new Error(`Failed to load ${fileType} file data`);
-  
+
       const data = await response.json();
       console.log("Fetched data", data);
-  
+
       if (fileType === "uploaded") {
         setUploadedFiles(data); // Set the state with the loaded data
       } else {
-        setDownloadedFiles(data);
+        setDownloadedFiles(data)
       }
     } catch (error) {
-      console.error("Error fetching files:", error);
+      console.error("Error fetching uploaded files:", error);
     }
   };
-  
 
   useEffect(() => {
     const fetchRatings = async (files: FileMetadata[], isUploaded: boolean) => {
@@ -251,10 +244,10 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   
       // Send metadata to backend
       let newFile = true;
-      const response = await fetch(`http://localhost:8081/files/upload`, {
+      const response = await fetch(`http://localhost:8081/files/upload?val=${newFile}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ val: true, metadata}),
+        body: JSON.stringify(metadata),
       });
 
       console.log(response )
@@ -287,31 +280,20 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     setNames((prev) => ({ ...prev, [fileId]: name }));
   };
 
+// have to fix deleting file
   const handleDeleteUploadedFile = async (selectedFile: FileMetadata) => {
-    console.log("attempting to delete file ", selectedFile.Name);
+    console.log("attempting to delete file ", selectedFile.Name)
     try {
-      // Prepare the data to be sent in the request body
-      const requestBody = {
-        Hash: selectedFile.Hash,
-        OriginalUploader: selectedFile.OriginalUploader,
-        Name: selectedFile.NameWithExtension,
-      };
-  
-      // Send DELETE request with data in the body
-      const response = await fetch("http://localhost:8081/files/delete", {
+      const response = await fetch(`http://localhost:8081/files/delete?hash=${selectedFile.Hash}&originalUploader=${selectedFile.OriginalUploader}&name=${selectedFile.NameWithExtension}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
       });
-  
+
       if (!response.ok) {
-        throw new Error("Failed to delete file");
+        throw new Error("Failed to delete file")
       }
-  
       const data = await response.json();
       console.log('file deleted successfully', data);
-  
-      // Update local state after successful deletion
+
       setUploadedFiles((prev) => prev.filter((file) => file.Hash !== selectedFile.Hash));
       setDownloadedFiles((prev) => prev.filter((file) => file.Hash !== selectedFile.Hash));
       setSelectedFiles((prev) => prev.filter((file) => file.name !== selectedFile.Hash));
@@ -320,8 +302,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       console.error("error: ", error);
       setNotification({ open: true, message: "failed to delete file.", severity: "error" });
     }
-  };
-  
+  }
 
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
@@ -374,12 +355,12 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
 
     let newFile = false;
     try {
-        const response = await fetch(`http://localhost:8081/files/upload`, {
+        const response = await fetch(`http://localhost:8081/files/upload?val=${newFile}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ val: newFile, updatedMetadata}),
+            body: JSON.stringify(updatedMetadata),
         });
 
         if (response.ok) {
@@ -431,23 +412,19 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
 
   const handleVote = async (fileHash: string, voteType: 'upvote' | 'downvote') => { 
     try {
-      const response = await fetch(`http://localhost:8081/files/vote`, {
+      const response = await fetch(`http://localhost:8081/files/vote?fileHash=${fileHash}&voteType=${voteType}`, {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          fileHash,
-          voteType
-        }),
       });
-  
+
       if (response.ok) {
         setDownloadedRatings(prevRatings => {
           const currentRating = prevRatings[fileHash] || 0;
           const newRating =
             voteType === 'upvote' ? currentRating + 1 : currentRating - 1;
-    
+      
           return { ...prevRatings, [fileHash]: newRating };
         });
       } else {
@@ -459,30 +436,20 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   };
   
   
-  
   const getRating = async (fileHash: string) => {
     console.log("getting rating for file: ", fileHash);
     try {
-      const response = await fetch(`http://localhost:8081/files/getRating`, {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fileHash }), // Send fileHash in the body
+      const response = await fetch((`http://localhost:8081/files/getRating?fileHash=${fileHash}`), {
+        method: "GET",
       });
-  
-      if (!response.ok) {
-        throw new Error(`Failed to get rating for ${fileHash}`);
-      }
-  
-      let data = await response.json();
-      console.log("file rating: ", data);
-      return data;
+      if (!response.ok) throw new Error(`Failed to get rating for ${fileHash}`);
+      let data = await response.json()
+      console.log("file rating: ", data)
+      return data
     } catch (error) {
       console.error('error: failed to get file rating: ', error);
     }
-  };
-  
+  }
 
   /*
   will modularize later 

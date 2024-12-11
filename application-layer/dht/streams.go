@@ -388,7 +388,7 @@ func receivedHistory(node host.Host) {
 		}
 
 		fmt.Println("Received history:", receivedHistory)
-		utils.AddOrUpdateProxyHistory(receivedHistory)
+		// utils.AddOrUpdateProxyHistory(receivedHistory)
 		fmt.Println("added")
 	})
 }
