@@ -185,11 +185,6 @@ const GlobalTransactions: React.FC = () => {
               No unspent transactions available.
             </Typography>
             {/* Optional: Add an illustration or icon for empty state */}
-            <img
-              src="/mining.gif" // 수정된 이미지 경로
-              alt="No Data"
-              style={{ marginTop: 16, width: '150px', height: '150px' }}
-            />
           </Box>
         </Paper>
       );
