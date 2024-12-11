@@ -47,7 +47,7 @@ const ProxyHosts: React.FC = () => {
   const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([]); // State to store proxy hosts
   const [currentIP, setCurrentIP] = useState<string>('');
   const [connectedProxy, setConnectedProxy] = useState<ProxyHost | null>(null);
-  const [proxyHistory, setProxyHistory] = useState<{ client_peer_id: string; timestamp: string }[]>([]);
+  const [proxyHistory, setProxyHistory] = useState<{ client_peer_id: string; timestamp: Date }[]>([]);
   const [showHistoryOnly, setShowHistoryOnly] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false); // Track loading state
@@ -157,7 +157,7 @@ const ProxyHosts: React.FC = () => {
   const handleDisconnect = (host: ProxyHost) => {
     setConnectedProxy(host);
     notifyDisConnectionToBackend(host);
-    const newHistoryEntry = { client_peer_id: host.peer_id, timestamp: new Date().toLocaleString() };
+    const newHistoryEntry = { client_peer_id: host.peer_id, timestamp: new Date() };
     setProxyHistory([...proxyHistory, newHistoryEntry]);
   }
 
@@ -174,7 +174,7 @@ const ProxyHosts: React.FC = () => {
           hostLocation: host.location,
           hostPeerID: host.peer_id,
 
-          timestamp: new Date().toLocaleString(),
+          timestamp: new Date()
         }),
       });
 
@@ -208,7 +208,7 @@ const ProxyHosts: React.FC = () => {
     const newHistoryEntry = {
       client_peer_id: host.peer_id,
       location: host.location,
-      timestamp: new Date().toLocaleString()
+      timestamp: new Date()
     };
 
     fetch('http://localhost:8081/update-history/', {
@@ -241,7 +241,7 @@ const ProxyHosts: React.FC = () => {
           hostLocation: host.location,
           hostPeerID: host.peer_id,
 
-          timestamp: new Date().toLocaleString(),
+          timestamp: new Date(),
         }),
       });
 
@@ -332,10 +332,12 @@ const ProxyHosts: React.FC = () => {
       }
 
       const history = await response.json();
-      history.timestamp = new Date(history.timestamp).toLocaleString();
-
-      console.log(history);
-      setProxyHistory(history);// Assuming setProxyHistory is defined elsewhere
+      const updatedHistory = history.map((entry: { client_peer_id: string; timestamp: string }) => ({
+        ...entry,
+        timestamp: new Date(entry.timestamp).toLocaleString(), // Convert to a readable format
+      }));
+      
+      setProxyHistory(updatedHistory); 
     } catch (error) {
       console.error("Failed to fetch proxy history:", error);
     }
@@ -407,7 +409,7 @@ const ProxyHosts: React.FC = () => {
                           {proxyHistory.map((entry, index) => (
                             <TableRow key={index}>
                               <TableCell>{entry.client_peer_id}</TableCell>
-                              <TableCell>{entry.timestamp}</TableCell>
+                              <TableCell>{entry.timestamp.toLocaleString()}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
