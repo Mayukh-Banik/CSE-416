@@ -30,9 +30,11 @@ var (
 	RefreshResponse []models.FileMetadata
 	ProxyResponse   []models.Proxy
 
-	MarketplaceFiles []models.DHTMetadata
+	MarketplaceFiles []models.FileMetadata
 
 	MarketplaceFilesSignal = make(chan struct{})
+	ProxiesSignal          = make(chan struct{}, 1)
+	Proxies                []models.Proxy
 
 	dirPath            = filepath.Join("..", "utils")
 	UploadedFilePath   = filepath.Join(dirPath, "files.json")
@@ -280,6 +282,7 @@ func sendSuccessConfirmation(transaction models.Transaction) {
 		return
 	}
 }
+
 func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -557,7 +560,7 @@ func receiveMarketplaceFiles(node host.Host) {
 		}
 
 		// Parse the accumulated JSON data
-		var fileData []models.DHTMetadata
+		var fileData []models.FileMetadata
 		err := json.Unmarshal(receivedData.Bytes(), &fileData)
 		fmt.Println("file data received from refresh", fileData)
 		if err != nil {

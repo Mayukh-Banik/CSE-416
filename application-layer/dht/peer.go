@@ -26,6 +26,7 @@ func ConnectToPeer(node host.Host, peerAddr string) {
 		log.Printf("Failed to parse peer address: %s", err)
 		return
 	}
+	fmt.Println("--------target peer address:", peerAddr)
 
 	info, err := peer.AddrInfoFromP2pAddr(addr)
 	if err != nil {

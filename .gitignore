@@ -8,8 +8,21 @@ electron/
 node_modules/
 private_key.pem
 
+/.vscode/launch.json
 /utils
 utils/
 
 /squidcoinFiles
 squidcoinFiles/
+
+/utils
+utils/files.json
+
+/squidcoinFiles
+squidcoinFiles/
+
+/btcwallet.exe
+btcwallet/btcwallet.exe
+
+/btcwallet_create.log
+btcwallet/btcwallet_create.log

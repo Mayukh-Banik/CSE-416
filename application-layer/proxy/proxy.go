@@ -10,7 +10,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -23,16 +26,25 @@ import (
 )
 
 var (
-	node_id        = ""
-	peer_id        = ""
-	globalCtx      context.Context
-	Peer_Addresses []ma.Multiaddr
-	isHost         = true
-	fileMutex      sync.Mutex
+	node_id          = ""
+	peer_id          = ""
+	globalCtx        context.Context
+	Peer_Addresses   []ma.Multiaddr
+	isHost           = true
+	connectedPeers   sync.Map
+	proxyUpdateMutex sync.Mutex
+	proxyHistory     []models.ProxyHistoryEntry
+	historyMutex     sync.Mutex
+	hosting          bool
+	clientconnect    bool
+	globalCtxC       context.Context
+	contextCancel    context.CancelFunc
 )
 
 const (
-	bootstrapNode = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+	bootstrapNode = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+
+	// bootstrapNode = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
 	// bootstrapNode   = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
 	proxyKeyPrefix  = "/orcanet/proxy/"
 	Cloud_node_addr = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
@@ -87,6 +99,7 @@ func getKnownProxyKeys() []string {
 
 	return keys
 }
+
 func isEmptyProxy(p models.Proxy) bool {
 	return p.Name == "" && p.Location == "" && p.PeerID == "" && p.Address == ""
 }
@@ -120,6 +133,10 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 				return
 			}
 
+			if proxy.PeerID == localPeerID.String() {
+				proxy.IsHost = true
+
+			}
 			// Avoid duplicates by checking the PeerID
 			if _, seen := seenProxies[proxy.PeerID]; !seen {
 				mu.Lock()
@@ -133,13 +150,7 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if !isEmptyProxy(localProxy) {
-			mu.Lock()
-			fmt.Println("Local proxy", localProxy)
-			proxies = append(proxies, localProxy)
-			mu.Unlock()
-			log.Printf("Debug: Added local proxy information")
-		}
+
 	}()
 
 	go func() {
@@ -151,34 +162,57 @@ func getAllProxiesFromDHT(dht *dht.IpfsDHT, localPeerID peer.ID, localProxy mode
 	return proxies, nil
 }
 
-func pollPeerAddresses(node host.Host) {
-	if isHost {
-		httpHostToClient(node)
-	}
-	for {
-		if len(Peer_Addresses) > 0 {
-			fmt.Println("Peer addresses are not empty, setting up proxy.")
-			fmt.Println(Peer_Addresses)
+func pollPeerAddresses(ProxyIsHost bool, ip string) {
+	node := dht_kad.Host
+	if ProxyIsHost {
+		fmt.Println("IN HOST", ip)
+		for {
+			if hosting {
+				httpHostToClient(node)
+			}
+			time.Sleep(5 * time.Second)
+		}
+		// httpHostToClient(node)
+	} else {
+		fmt.Println("IN CLIENT")
+		fmt.Println("IP: ", ip)
+		fmt.Println("IP", ip)
+		var script string
+		var args []string
+		script = "proxy/client.py"
+		args = []string{"--remote-host", ip}
 
-			// Hosting
-			if !(isHost) {
-				fmt.Println("In Client part")
+		clientconnect = true
+		globalCtxC, contextCancel = context.WithCancel(context.Background())
 
-				// Start an HTTP server on port 9900
-				http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-					// Send the received HTTP request to the peer
-					clientHTTPRequestToHost(node, peer_id, r, w)
-				})
+		// Function to run the command
+		runCommand := func(ctx context.Context, pythonCmd string) error {
+			cmd := exec.CommandContext(ctx, pythonCmd, append([]string{script}, args...)...)
+			cmd.Stdout = os.Stderr // Redirect standard output to stderr
+			cmd.Stderr = os.Stderr // Redirect standard error to stderr
+			return cmd.Run()
+		}
 
-				// Listen on port 9900
-				serverAddr := ":8081"
-				fmt.Printf("HTTP server listening on %s\n", serverAddr)
-				if err := http.ListenAndServe(serverAddr, nil); err != nil {
-					log.Fatalf("Failed to start HTTP server: %s", err)
+		tar := func(cancel context.CancelFunc) {
+			for {
+				if !clientconnect {
+					cancel()
+					clientconnect = true
+					break
 				}
+				time.Sleep(10 * time.Second)
 			}
 		}
-		time.Sleep(5 * time.Second)
+
+		go tar(contextCancel)
+		// Try running with `python`
+		if err := runCommand(globalCtxC, "python"); err != nil {
+			fmt.Println("`python` not found or failed, trying `python3`...")
+			// If `python` fails, try `python3`
+			if err := runCommand(globalCtxC, "python3"); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to run %s with both `python` and `python3`: %v\n", script, err)
+			}
+		}
 	}
 }
 
@@ -222,7 +256,6 @@ func getAdjacentNodeProxiesMetadata(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(dht_kad.ProxyResponse); err != nil {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
-
 }
 
 func nodeSupportRefreshStreams(peerID peer.ID) bool {
@@ -278,11 +311,12 @@ func handlePeerExchange(node host.Host) {
 // Retrieveing proxies data, and adding yourself as host
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
-	go dht_kad.ConnectToPeer(node, dht_kad.Bootstrap_node_addr)
+
 	// go dht_kad.ConnectToPeer(node, Cloud_node_addr)
 	globalCtx = context.Background()
 	if r.Method == "POST" {
 		isHost = true
+		hosting = true
 		var newProxy models.Proxy
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&newProxy)
@@ -293,7 +327,8 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 
 		newProxy.Address = node.Addrs()[0].String()
 		newProxy.PeerID = node.ID().String()
-		log.Printf("Debug: New proxy created with PeerID: %s", newProxy.PeerID)
+		newProxy.IsHost = true
+		log.Print("Debug: New proxy  info", newProxy)
 
 		if err := saveProxyToDHT(newProxy); err != nil {
 			log.Printf("Debug: Failed to save proxy to DHT: %v", err)
@@ -314,13 +349,12 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Debug: Error encoding proxy data: %v", err)
 			http.Error(w, fmt.Sprintf("Error encoding proxy data: %v", err), http.StatusInternalServerError)
 		}
+
 		return
 	}
 
 	log.Printf("Debug: Connecting to bootstrap node")
 	getAdjacentNodeProxiesMetadata(w, r)
-
-	go pollPeerAddresses(node)
 
 	if r.Method == "GET" {
 		// clearAllProxies()
@@ -340,6 +374,9 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 		} else {
 			responseData = proxyInfo
 		}
+		ip, _ := getPrivateIP()
+		fmt.Println("BEFORE POLLING", ip)
+		go pollPeerAddresses(true, ip)
 
 		if err := json.NewEncoder(w).Encode(responseData); err != nil {
 			http.Error(w, fmt.Sprintf("Error encoding proxy data: %v", err), http.StatusInternalServerError)
@@ -347,8 +384,260 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
+
 }
 
+func handleDisconnectFromProxy(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("INSIDE DISCONNECT PAGE")
+	if r.Method != "GET" {
+		fmt.Println("R method isn't get for some reason")
+	}
+	clientconnect = false
+	w.WriteHeader(http.StatusOK)
+}
+
+func stopHosting(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("INSIDE DISCONNECT PAGE")
+	if r.Method != "GET" {
+		fmt.Println("R method isn't get for some reason")
+	}
+	hosting = false
+	w.WriteHeader(http.StatusOK)
+}
+
+func updateProxyConnections(hostPeerID string, clientPeerID string) {
+	proxyUpdateMutex.Lock()
+	defer proxyUpdateMutex.Unlock()
+
+	// Retrieve the current proxy information for the host
+	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, peer.ID(hostPeerID))
+	if err != nil {
+		log.Printf("Error retrieving proxy info: %v", err)
+		return
+	}
+
+	var proxy models.Proxy
+	err = json.Unmarshal([]byte(proxyInfo), &proxy)
+	if err != nil {
+		log.Printf("Error unmarshalling proxy info: %v", err)
+		return
+	}
+
+	// Add the new client to the connected peers list if not already present
+	if !contains(proxy.ConnectedPeers, clientPeerID) {
+		proxy.ConnectedPeers = append(proxy.ConnectedPeers, clientPeerID)
+	}
+
+	// Save the updated proxy information back to the DHT
+	updatedProxyJSON, err := json.Marshal(proxy)
+	if err != nil {
+		log.Printf("Error marshalling updated proxy info: %v", err)
+		return
+	}
+
+	err = dht_kad.DHT.PutValue(context.Background(), "/orcanet/proxy/"+hostPeerID, updatedProxyJSON)
+	if err != nil {
+		log.Printf("Error saving updated proxy info to DHT: %v", err)
+		return
+	}
+
+	log.Printf("Updated host proxy info with new connected peer: %s", clientPeerID)
+}
+
+// Helper function to check if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+func updateHostProxyInfo(clientPeerID string) {
+	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
+	if err != nil {
+		log.Printf("Error retrieving proxy info: %v", err)
+		return
+	}
+
+	var proxy models.Proxy
+	err = json.Unmarshal([]byte(proxyInfo), &proxy)
+	if err != nil {
+		log.Printf("Error unmarshalling proxy info: %v", err)
+		return
+	}
+
+	// Add the new client to the connected peers list
+	proxy.ConnectedPeers = append(proxy.ConnectedPeers, clientPeerID)
+
+	// Save the updated proxy information back to the DHT
+	updatedProxyJSON, err := json.Marshal(proxy)
+	if err != nil {
+		log.Printf("Error marshalling updated proxy info: %v", err)
+		return
+	}
+
+	err = dht_kad.DHT.PutValue(context.Background(), "/orcanet/proxy/"+proxy.PeerID, updatedProxyJSON)
+	if err != nil {
+		log.Printf("Error saving updated proxy info to DHT: %v", err)
+		return
+	}
+
+	log.Printf("Updated host proxy info with new connected peer: %s", clientPeerID)
+}
+
+// Function to add a new history entry
+func addProxyHistoryEntry(hostPeerID, proxyIP string) {
+	historyMutex.Lock()
+	defer historyMutex.Unlock()
+
+	newEntry := models.ProxyHistoryEntry{
+		HostPeerID: hostPeerID,
+		ProxyIP:    proxyIP,
+		Timestamp:  time.Now(),
+	}
+
+	proxyHistory = append(proxyHistory, newEntry)
+}
+
+// Function to send the history to the host
+func sendHistoryToHost(hostAddress string) error {
+	historyMutex.Lock()
+	defer historyMutex.Unlock()
+
+	historyData, err := json.Marshal(proxyHistory)
+	if err != nil {
+		return fmt.Errorf("failed to marshal history data: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", hostAddress+"/update-history", bytes.NewReader(historyData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	// Sending the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send history to host: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to update history on host, status: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+func handleUpdateHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var history []models.ProxyHistoryEntry
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&history)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to decode history data: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Process the history data (e.g., store in a database, etc.)
+	fmt.Printf("Received proxy history: %v\n", history)
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
+	// Log the incoming request method and URL
+	fmt.Print("INSIDE THE CONNECT METHOD")
+	host_peerid := r.URL.Query().Get("val")
+	proxyIP := r.URL.Query().Get("ip")
+	fmt.Print("HOST PEER IP", proxyIP)
+	fmt.Print(dht_kad.Host.ID().String())
+	if host_peerid == dht_kad.Host.ID().String() {
+		log.Println("The peer ID matches the current node ID.")
+		http.Error(w, "Cannot connect to self.", http.StatusBadRequest)
+		return
+	}
+	if r.Method == "GET" {
+		log.Println("Relaying data between client and peer...")
+		pollPeerAddresses(false, proxyIP)
+
+		addProxyHistoryEntry(host_peerid, proxyIP)
+		err := sendHistoryToHost("http://host-address") // Use actual host address here
+		if err != nil {
+			log.Printf("Error sending history to host: %v", err)
+			http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)
+			return
+		}
+
+		log.Println("Successfully connected to the peer.")
+
+		w.WriteHeader(http.StatusOK)
+
+	} else {
+		log.Printf("Unsupported request method: %s", r.Method)
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error retrieving proxy info: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	var proxy models.Proxy
+	err = json.Unmarshal([]byte(proxyInfo), &proxy)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error unmarshalling proxy info: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(proxy.ConnectedPeers)
+}
+
+func getPrivateIP() (string, error) {
+	// Get all network interfaces
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", fmt.Errorf("error retrieving network interfaces: %v", err)
+	}
+
+	// Iterate over interfaces to find a non-loopback IP address
+	for _, iface := range interfaces {
+		addresses, err := iface.Addrs()
+		if err != nil {
+			return "", fmt.Errorf("error getting addresses for interface %v: %v", iface.Name, err)
+		}
+
+		for _, addr := range addresses {
+			// Ignore loopback IPs
+			ip, ok := addr.(*net.IPNet)
+			if !ok || ip.IP.IsLoopback() {
+				continue
+			}
+
+			// IPv4 check and return the first non-loopback IP found
+			if ip := ip.IP.To4(); ip != nil {
+				return ip.String(), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no private IP found")
+}
 func saveProxyToDHT(proxy models.Proxy) error {
 	ctx := context.Background()
 	key := "/orcanet/proxy/" + proxy.PeerID
@@ -367,6 +656,8 @@ func saveProxyToDHT(proxy models.Proxy) error {
 			// If they are the same, either update or reject
 			existingProxy.Name = proxy.Name
 			existingProxy.Location = proxy.Location
+			existingProxy.Address, _ = getPrivateIP()
+			fmt.Println("PRXOYS PRIVATE IP:", existingProxy.Address)
 			existingProxy.Price = proxy.Price
 			existingProxy.Statistics = proxy.Statistics
 			existingProxy.Bandwidth = proxy.Bandwidth
@@ -387,8 +678,10 @@ func saveProxyToDHT(proxy models.Proxy) error {
 		}
 	} else {
 		// Proxy doesn't exist, add it as a new entry
+		proxy.IsHost = isHost
+		proxy.Address, _ = getPrivateIP()
+		fmt.Println("PRXOYS PRIVATE IP:", proxy.Address)
 		proxyJSON, err := json.Marshal(proxy)
-
 		if err != nil {
 			return fmt.Errorf("failed to serialize new proxy data: %v", err)
 		}
@@ -478,56 +771,40 @@ func clientHTTPRequestToHost(node host.Host, targetpeerid string, req *http.Requ
 }
 
 func httpHostToClient(node host.Host) {
-	node.SetStreamHandler("/http-temp-protocol", func(s network.Stream) {
-		fmt.Println("In host to client")
-		defer s.Close()
+	var script string
+	var args []string
+	script = "proxy/server.py"
+	args = []string{}
+	hosting = true
+	globalCtxC, contextCancel = context.WithCancel(context.Background())
 
-		buf := bufio.NewReader(s)
-		// Read the HTTP request from the stream
-		req, err := http.ReadRequest(buf)
-		if err != nil {
-			if err == io.EOF {
-				log.Println("End of request stream.")
-			} else {
-				log.Println("Failed to read HTTP request:", err)
-				s.Reset()
+	// Function to run the command
+	runCommand := func(ctx context.Context, pythonCmd string) error {
+		cmd := exec.CommandContext(ctx, pythonCmd, append([]string{script}, args...)...)
+		cmd.Stdout = os.Stderr // Redirect standard output to stderr
+		cmd.Stderr = os.Stderr // Redirect standard error to stderr
+		return cmd.Run()
+	}
+
+	tar := func(cancel context.CancelFunc) {
+		for {
+			if !hosting {
+				cancel()
+				break
 			}
-			return
+			time.Sleep(10 * time.Second)
 		}
-		defer req.Body.Close()
+	}
 
-		// Modify the request as needed
-		req.URL.Scheme = "http"
-		hp := strings.Split(req.Host, ":")
-		if len(hp) > 1 && hp[1] == "443" {
-			req.URL.Scheme = "https"
-		} else {
-			req.URL.Scheme = "http"
+	go tar(contextCancel)
+	// Try running with `python`
+	if err := runCommand(globalCtxC, "python"); err != nil {
+		fmt.Println("`python` not found or failed, trying `python3`...")
+		// If `python` fails, try `python3`
+		if err := runCommand(globalCtxC, "python3"); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to run %s with both `python` and `python3`: %v\n", script, err)
 		}
-		req.URL.Host = req.Host
-
-		outreq := new(http.Request)
-		*outreq = *req
-
-		// Make the request
-		fmt.Printf("Making request to %s\n", req.URL)
-		resp, err := http.DefaultTransport.RoundTrip(outreq)
-		if err != nil {
-			log.Println("Failed to make request:", err)
-			s.Reset()
-			return
-		}
-		defer resp.Body.Close()
-
-		// Write the response back to the stream
-		err = resp.Write(s)
-		if err != nil {
-			log.Println("Failed to write response to stream:", err)
-			s.Reset()
-			return
-		}
-		log.Println("Response successfully written to stream.")
-	})
+	}
 }
 
 func clearAllProxies() {

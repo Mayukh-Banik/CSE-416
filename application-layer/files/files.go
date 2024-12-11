@@ -87,7 +87,6 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 // add new file or update existing file
 func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("uploadFileHandler")
-
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -230,7 +229,7 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		filePath = DownloadedFilePath
 	}
 
-	err := deleteFileContent(name) // currently using file name but we should switch to hash
+	err := deleteFileContent(name) // currently using file name but we should switch to hash // currently using file name but we should switch to hash
 	if err != nil {
 		http.Error(w, fmt.Sprint("failed to delete file from squidcoinFiles", err), http.StatusInternalServerError)
 		return

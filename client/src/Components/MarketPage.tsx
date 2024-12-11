@@ -44,7 +44,7 @@ const MarketplacePage: React.FC = () => {
     setFileHash("");
     setProviders([]);
     setSelectedFile(null);
-    // setSearchTerm("");
+    setSearchTerm("");
     setLoadingRequest(false);
     setLoadingSearch(false);
     setSearchResults(marketResults)
@@ -60,9 +60,11 @@ const MarketplacePage: React.FC = () => {
     await getFileByHash(file.Hash)
     setFileHash(file.Hash)
     setOpen(true); // Open the modal for provider selection
+    setRefresh(false);
   };
 
   const handleProviderSelect = async (provider: string) => {
+    console.log(`requesting file ${fileHash} from provider ${provider}: `)
     console.log(`requesting file ${fileHash} from provider ${provider}: `)
     setLoadingRequest(true)
     try {
