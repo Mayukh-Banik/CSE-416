@@ -385,7 +385,7 @@ const ProxyHosts: React.FC = () => {
 
   const handleStopHosting = async () => {
     try {
-      const response = await fetch('http://localhost:8081/stop-hosting', {
+      const response = await fetch('http://localhost:8081/stop-hosting/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -493,9 +493,9 @@ const ProxyHosts: React.FC = () => {
                       {/* <Button variant="outlined" onClick={handleSortByLocation}>
                         Sort by Location
                       </Button> */}
-                      <Button variant="outlined" onClick={handleSortByPrice}>
+                      {/* <Button variant="outlined" onClick={handleSortByPrice}>
                         Sort by Price
-                      </Button>
+                      </Button> */}
                     </Box>
                   </Box>
                   {/* Expandable Form Section */}
