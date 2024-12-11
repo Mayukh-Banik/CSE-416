@@ -153,87 +153,47 @@ const MarketplacePage: React.FC = () => {
     if (fileFoundByHash) {
       setSearchResults([fileFoundByHash]);
       return;
-    }
-    
-    const filesFoundByName = await getFilesByName(searchTerm);
-    if (filesFoundByName && filesFoundByName.length > 0) {
-      setSearchResults(filesFoundByName);
     } else {
       setNotification({ open: true, message: "No file found", severity: "error" });
     }
-
-    // if (selectedFile) {
-    //   setSearchResults([selectedFile])
-    // }
-    // setOpen(true);
   }
 
   const getFileByHash = async (hash: string): Promise<DHTMetadata | null> => {
-    await resetStates()
-    setLoadingSearch(true)
-    try {
-        const encodedHash = encodeURIComponent(hash);  // Ensure hash is URL-safe
-        const url = `http://localhost:8081/files/getFile?val=${encodedHash}`;
-        
-        console.log("Request URL:", url); // Log the request URL for debugging
-
-        const response = await fetch(url, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP Error: status : ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("file metadata:", data); 
-
-        setSelectedFile(data);
-        setFileHash(data.FileHash)
-        setProviders(data.Providers);
-        console.log("getFileByHash: providers for file ", hash, data.Providers)
-        // setSearchResults([data])
-        return data;
-    } catch (error) {
-        console.error("Error:", error);
-        return null;
-        // setNotification({ open: true, message: "File not found", severity: "error" });
-    } finally {
-      setLoadingSearch(false)
-    }
-  };
-
-  const getFilesByName = async (name: string): Promise<DHTMetadata[] | null> => {
+    await resetStates();
     setLoadingSearch(true);
     try {
-      const encodedName = encodeURIComponent(name);
-      const url = `http://localhost:8081/files/searchByName?name=${encodedName}`;
-
+      const url = `http://localhost:8081/files/getFile`;
+  
+      console.log("Request URL:", url); // Log the request URL for debugging
+  
       const response = await fetch(url, {
-        method: "GET",
+        method: "POST", // Change to POST method
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ val: hash }), // Send hash in the request body
       });
-
+  
       if (!response.ok) {
-        console.log("no files found by name");
-        return null
+        throw new Error(`HTTP Error: status : ${response.status}`);
       }
-
-      const data: DHTMetadata[] = await response.json();
-      console.log(`files with name ${name}: ${data}`);
+  
+      const data = await response.json();
+      console.log("file metadata:", data);
+  
+      setSelectedFile(data);
+      setFileHash(data.FileHash);
+      setProviders(data.Providers);
+      console.log("getFileByHash: providers for file ", hash, data.Providers);
       return data;
     } catch (error) {
-      console.error("error:", error)
-      return null
+      console.error("Error:", error);
+      return null;
     } finally {
-      setLoadingSearch(false)
+      setLoadingSearch(false);
     }
-  }
+  };
+  
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);

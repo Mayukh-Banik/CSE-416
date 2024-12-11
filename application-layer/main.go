@@ -3,13 +3,8 @@ package main
 
 import (
 	"application-layer/controllers"
-	dht_kad "application-layer/dht"
-	"application-layer/download"
-	"application-layer/files"
-	proxyService "application-layer/proxy"
 	"application-layer/routes"
 	"application-layer/services"
-	"application-layer/websocket"
 	"fmt"
 	"log"
 	"net/http"
@@ -41,11 +36,11 @@ func main() {
 	router := mux.NewRouter()
 	routes.RegisterRoutes(router, btcController) // Register Btc and Auth routes
 
-	// Initialize additional routers
-	fileRouter := files.InitFileRoutes()
-	downloadRouter := download.InitDownloadRoutes()
+	// // Initialize additional routers
+	// fileRouter := files.InitFileRoutes()
+	// downloadRouter := download.InitDownloadRoutes()
 
-	proxyRouter := proxyService.InitProxyRoutes()
+	// proxyRouter := proxyService.InitProxyRoutes()
 
 	// go websocket.BroadcastMessages()
 
@@ -66,31 +61,31 @@ func main() {
 	// http.Handle("/disconnect-from-proxy/", c.Handler(proxyRouter))
 	// http.Handle("/stop-hosting/", c.Handler(proxyRouter))
 
-	http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
-	go tempTempTemp(proxyRouter, fileRouter, downloadRouter)
+	// http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
+	// go tempTempTemp(proxyRouter, fileRouter, downloadRouter)
 	port := ":8080"
 	handler := c.Handler(router)
-	go dht_kad.StartDHTService()
+	// go dht_kad.StartDHTService()
 
 	fmt.Printf("Starting server for file routes and DHT on port %s...\n", port)
 	log.Fatal(http.ListenAndServe(port, handler))
 }
 
-func tempTempTemp(r *mux.Router, b *mux.Router, d *mux.Router) {
-	fmt.Println("In tempTempTemp")
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},                            // Frontend's origin
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"}, // Allowed HTTP methods
-		AllowedHeaders:   []string{"*"},                            // Allowed headers
-		AllowCredentials: true,                                     // Allow credentials (cookies, auth headers)
-	})
-	http.Handle("/proxy-data/", c.Handler(r))
-	http.Handle("/connect-proxy/", c.Handler(r))
-	http.Handle("/proxy-history/", c.Handler(r))
-	http.Handle("/disconnect-from-proxy/", c.Handler(r))
-	http.Handle("/stop-hosting/", c.Handler(r))
-	http.Handle("/files/", c.Handler(b))    // File routes under /files
-	http.Handle("/download/", c.Handler(d)) // Download routes under /download
-	handler := c.Handler(r)
-	log.Fatal(http.ListenAndServe(":8081", handler))
-}
+// func tempTempTemp(r *mux.Router, b *mux.Router, d *mux.Router) {
+// 	fmt.Println("In tempTempTemp")
+// 	c := cors.New(cors.Options{
+// 		AllowedOrigins:   []string{"*"},                            // Frontend's origin
+// 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"}, // Allowed HTTP methods
+// 		AllowedHeaders:   []string{"*"},                            // Allowed headers
+// 		AllowCredentials: true,                                     // Allow credentials (cookies, auth headers)
+// 	})
+// 	http.Handle("/proxy-data/", c.Handler(r))
+// 	http.Handle("/connect-proxy/", c.Handler(r))
+// 	http.Handle("/proxy-history/", c.Handler(r))
+// 	http.Handle("/disconnect-from-proxy/", c.Handler(r))
+// 	http.Handle("/stop-hosting/", c.Handler(r))
+// 	http.Handle("/files/", c.Handler(b))    // File routes under /files
+// 	http.Handle("/download/", c.Handler(d)) // Download routes under /download
+// 	handler := c.Handler(r)
+// 	log.Fatal(http.ListenAndServe(":8081", handler))
+// }

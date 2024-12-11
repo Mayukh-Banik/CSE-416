@@ -26,17 +26,17 @@ var (
 	Mutex           = &sync.Mutex{}
 	FileMapMutex    = &sync.Mutex{}
 
-	dir             = filepath.Join("..", "squidcoinFiles")
+	dir             = filepath.Join("..", "..", "squidcoinFiles")
 	RefreshResponse []models.FileMetadata
 	ProxyResponse   []models.Proxy
 
-	MarketplaceFiles []models.FileMetadata
+	MarketplaceFiles []models.DHTMetadata
 
 	MarketplaceFilesSignal = make(chan struct{})
 	ProxiesSignal          = make(chan struct{}, 1)
 	Proxies                []models.Proxy
 
-	dirPath            = filepath.Join("..", "utils")
+	dirPath            = filepath.Join("..", "..", "utils")
 	UploadedFilePath   = filepath.Join(dirPath, "files.json")
 	DownloadedFilePath = filepath.Join(dirPath, "downloadedFiles.json")
 )
@@ -608,7 +608,7 @@ func receiveMarketplaceFiles(node host.Host) {
 		}
 
 		// Parse the accumulated JSON data
-		var fileData []models.FileMetadata
+		var fileData []models.DHTMetadata
 		err := json.Unmarshal(receivedData.Bytes(), &fileData)
 		fmt.Println("file data received from refresh", fileData)
 		if err != nil {

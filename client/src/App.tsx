@@ -22,6 +22,7 @@ import SearchPage from "./Components/SearchPage";
 import { FileMetadata } from "./models/fileMetadata";
 import InitPage from "./Components/InitPage";
 import GlobalTransactions from "./Components/Transactions";
+import FileTransactions from "./Components/FileTransactions";
 
 const isUserLoggedIn = true; 
 
@@ -98,6 +99,7 @@ const App: React.FC = () => {
             }
           />
           <Route path="/global-transactions" element={<GlobalTransactions />} />
+          <Route path="/fileTransactions" element={<FileTransactions />} />
           <Route
             path="/settings"
             element={<SettingPage darkMode={darkMode} toggleTheme={toggleTheme} />}

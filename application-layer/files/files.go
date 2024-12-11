@@ -17,11 +17,11 @@ import (
 )
 
 var (
-	dirPath               = filepath.Join("..", "utils")
+	dirPath               = filepath.Join("..", "..", "utils")
 	UploadedFilePath      = filepath.Join(dirPath, "files.json")
 	DownloadedFilePath    = filepath.Join(dirPath, "downloadedFiles.json")
 	transactionFilePath   = filepath.Join(dirPath, "transactionFiles.json")
-	FileCopyPath          = filepath.Join("..", "squidcoinFiles")
+	FileCopyPath          = filepath.Join("..", "..", "squidcoinFiles")
 	republishMutex        sync.Mutex
 	republishedUploaded   = false
 	republishedDownloaded = false
@@ -242,6 +242,7 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("request body: ", requestBody)
 
 	// Ensure the file hash and name are provided
 	if requestBody.Hash == "" {
@@ -469,7 +470,15 @@ func republishFiles(filePath string) {
 
 // transactions page
 func getTransactions(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("getting transaction history")
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Current working directory:", dir)
+	fmt.Println("utils path:", dirPath)
+
+	fmt.Println("getting transaction history from file path: ", transactionFilePath)
 	transactionFile, err := os.ReadFile(transactionFilePath)
 
 	if err != nil {

@@ -13,6 +13,8 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SecurityIcon from '@mui/icons-material/Security';
 import StoreIcon from '@mui/icons-material/Store';
 import PublicIcon from '@mui/icons-material/Public';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 
 const drawerWidth = 275;
 const collapsedDrawerWidth = 80; // Width when collapsed
@@ -77,6 +79,7 @@ const Sidebar: React.FC = () => {
   const handleMarket = async () => navigate('/market');
   const handleProxy = async () => navigate('/proxy');
   const handleGlobalTransactions = async () => navigate('/global-transactions');
+  const handleFileTransactions = async () => navigate('/fileTransactions');
 
   const drawer = (
     <div>
@@ -133,7 +136,19 @@ const Sidebar: React.FC = () => {
             '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
           }}
         >
-          <ListItemIcon><PublicIcon /></ListItemIcon>
+          <ListItemIcon><PaymentsIcon /></ListItemIcon>
+          <ListItemText primary="Wallet Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
+        </ListItem>
+
+        <ListItem
+          onClick={handleFileTransactions}
+          sx={{
+            cursor: 'pointer',
+            backgroundColor: isActive('/fileTransactions') ? 'rgba(0, 0, 0, 0.2)' : 'transparent',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <ListItemIcon><ReceiptLongIcon /></ListItemIcon>
           <ListItemText primary="File Transactions" sx={{ display: { xs: 'none', sm: 'block' } }} />
         </ListItem>
 

@@ -39,7 +39,7 @@ var (
 	clientconnect        bool
 	globalCtxC           context.Context
 	contextCancel        context.CancelFunc
-	dirPath              = filepath.Join("..", "utils")
+	dirPath              = filepath.Join("..", "..", "utils")
 	proxyHistoryFilePath = filepath.Join(dirPath, "proxyHistory.json")
 )
 
