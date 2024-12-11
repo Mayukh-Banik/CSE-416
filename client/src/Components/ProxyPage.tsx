@@ -594,7 +594,7 @@ const ProxyHosts: React.FC = () => {
                               </Button>
                             </TableCell> */}
                             <TableCell>
-                              <TextField
+                              {/* <TextField
                                 label="Passphrase"
                                 variant="outlined"
                                 value={input1}
@@ -621,7 +621,7 @@ const ProxyHosts: React.FC = () => {
                                   min: 0,
                                   step: "any"
                                 }}
-                              />
+                              /> */}
                               <Button
                                 variant="contained"
                                 onClick={() => handleConnect(host)}
