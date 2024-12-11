@@ -506,6 +506,7 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("BEFORE SENDING HISTORY", host_peerid)
 		historyMutex.Lock()
 		defer historyMutex.Unlock()
+
 		err := dht_kad.SendHistoryToHost(host_peerid)
 		if err != nil {
 			log.Printf("Error sending history to host: %v", err)

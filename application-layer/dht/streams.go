@@ -357,7 +357,18 @@ func handleHistoryStream(stream network.Stream) {
 	// Add your logic to store or process the history
 }
 func setupHistoryStreamHandler(host host.Host) {
-	host.SetStreamHandler("/orcanet/p2p", handleHistoryStream)
+	Host.SetStreamHandler("/orcanet/p2p", func(stream network.Stream) {
+		fmt.Println("Received a stream for /orcanet/p2p")
+		defer stream.Close()
+
+		decoder := json.NewDecoder(stream)
+		var receivedHistory []models.ProxyHistoryEntry // Update YourHistoryType accordingly
+		if err := decoder.Decode(&receivedHistory); err != nil {
+			fmt.Printf("Error decoding received history: %v\n", err)
+			return
+		}
+		fmt.Println("Received history:", receivedHistory)
+	})
 }
 func SendHistoryToHost(hostPeerIDStr string) error {
 
@@ -381,6 +392,8 @@ func SendHistoryToHost(hostPeerIDStr string) error {
 	// Send the proxy history
 	fmt.Printf("Sending proxy history to peer %s\n", hostPeerID)
 	encoder := json.NewEncoder(stream)
+	fmt.Printf("Sending data: %+v\n", proxyHistory)
+
 	if err := encoder.Encode(proxyHistory); err != nil {
 		fmt.Printf("ERROR: Failed to encode and send history: %v\n", err)
 		return fmt.Errorf("failed to encode and send history: %v", err)
