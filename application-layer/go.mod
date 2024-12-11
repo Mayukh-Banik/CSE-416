@@ -13,8 +13,6 @@ require (
 	github.com/rs/cors v1.11.1
 )
 
-require github.com/libp2p/go-libp2p-core v0.20.1
-
 require (
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -35,7 +33,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/pprof v0.0.0-20241017200806-017d972448fc // indirect
+	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db // indirect
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/errwrap v1.1.0 // indirect
