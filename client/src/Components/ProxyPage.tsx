@@ -17,6 +17,7 @@ interface ProxyHost {
   price: string;
   isHost: boolean;
 
+
 }
 
 function getPrivateIP(callback: (ip: string | null) => void) {
@@ -56,7 +57,7 @@ const ProxyHosts: React.FC = () => {
     name: '',
     location: '',
     logs: [],
-    address: '',
+    address:  '',
     Statistics: { uptime: '' },
     bandwidth: '',
     peer_id: '',
@@ -148,6 +149,8 @@ const ProxyHosts: React.FC = () => {
         console.error('Unable to retrieve private IP');
       }
     });
+    
+
     fetchData()
   }, []);
 
@@ -209,7 +212,7 @@ const ProxyHosts: React.FC = () => {
   const notifyConnectionToBackend = async (host: ProxyHost) => {
     console.log("Attempting to connect...");
     try {
-      console.log(host.peer_id)
+      console.log(host.address)
       console.log(host.address)
       const response = await fetch(`http://localhost:8081/connect-proxy?val=${host.peer_id}&ip=${host.address}`, {
         method: 'POST',
@@ -228,6 +231,8 @@ const ProxyHosts: React.FC = () => {
       }
       alert(`Connected to ${host.location}`);
       if (response.ok) {
+        setCurrentIP(host.address);
+      }      if (response.ok) {
         setCurrentIP(host.address);
       }
       console.log(`Successfully notified backend about the connection to ${host.location}`);
@@ -250,7 +255,7 @@ const ProxyHosts: React.FC = () => {
       name: '',
       location: '',
       logs: [],
-      address: '',
+      address:  '',
       peer_id: '',
       Statistics: { uptime: '' },
       bandwidth: '',
@@ -278,8 +283,29 @@ const ProxyHosts: React.FC = () => {
     setProxyHosts(sortedHosts);
   };
 
+  const fetchHistory = async () => {
+    try {
+      const response = await fetch('http://localhost:8081/proxy-history/', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      console.log(response.json());
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const history = await response.json();
+      setProxyHistory(history); // Assuming setProxyHistory is defined elsewhere
+    } catch (error) {
+      console.error("Failed to fetch proxy history:", error);
+    }
+  };
   const handleClearAndShowHistory = () => {
     setShowHistoryOnly(true); // Show history
+    fetchHistory();
+
   };
 
   const handleReturn = () => {

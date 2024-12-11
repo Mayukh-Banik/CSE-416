@@ -281,6 +281,7 @@ func sendSuccessConfirmation(transaction models.Transaction) {
 		return
 	}
 }
+
 func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
