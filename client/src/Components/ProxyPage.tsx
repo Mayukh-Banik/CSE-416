@@ -251,7 +251,6 @@ const ProxyHosts: React.FC = () => {
       alert(`Connected to ${host.location}`);
       if (response.ok) {
         setCurrentIP(host.address);
-        await updateHistoryOnHost(host.peer_id);
       } if (response.ok) {
         setCurrentIP(host.address);
       }
@@ -261,26 +260,7 @@ const ProxyHosts: React.FC = () => {
       console.error('Error notifying backend:', error);
     }
   };
-  const updateHistoryOnHost = async (hostPeerID: string) => {
-    try {
-      const response = await fetch(`http://localhost:8081/update-history?host=${hostPeerID}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(proxyHistory),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update history on host');
-      }
-
-      console.log('Successfully updated history on host');
-    } catch (error) {
-      console.error('Error updating history on host:', error);
-    }
-  };
-
+  
   const handleAddProxy = async () => {
     if (newProxy.location.trim() === '' || newProxy.price.trim() === '' || newProxy.Statistics.uptime === '' || newProxy.bandwidth.trim() === '') {
       alert('Please fill in all fields.');
