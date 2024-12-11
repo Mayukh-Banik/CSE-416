@@ -721,7 +721,6 @@ func (bs *BtcService) Init() string {
 	err := forceRemoveAll(mainnetPath)
 	if err != nil {
 		fmt.Printf("Failed to remove mainnet directory: %v\n", err)
-		return "Failed to remove mainnet directory"
 	}
 	fmt.Println("Mainnet directory removed successfully.")
 
