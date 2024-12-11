@@ -452,6 +452,10 @@ func receiveFile(node host.Host) error {
 			log.Fatalf("Failed to unmarshal metadata: %v", err)
 		}
 
+		// when downloading new file, user is not initially a provider
+		// go to files page to set self as provider of file
+		metadata.IsPublished = false
+
 		fmt.Printf("Received metadata: FileName=%s\n", metadata.NameWithExtension)
 
 		// check if squidcoinFiles directory exists

@@ -342,7 +342,7 @@ const MarketplacePage: React.FC = () => {
         <DialogContent>
         {selectedFile && (
           <Box sx={{ marginBottom: 2 }}>
-            <Typography>Size: {selectedFile.Size} MB</Typography>
+            <Typography>Size: {(selectedFile.Size/1024).toFixed(2)} KB</Typography>
             {selectedFile.Description && (
               <Typography>Description: {selectedFile.Description}</Typography>
             )}
