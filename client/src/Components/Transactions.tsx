@@ -15,7 +15,6 @@ import { Visibility, VisibilityOff, ContentCopy, Refresh } from '@mui/icons-mate
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import MuiAlert from '@mui/material/Alert';
 
-// Snackbar Alert Component
 const AlertComponent = React.forwardRef<HTMLDivElement, any>(function Alert(
   props,
   ref,
@@ -26,7 +25,6 @@ const AlertComponent = React.forwardRef<HTMLDivElement, any>(function Alert(
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
-// Set up API base URL (environment variables recommended)
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
 const GlobalTransactions: React.FC = () => {
@@ -45,12 +43,10 @@ const GlobalTransactions: React.FC = () => {
   const [success, setSuccess] = useState<string>('');
   const [showPassphrase, setShowPassphrase] = useState<boolean>(false);
 
-  // Snackbar state
   const [openSnackbar, setOpenSnackbar] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
-  // Snackbar close handler
   const handleCloseSnackbar = (
     event?: React.SyntheticEvent | Event,
     reason?: string
@@ -61,7 +57,6 @@ const GlobalTransactions: React.FC = () => {
     setOpenSnackbar(false);
   };
 
-  // Fetch unspent transactions data
   const fetchUnspentTransactions = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/btc/listunspent`);
@@ -79,7 +74,6 @@ const GlobalTransactions: React.FC = () => {
     }
   }, []);
 
-  // Fetch current address
   const fetchCurrentAddress = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/btc/currentaddress`);
@@ -96,7 +90,6 @@ const GlobalTransactions: React.FC = () => {
     }
   }, []);
 
-  // Fetch initial data
   useEffect(() => {
     fetchUnspentTransactions();
     fetchCurrentAddress();
@@ -108,7 +101,6 @@ const GlobalTransactions: React.FC = () => {
     setError('');
     setSuccess('');
 
-    // Example input validation
     if (amount <= 0) {
       setError('Amount must be greater than 0.');
       setLoading(false);
@@ -136,23 +128,51 @@ const GlobalTransactions: React.FC = () => {
         dst,
         amount,
       });
+      console.log('Transaction response:', response.data);
 
       if (response.data.status === 'success') {
         setSuccess(`Transaction completed successfully. TxID: ${response.data.data.txid}`);
-
-        // Refresh transaction list
-        // await fetchTransactions();
-        // Refresh unspent transaction list
         await fetchUnspentTransactions();
         setPassphrase('');
         setTxid('');
         setDst('');
         setAmount(0);
       } else {
-        setError(response.data.message || 'Transaction failed.');
+        const backendMessage = response.data.message || 'Transaction failed.';
+
+        if (backendMessage.includes('failed to unlock wallet. Please check passphrase')) {
+          setError('The passphrase is incorrect. Please check and try again.');
+        } else if (backendMessage.includes('Invalid address or key: checksum mismatch')) {
+          setError('The destination address is invalid. Please check the address and try again.');
+        } else if (backendMessage.includes('no suitable UTXO found')) {
+          setError('No suitable UTXO found for the given TxID. Please check the TxID and ensure you have sufficient funds.');
+        } else if (backendMessage.includes('Insufficient funds')) {
+          setError('Your requested amount exceeds the available funds. Please reduce the amount.');
+        } else {
+          setError(backendMessage);
+        }
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'An error occurred during the transaction.');
+      if (err.response && err.response.data) {
+        const backendMessage = err.response.data.message;
+        const backendErrorCode = err.response.data.errorCode;
+
+        if (backendMessage && backendMessage.includes('failed to unlock wallet. Please check passphrase')) {
+          setError('The passphrase is incorrect. Please check and try again.');
+        } else if (backendMessage && backendMessage.includes('Invalid address or key: checksum mismatch')) {
+          setError('The destination address is invalid. Please check the address and try again.');
+        } else if (backendMessage && backendMessage.includes('no suitable UTXO found')) {
+          setError('No suitable UTXO found for the given TxID. Please check the TxID and ensure you have sufficient funds.');
+        } else if (backendMessage && backendMessage.includes('Insufficient funds')) {
+          setError('Your requested amount exceeds the available funds. Please reduce the amount.');
+        } else if (backendMessage === 'Incorrect passphrase' || backendErrorCode === 'INVALID_PASSPHRASE') {
+          setError('The passphrase is incorrect. Please check and try again.');
+        } else {
+          setError(backendMessage || 'An error occurred during the transaction.');
+        }
+      } else {
+        setError('An unexpected error occurred. Please try again later.');
+      }
     } finally {
       setLoading(false);
     }
@@ -168,23 +188,18 @@ const GlobalTransactions: React.FC = () => {
   };
 
   const renderUnspentTransactionsTable = () => {
-    // Filter unspent transactions matching the current address
     const filteredUnspentTxs = unspentTxs.filter(tx => tx.address === currentAddress);
 
     if (filteredUnspentTxs.length === 0) {
       return (
         <Paper sx={{ marginBottom: 4, padding: 2 }}>
-          {/* Display current address */}
           <Typography variant="h6" gutterBottom>
             Current Address: {currentAddress}
           </Typography>
-
-          {/* Empty State Message */}
           <Box sx={{ textAlign: 'center', padding: 4 }}>
             <Typography variant="body1" gutterBottom>
               No unspent transactions available.
             </Typography>
-            {/* Optional: Add an illustration or icon for empty state */}
           </Box>
         </Paper>
       );
@@ -192,7 +207,6 @@ const GlobalTransactions: React.FC = () => {
 
     return (
       <Paper sx={{ marginBottom: 4, padding: 2 }}>
-        {/* Display current address and Refresh button */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
           <Typography variant="h6">
             Current Address: {currentAddress}
@@ -207,7 +221,6 @@ const GlobalTransactions: React.FC = () => {
           </Button>
         </Box>
 
-        {/* Copy all data button */}
         <Box sx={{ padding: 2, display: 'flex', justifyContent: 'flex-end' }}>
           <CopyToClipboard
             text={filteredUnspentTxs.map(tx => `TxID: ${tx.txid}, Amount: ${tx.amount}, Confirmations: ${tx.confirmations}`).join('\n')}
@@ -223,7 +236,6 @@ const GlobalTransactions: React.FC = () => {
           </CopyToClipboard>
         </Box>
 
-        {/* Responsive Table Container */}
         <TableContainer sx={{ maxHeight: 440, overflowX: 'auto' }}>
           <Table stickyHeader aria-label="unspent transactions table">
             <TableHead>
@@ -231,7 +243,7 @@ const GlobalTransactions: React.FC = () => {
                 <TableCell>Transaction ID</TableCell>
                 <TableCell>Amount</TableCell>
                 <TableCell>Confirmations</TableCell>
-                <TableCell>Copy</TableCell> {/* Copy button column */}
+                <TableCell>Copy</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -242,7 +254,7 @@ const GlobalTransactions: React.FC = () => {
                   <TableCell>{tx.confirmations}</TableCell>
                   <TableCell>
                     <CopyToClipboard
-                      text={tx.txid} // Copy only txid
+                      text={tx.txid}
                       onCopy={() => {
                         setSnackbarMessage('TxID copied successfully!');
                         setSnackbarSeverity('success');
@@ -279,7 +291,6 @@ const GlobalTransactions: React.FC = () => {
         Transaction
       </Typography>
 
-      {/* Transaction Form */}
       <Paper sx={{ padding: 3, marginBottom: 4 }}>
         <Typography variant="h6" gutterBottom>
           Perform a Transaction
@@ -359,11 +370,9 @@ const GlobalTransactions: React.FC = () => {
         </form>
       </Paper>
 
-      {/* Render Unspent Transactions Table or Empty State */}
       {unspentTxs.length > 0 ? (
         renderUnspentTransactionsTable()
       ) : (
-        // Even if unspentTxs is empty, currentAddress should still be displayed
         <Paper sx={{ marginBottom: 4, padding: 2 }}>
           <Typography variant="h6" gutterBottom>
             Current Address: {currentAddress}
@@ -372,8 +381,6 @@ const GlobalTransactions: React.FC = () => {
             <Typography variant="body1" gutterBottom>
               No unspent transactions available.
             </Typography>
-            {/* Optional: Add an illustration or icon for empty state */}
-            {/* Refresh */}
             <Box sx={{ marginTop: 2 }}>
               <Button
                 variant="outlined"
@@ -388,10 +395,6 @@ const GlobalTransactions: React.FC = () => {
         </Paper>
       )}
 
-      {/* List of existing transactions */}
-      {/* {renderTransactionsTable(transactions)} */}
-
-      {/* Snackbar Notifications */}
       <Snackbar
         open={openSnackbar}
         autoHideDuration={3000}
