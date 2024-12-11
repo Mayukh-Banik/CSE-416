@@ -336,6 +336,7 @@ func getNodeId() {
 // move to files package?
 func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error) {
 	fmt.Println("-----UpdateFileInDHT-----")
+	fmt.Println("NEW FEE: ", currentInfo.Fee)
 	// Retrieve the current metadata for the file, if it exists
 	var currentMetadata models.DHTMetadata
 	existingData, err := DHT.GetValue(GlobalCtx, "/orcanet/"+currentInfo.Hash)
@@ -373,6 +374,7 @@ func UpdateFileInDHT(currentInfo models.FileMetadata) (models.DHTMetadata, error
 		fmt.Println("provider already exists")
 		// Update the IsActive field
 		existingProvider.IsActive = currentInfo.IsPublished
+		existingProvider.Fee = currentInfo.Fee
 		// Update the provider in the map
 		currentMetadata.Providers[PeerID] = existingProvider
 	} else {

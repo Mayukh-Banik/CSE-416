@@ -327,7 +327,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   };
 
   const handleConfirmPublish = async (hash: string, files: FileMetadata[]) => {
-
+    console.log("new fee", newFee)
     const fileToPublish = files.find(file => file.Hash === hash);
     
     if (!fileToPublish) {
@@ -336,11 +336,20 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     }
     console.log("old metadata: ", fileToPublish)
 
-    const updatedMetadata = {
-      ...fileToPublish,
-      IsPublished: !fileToPublish.IsPublished,
-      Fee: newFee,
-    };
+    if (fileToPublish.IsPublished) {
+      console.log('published --> unpublished')
+      var updatedMetadata = {
+        ...fileToPublish,
+        IsPublished: !fileToPublish.IsPublished,
+      };
+    } else {
+      console.log('unpublished --> published')
+      var updatedMetadata = {
+        ...fileToPublish,
+        IsPublished: !fileToPublish.IsPublished,
+        Fee: newFee,
+      };
+    }
 
     console.log("updated metadata: ", updatedMetadata)
 
@@ -359,7 +368,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
             setUploadedFiles(prevFiles => 
               prevFiles.map(currentFile =>
                 currentFile.Hash === hash
-                  ? { ...currentFile, IsPublished: !currentFile.IsPublished, Fee: newFee }
+                  ? { ...currentFile, IsPublished: !currentFile.IsPublished, Fee: updatedMetadata.Fee }
                   : currentFile
               )
             );
@@ -367,7 +376,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
             setDownloadedFiles(prevFiles => 
               prevFiles.map(currentFile =>
                 currentFile.Hash === hash
-                  ? { ...currentFile, IsPublished: !currentFile.IsPublished, Fee: newFee }
+                  ? { ...currentFile, IsPublished: !currentFile.IsPublished, Fee: updatedMetadata.Fee }
                   : currentFile
               )
             );
@@ -621,10 +630,10 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                             onChange={() => {
                               setCurrentFile(file);
                               setCurrentFileHash(file.Hash);
-                              if (file.IsPublished) {
-                                handleConfirmPublish(file.Hash, uploadedFiles);
+                              if (file.IsPublished) { // unpublishing
                                 setNewFee(file.Fee)
-                              } else {
+                                handleConfirmPublish(file.Hash, uploadedFiles);
+                              } else { // republishing
                                 setParsingFiles(uploadedFiles);
                                 setPublishDialogOpen(true);
                               }
@@ -743,10 +752,10 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                             onChange={() => {
                               setCurrentFile(file);
                               setCurrentFileHash(file.Hash);
-                              if (file.IsPublished) {
-                                handleConfirmPublish(file.Hash, uploadedFiles);
+                              if (file.IsPublished) { // unpublishing file
                                 setNewFee(file.Fee)
-                              } else {
+                                handleConfirmPublish(file.Hash, downloadedFiles);
+                              } else { // publishing file
                                 setParsingFiles(downloadedFiles);
                                 setPublishDialogOpen(true);
                               }
