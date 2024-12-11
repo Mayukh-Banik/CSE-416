@@ -17,20 +17,36 @@ upvote = +1, downvote = -1
 */
 var fileMutex sync.Mutex // used by cloud-node
 
-// Handle voting for both upvotes and downvotes
 func handleVote(w http.ResponseWriter, r *http.Request) {
 	log.Println("in handleVote")
 
-	fileHash := r.URL.Query().Get("fileHash")
-	voteType := r.URL.Query().Get("voteType")
-	log.Printf("file hash: %s | vote type: %s\n", fileHash, voteType)
+	// Ensure it's a POST request
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error": "Invalid request method"}`, http.StatusMethodNotAllowed)
+		return
+	}
 
-	if fileHash == "" || voteType == "" {
+	// Parse request body
+	var requestData struct {
+		FileHash string `json:"fileHash"`
+		VoteType string `json:"voteType"`
+	}
+
+	// Decode the JSON request body
+	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
+		log.Printf("Error decoding request body: %v", err)
+		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Check if fileHash or voteType is empty
+	if requestData.FileHash == "" || requestData.VoteType == "" {
 		http.Error(w, `{"error": "File hash or vote type not provided"}`, http.StatusBadRequest)
 		return
 	}
 
-	if err := votingHelper(fileHash, voteType); err != nil {
+	// Call the voting helper function
+	if err := votingHelper(requestData.FileHash, requestData.VoteType); err != nil {
 		log.Printf("handleVote error: %v", err)
 		http.Error(w, fmt.Sprintf(`{"error": "Voting failed: %v"}`, err), http.StatusInternalServerError)
 		return
@@ -39,7 +55,7 @@ func handleVote(w http.ResponseWriter, r *http.Request) {
 	log.Println("handleVote: successfully voted!")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"message": "Vote '%s' recorded for file %s"}`, voteType, fileHash)
+	fmt.Fprintf(w, `{"message": "Vote '%s' recorded for file %s"}`, requestData.VoteType, requestData.FileHash)
 }
 
 func votingHelper(fileHash string, voteType string) error {
@@ -112,28 +128,44 @@ func votingHelper(fileHash string, voteType string) error {
 	dht_kad.SendCloudNodeFiles(metadata)
 	return nil
 }
-
 func handleGetRating(w http.ResponseWriter, r *http.Request) {
-	fileHash := r.URL.Query().Get("fileHash")
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
 
-	if fileHash == "" {
+	// Parse request body
+	var requestData struct {
+		FileHash string `json:"fileHash"`
+	}
+
+	// Decode the JSON request body
+	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if requestData.FileHash == "" {
 		http.Error(w, "File hash not provided", http.StatusBadRequest)
 		return
 	}
 
-	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+fileHash)
+	// Retrieve data from DHT using fileHash
+	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+requestData.FileHash)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error retrieving file data: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	// Unmarshal the data into the metadata struct
 	var metadata models.DHTMetadata
 	if err := json.Unmarshal(data, &metadata); err != nil {
 		http.Error(w, fmt.Sprintf("Error decoding file metadata: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println("rating for file hash: ", fileHash, metadata.Rating)
+	// Return the rating for the file
+	fmt.Println("rating for file hash: ", requestData.FileHash, metadata.Rating)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(metadata.Rating); err != nil {
 		http.Error(w, "Failed to encode file rating", http.StatusInternalServerError)
