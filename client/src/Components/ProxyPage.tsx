@@ -308,10 +308,7 @@ const ProxyHosts: React.FC = () => {
     window.location.reload();
   };
 
-  const handleSortByLocation = () => {
-    const sortedHosts = [...proxyHosts].sort((a, b) => a.location.localeCompare(b.location));
-    setProxyHosts(sortedHosts);
-  };
+
 
   const handleSortByPrice = () => {
     const sortedHosts = [...proxyHosts].sort((a, b) => {
@@ -436,9 +433,6 @@ const ProxyHosts: React.FC = () => {
                     </Button>
                     {/* Sort Buttons */}
                     <Box sx={{ display: 'flex', gap: '10px' }}>
-                      <Button variant="outlined" onClick={handleSortByLocation}>
-                        Sort by Location
-                      </Button>
                       <Button variant="outlined" onClick={handleSortByPrice}>
                         Sort by Price
                       </Button>
