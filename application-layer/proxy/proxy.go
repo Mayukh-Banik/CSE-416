@@ -161,6 +161,7 @@ func pollPeerAddresses(ProxyIsHost bool, ip string) {
 	node := dht_kad.Host
 	if ProxyIsHost {
 		fmt.Println("IN HOST", ip)
+		
 		for {
 			if hosting {
 				httpHostToClient(node)
