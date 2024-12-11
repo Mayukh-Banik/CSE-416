@@ -173,7 +173,7 @@ func pollPeerAddresses(ProxyIsHost bool, ip string) {
 			if hosting {
 				httpHostToClient(node)
 			}
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second)
 		}
 		// httpHostToClient(node)
 	} else {
@@ -327,7 +327,7 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		// clearAllProxies()
-		hosting = true
+		// hosting = true
 		proxyInfo, err := getAllProxiesFromDHT(dht_kad.DHT, node.ID(), models.Proxy{})
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error retrieving proxies: %v", err), http.StatusInternalServerError)
@@ -816,6 +816,20 @@ func httpHostToClient(node host.Host) {
 	if !hosting {
 		return
 	}
+
+	isPortInUse := func(port int) bool {
+		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+		if err != nil {
+			return true // Port is in use
+		}
+		_ = ln.Close() // Port is free, release it
+		return false
+	}
+
+	if isPortInUse(19483) {
+		return
+	}
+
 	globalCtxC, contextCancel = context.WithCancel(context.Background())
 
 	// Function to run the command
@@ -829,10 +843,11 @@ func httpHostToClient(node host.Host) {
 	tar := func(cancel context.CancelFunc) {
 		for {
 			if !hosting {
+				fmt.Println("Stopping Proxy")
 				cancel()
 				break
 			}
-			time.Sleep(10 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 	}
 
