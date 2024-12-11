@@ -30,7 +30,12 @@ func InitProxyRoutes() *mux.Router {
 		stopHosting(w, r)
 	}).Methods("POST")
 
-	r.HandleFunc("/proxy-history/", handleGetProxyHistory).Methods("GET")
+	//Fetchiing history
+	r.HandleFunc("/proxy-history/", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Received request for /proxy-history/")
+		handleGetProxyHistory(w, r)
+	}).Methods("POST", "GET")
+
 	r.HandleFunc("/connect-proxy/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Received request for /connect-proxy/")
 		handleConnectMethod(w, r)

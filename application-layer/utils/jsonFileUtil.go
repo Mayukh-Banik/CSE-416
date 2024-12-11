@@ -10,10 +10,11 @@ import (
 )
 
 var (
-	dirPath             = filepath.Join("..", "utils")
-	uploadedFilePath    = filepath.Join(dirPath, "files.json")
-	downloadedFilePath  = filepath.Join(dirPath, "downloadedFiles.json")
-	transactionFilePath = filepath.Join(dirPath, "transactionFiles.json")
+	dirPath              = filepath.Join("..", "utils")
+	proxyHistoryFilePath = filepath.Join(dirPath, "proxyHistory.json")
+	uploadedFilePath     = filepath.Join(dirPath, "files.json")
+	downloadedFilePath   = filepath.Join(dirPath, "downloadedFiles.json")
+	transactionFilePath  = filepath.Join(dirPath, "transactionFiles.json")
 
 	fileCopyPath = filepath.Join("..", "squidcoinFiles")
 	fileMutex    sync.Mutex // used by cloud-node
@@ -23,7 +24,7 @@ var (
 func SaveOrUpdateFile(newFileData models.FileMetadata, dirPath, filePath string) (string, error) {
 	fileMutex.Lock()
 	defer fileMutex.Unlock()
-	
+
 	// check if directory and file exist
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {
@@ -134,4 +135,63 @@ func AddOrUpdateTransaction(transaction models.Transaction) error {
 	}
 
 	return nil
+}
+func AddOrUpdateProxyHistory(newHistoryEntry models.ProxyHistoryEntry) (string, error) {
+	fileMutex.Lock()
+	defer fileMutex.Unlock()
+
+	// Check if the directory and file exist
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {
+			return "", fmt.Errorf("failed to create utils directory: %v", err)
+		}
+	}
+
+	if _, err := os.Stat(proxyHistoryFilePath); os.IsNotExist(err) {
+		if err := os.WriteFile(proxyHistoryFilePath, []byte("[]"), 0644); err != nil {
+			return "", fmt.Errorf("failed to create proxyHistory.json: %v", err)
+		}
+	}
+
+	// Read the current proxy history from the file
+	data, err := os.ReadFile(proxyHistoryFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read proxyHistory.json: %v", err)
+	}
+
+	var proxyHistory []models.ProxyHistoryEntry
+	if err := json.Unmarshal(data, &proxyHistory); err != nil {
+		return "", fmt.Errorf("failed to parse proxyHistory.json: %v", err)
+	}
+
+	// Update if the history entry for the client already exists
+	isUpdated := false
+	for i := range proxyHistory {
+		if proxyHistory[i].ClientPeerID == newHistoryEntry.ClientPeerID {
+			proxyHistory[i] = newHistoryEntry
+			isUpdated = true
+			break
+		}
+	}
+
+	// Add the new history entry if not already present
+	if !isUpdated {
+		proxyHistory = append([]models.ProxyHistoryEntry{newHistoryEntry}, proxyHistory...)
+	}
+
+	// Convert the updated proxy history back to JSON
+	updatedData, err := json.MarshalIndent(proxyHistory, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal updated proxy history: %v", err)
+	}
+	// Write the updated proxy history to the file
+	if err := os.WriteFile(proxyHistoryFilePath, updatedData, 0644); err != nil {
+		return "", fmt.Errorf("failed to write updated data to proxyHistory.json: %v", err)
+	}
+
+	action := "updated"
+	if !isUpdated {
+		action = "added"
+	}
+	return action, nil
 }

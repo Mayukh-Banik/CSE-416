@@ -10,8 +10,6 @@ import {
   TableRow,
   Button,
   Paper,
-  Card,
-  CardContent,
 } from "@mui/material";
 import Sidebar from "./Sidebar";
 import { useTheme } from "@mui/material/styles";
@@ -21,68 +19,71 @@ const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
 
 const AccountViewPage: React.FC = () => {
+  const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([])
+  const [ratings, setRatings] = useState<{ [key: string]: number }>({});
   const theme = useTheme();
 
-  // State for uploaded files
-  const [uploadedFiles, setUploadedFiles] = useState<FileMetadata[]>([]);
-
-  // State for wallet address and balance
-  const [walletDetails, setWalletDetails] = useState({
-    walletAddress: "",
-    balance: "",
+  // Initial account data
+  const [accountDetails, setAccountDetails] = useState({
+    walletId: "gen-public-key-123",
+    totalVotes: 10, // Starting with 10 votes
+    totalScore: 50,  // Starting with 10 votes, all 5 stars (10 * 5 = 50)
+    balance: 100,
   });
 
-  // Fetch wallet address and balance
   useEffect(() => {
-    const fetchWalletDetails = async () => {
-      try {
-        const response = await fetch(
-          "http://localhost:8080/api/auth/getMiningAddressAndBalance"
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch wallet details");
+      const fetchFiles = async () => {
+        try {
+          console.log("Getting local user's uploaded files");
+          let fileType = "uploaded"
+          const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
+            method: "GET",
+          });
+          if (!response.ok) throw new Error(`Failed to load ${fileType} file data`);
+    
+          const data = await response.json();
+          console.log("Fetched data", data);
+  
+          setUploadedFiles(data); // Set the state with the loaded data
+        } catch (error) {
+          console.error("Error fetching files:", error);
         }
-        const data = await response.json();
-        console.log("Fetched wallet details:", data);
+      };
+  
+      fetchFiles();
+    }, []);
 
-        setWalletDetails({
-          walletAddress: data.mining_address,
-          balance: data.balance,
+
+  const handleVote = async (fileHash: string, voteType: 'upvote' | 'downvote') => { 
+    try {
+      const response = await fetch(`http://localhost:8081/files/vote?fileHash=${fileHash}&voteType=${voteType}`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        setRatings(prevRatings => {
+          const currentRating = prevRatings[fileHash] || 0;
+          const newRating =
+            voteType === 'upvote' ? currentRating + 1 : currentRating - 1;
+      
+          return { ...prevRatings, [fileHash]: newRating };
         });
-      } catch (error) {
-        console.error("Error fetching wallet details:", error);
+      } else {
+        throw new Error("Failed to update vote");
       }
-    };
+    } catch (error) {
+      console.error("Error updating vote:", error);
+    }
+  };
 
-    fetchWalletDetails();
 
-    // Periodically update wallet balance
-    const interval = setInterval(() => {
-      fetchWalletDetails();
-    }, 10000); // Update every 10 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Fetch uploaded files
-  useEffect(() => {
-    const fetchFiles = async () => {
-      try {
-        console.log("Getting local user's uploaded files");
-        const response = await fetch("http://localhost:8081/files/fetchAll");
-        if (!response.ok) throw new Error("Failed to load file data");
-
-        const data = await response.json();
-        console.log("Fetched data", data);
-
-        setUploadedFiles(data); // Set the state with the loaded data
-      } catch (error) {
-        console.error("Error fetching files:", error);
-      }
-    };
-
-    fetchFiles();
-  }, []);
+  // Function to calculate reputation out of 5 stars
+  const calculateReputation = () => {
+    return (accountDetails.totalScore / accountDetails.totalVotes).toFixed(2); // Round to 2 decimal points
+  };
 
   return (
     <Box
@@ -102,42 +103,24 @@ const AccountViewPage: React.FC = () => {
           Account Information
         </Typography>
 
-        {/* Wallet Address and Balance */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6">Wallet Address</Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                wordWrap: "break-word",
-                mt: 1,
-                mb: 2,
-                fontFamily: "monospace",
-                backgroundColor: "#f5f5f5",
-                padding: "8px",
-                borderRadius: "4px",
-              }}
-            >
-              {walletDetails.walletAddress || "Loading..."}
-            </Typography>
+        {/* Account details */}
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="h6">Wallet Id:</Typography>
+          <Typography variant="body1">{accountDetails.walletId}</Typography>
+          <Divider sx={{ my: 2 }} />
 
-            <Divider sx={{ my: 2 }} />
+          <Typography variant="h6">Reputation (out of 5 stars):</Typography>
+          <Typography variant="body1">{calculateReputation()} / 5</Typography>
+          <Divider sx={{ my: 2 }} />
 
-            <Typography variant="h6">Account Balance</Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                fontWeight: "bold",
-                color: theme.palette.primary.main,
-                mt: 1,
-              }}
-            >
-              {walletDetails.balance ? `${walletDetails.balance} BTC` : "Loading..."}
-            </Typography>
-          </CardContent>
-        </Card>
+          <Typography variant="h6">Account Balance:</Typography>
+          <Typography variant="body1">
+            {accountDetails.balance.toFixed(2)} coins
+          </Typography>
+          <Divider sx={{ my: 2 }} />
+        </Box>
 
-        {/* Uploaded Files */}
+        {/* Uploaded files table */}
         <Typography variant="h6" sx={{ mt: 3 }}>
           Uploaded Files
         </Typography>
@@ -160,8 +143,18 @@ const AccountViewPage: React.FC = () => {
                   <TableCell>{file.CreatedAt}</TableCell>
                   <TableCell>{file.Rating}</TableCell>
                   <TableCell>
-                    <Button>Upvote</Button>
-                    <Button>Downvote</Button>
+                    <Button
+                      onClick={() => handleVote(file.Hash, "upvote")}
+                      disabled={file.HasVoted} // Disable button if already voted
+                    >
+                      Upvote
+                    </Button>
+                    <Button
+                      onClick={() => handleVote(file.Hash, "downvote")}
+                      disabled={file.HasVoted || file.OriginalUploader} // Disable button if already voted
+                    >
+                      Downvote
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -175,8 +168,8 @@ const AccountViewPage: React.FC = () => {
           </TableBody>
         </Table>
 
-        {/* Downloaded Files */}
-        <Typography variant="h6" sx={{ mt: 3 }}>
+        {/* Downloaded files table */}
+        {/* <Typography variant="h6" sx={{ mt: 3 }}>
           Downloaded Files
         </Typography>
         <Table component={Paper}>
@@ -194,7 +187,7 @@ const AccountViewPage: React.FC = () => {
               </TableCell>
             </TableRow>
           </TableBody>
-        </Table> 
+        </Table> */}
 
       </Box>
     </Box>
