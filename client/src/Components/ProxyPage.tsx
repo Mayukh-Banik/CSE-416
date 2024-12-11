@@ -57,7 +57,7 @@ const ProxyHosts: React.FC = () => {
     name: '',
     location: '',
     logs: [],
-    address:  '',
+    address: '',
     Statistics: { uptime: '' },
     bandwidth: '',
     peer_id: '',
@@ -149,7 +149,7 @@ const ProxyHosts: React.FC = () => {
         console.error('Unable to retrieve private IP');
       }
     });
-    
+
 
     fetchData()
   }, []);
@@ -198,13 +198,32 @@ const ProxyHosts: React.FC = () => {
       isEnabled: h.location === host.location ? true : h.isEnabled,
     }));
 
+
     setProxyHosts(updatedHosts);
     setConnectedProxy(host);
     notifyConnectionToBackend(host);
 
 
     // Update proxy history
-    const newHistoryEntry = { name: host.name, location: host.location, timestamp: new Date().toLocaleString() };
+    const newHistoryEntry = {
+      name: host.name,
+      location: host.location,
+      timestamp: new Date().toLocaleString()
+    };
+
+    fetch('http://localhost:8081/update-history/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(newHistoryEntry)
+    }).then(response => {
+      if (!response.ok) {
+        console.error('Failed to update history on host');
+      }
+    }).catch(error => {
+      console.error('Error updating history:', error);
+    });
     setProxyHistory([...proxyHistory, newHistoryEntry]);
 
   }
@@ -233,7 +252,7 @@ const ProxyHosts: React.FC = () => {
       if (response.ok) {
         setCurrentIP(host.address);
         await updateHistoryOnHost(host.peer_id);
-      }      if (response.ok) {
+      } if (response.ok) {
         setCurrentIP(host.address);
       }
       console.log(`Successfully notified backend about the connection to ${host.location}`);
@@ -251,17 +270,17 @@ const ProxyHosts: React.FC = () => {
         },
         body: JSON.stringify(proxyHistory),
       });
-  
+
       if (!response.ok) {
         throw new Error('Failed to update history on host');
       }
-  
+
       console.log('Successfully updated history on host');
     } catch (error) {
       console.error('Error updating history on host:', error);
     }
   };
-  
+
   const handleAddProxy = async () => {
     if (newProxy.location.trim() === '' || newProxy.price.trim() === '' || newProxy.Statistics.uptime === '' || newProxy.bandwidth.trim() === '') {
       alert('Please fill in all fields.');
@@ -275,7 +294,7 @@ const ProxyHosts: React.FC = () => {
       name: '',
       location: '',
       logs: [],
-      address:  '',
+      address: '',
       peer_id: '',
       Statistics: { uptime: '' },
       bandwidth: '',
