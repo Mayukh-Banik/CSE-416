@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 
 	"sync"
 	"time"
@@ -473,6 +474,38 @@ func findTransactionWithAmountGreaterThan(utxos []map[string]interface{}, x floa
 		}
 	}
 	return "" // Return empty string if no transaction meets the criteria
+}
+
+func handleCheckBalance(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+	var data struct {
+		hostPrice string `json:"hostprice"`
+	}
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		log.Printf("Error parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
+	val, _ := strconv.ParseFloat(data.hostPrice, 64)
+	a, err := services.NewBtcService().ListUnspent()
+	if err != nil {
+		http.Error(w, "No unspent coins", http.StatusBadRequest)
+		return
+	}
+	b := findTransactionWithAmountGreaterThan(a, val)
+	if b != "" {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		http.Error(w, "No unspent coins", http.StatusBadRequest)
+	}
 }
 
 func handleConnectMethod(w http.ResponseWriter, r *http.Request) {

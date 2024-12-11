@@ -1,6 +1,7 @@
 package proxyService
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -44,5 +45,10 @@ func InitProxyRoutes() *mux.Router {
 		log.Println("Received request for /connect-proxy/")
 		handleConnectMethod(w, r)
 	}).Methods("GET")
+
+	r.HandleFunc("/check-balance/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Check balance")
+		handleCheckBalance(w, r)
+	}).Methods("POST", "GET")
 	return r
 }
