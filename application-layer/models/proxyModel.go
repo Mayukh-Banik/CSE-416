@@ -16,6 +16,8 @@ type Proxy struct {
 	IsHost         bool      `json:"isHost"`
 	Price          string    `json:"price"`
 	ConnectedTimed time.Time `json:"connected_time"`
+	ConnectedPeers []string  `json:"connected_peers"` // Add this field
+
 }
 type ProxyHistoryEntry struct {
 	Name      string    `json:"name"`

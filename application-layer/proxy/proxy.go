@@ -26,13 +26,15 @@ import (
 )
 
 var (
-	node_id        = ""
-	peer_id        = ""
-	globalCtx      context.Context
-	Peer_Addresses []ma.Multiaddr
-	isHost         = true
-	proxyHistory   []models.ProxyHistoryEntry
-	historyMutex   sync.Mutex
+	node_id          = ""
+	peer_id          = ""
+	globalCtx        context.Context
+	Peer_Addresses   []ma.Multiaddr
+	isHost           = true
+	connectedPeers   sync.Map
+	proxyUpdateMutex sync.Mutex
+	proxyHistory     []models.ProxyHistoryEntry
+	historyMutex     sync.Mutex
 )
 
 const (
@@ -358,7 +360,41 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// handleConnectMethod handles the CONNECT HTTP method for tunneling.
+func updateProxyConnections(clientPeerID string) {
+	proxyUpdateMutex.Lock()
+	defer proxyUpdateMutex.Unlock()
+
+	// Add the client to the connected peers
+	connectedPeers.Store(clientPeerID, time.Now())
+
+	// Retrieve the current proxy information
+	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
+	if err != nil {
+		log.Printf("Error retrieving proxy info: %v", err)
+		return
+	}
+
+	var proxy models.Proxy
+	err = json.Unmarshal([]byte(proxyInfo), &proxy)
+	if err != nil {
+		log.Printf("Error unmarshalling proxy info: %v", err)
+		return
+	}
+
+	// Update the connected peers list
+	var connectedPeersList []string
+	connectedPeers.Range(func(key, value interface{}) bool {
+		connectedPeersList = append(connectedPeersList, key.(string))
+		return true
+	})
+	proxy.ConnectedPeers = connectedPeersList
+
+	// Save the updated proxy information back to the DHT
+	if err := saveProxyToDHT(proxy); err != nil {
+		log.Printf("Error saving updated proxy info: %v", err)
+	}
+}
+
 func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	// Log the incoming request method and URL
 	fmt.Print("INSIDE THE CONNECT METHOD")
@@ -374,16 +410,8 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	// Check if the request method is POST
 	if r.Method == "GET" {
 		log.Println("Relaying data between client and peer...")
-		historyMutex.Lock()
-		proxyHistory = append(proxyHistory, models.ProxyHistoryEntry{
-			Name:      "Client Proxy", // Placeholder name, replace with actual client name if available
-			Location:  proxyIP,        // Client's IP address
-			Timestamp: time.Now(),     // Connection timestamp
-		})
-		historyMutex.Unlock()
-
-		log.Printf("Added to history: Client %s at %s\n", host_peerid, proxyIP)
 		pollPeerAddresses(false, proxyIP)
+		updateProxyConnections(host_peerid)
 		log.Println("Successfully connected to the peer.")
 
 		// Respond with 200 OK to indicate the connection has been established
@@ -409,7 +437,6 @@ func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
 
 	// Log the history retrieval
 	log.Println("Retrieving proxy connection history...")
-	log.Printf("Current Proxy History: %+v\n", proxyHistory)
 
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")

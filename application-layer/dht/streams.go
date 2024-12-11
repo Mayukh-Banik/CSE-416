@@ -281,6 +281,29 @@ func sendSuccessConfirmation(transaction models.Transaction) {
 		return
 	}
 }
+func sendHistoryToHost(hostPeerID string, history []models.ProxyHistoryEntry) error {
+	// Serialize the history
+	historyJSON, err := json.Marshal(history)
+	if err != nil {
+		return fmt.Errorf("failed to serialize history: %v", err)
+	}
+
+	// Create a new stream to the host
+	s, err := Host.NewStream(context.Background(), peer.ID(hostPeerID), "/history-protocol")
+	if err != nil {
+		return fmt.Errorf("failed to open stream to host: %v", err)
+	}
+	defer s.Close()
+
+	// Write the history to the stream
+	_, err = s.Write(historyJSON)
+	if err != nil {
+		return fmt.Errorf("failed to send history to host: %v", err)
+	}
+
+	return nil
+}
+
 func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
