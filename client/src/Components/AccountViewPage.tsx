@@ -158,7 +158,7 @@ const AccountViewPage: React.FC = () => {
                   <TableCell>{file.Name}</TableCell>
                   <TableCell>{file.Size}</TableCell>
                   <TableCell>{file.CreatedAt}</TableCell>
-                  <TableCell>{file.Reputation}</TableCell>
+                  <TableCell>{file.Rating}</TableCell>
                   <TableCell>
                     <Button>Upvote</Button>
                     <Button>Downvote</Button>
@@ -194,7 +194,8 @@ const AccountViewPage: React.FC = () => {
               </TableCell>
             </TableRow>
           </TableBody>
-        </Table>
+        </Table> 
+
       </Box>
     </Box>
   );

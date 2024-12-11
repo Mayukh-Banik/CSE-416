@@ -14,18 +14,17 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var (
-	dirPath             = filepath.Join("..", "utils")
-	UploadedFilePath    = filepath.Join(dirPath, "files.json")
-	DownloadedFilePath  = filepath.Join(dirPath, "downloadedFiles.json")
-	transactionFilePath = filepath.Join(dirPath, "transactionFiles.json")
-	FileCopyPath        = filepath.Join("..", "squidcoinFiles")
-	republishMutex      sync.Mutex
-	republished         = false
+	dirPath               = filepath.Join("..", "utils")
+	UploadedFilePath      = filepath.Join(dirPath, "files.json")
+	DownloadedFilePath    = filepath.Join(dirPath, "downloadedFiles.json")
+	transactionFilePath   = filepath.Join(dirPath, "transactionFiles.json")
+	FileCopyPath          = filepath.Join("..", "squidcoinFiles")
+	republishMutex        sync.Mutex
+	republishedUploaded   = false
+	republishedDownloaded = false
 )
 
 // fetch all uploaded files from JSON file
@@ -63,14 +62,17 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 
 	republishMutex.Lock()
 	defer republishMutex.Unlock()
-	fmt.Println("republished bool: ", republished)
-	if !republished {
+	fmt.Printf("republishedUploaded: %v | republishedDownloaded: %v\n ", republishedUploaded, republishedDownloaded)
+	if !republishedUploaded || !republishedDownloaded {
 		if fileType == "uploaded" {
+			fmt.Println("republishing uploaded files")
 			republishFiles(UploadedFilePath)
+			republishedUploaded = true
 		} else {
+			fmt.Println("republishing downloaded files")
 			republishFiles(DownloadedFilePath)
+			republishedDownloaded = true
 		}
-		republished = true
 	}
 
 	fmt.Println("fileHashToPath:", dht_kad.FileHashToPath)
@@ -84,6 +86,7 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 
 // add new file or update existing file
 func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("uploadFileHandler")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -91,9 +94,11 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	var requestBody models.FileMetadata
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		fmt.Println("invalid request body", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("UPLOAD FILE HANDLER: FILEHASH ", requestBody.Hash)
 
 	var filePath string
 	fmt.Println("original uploader: ", requestBody.OriginalUploader)
@@ -123,52 +128,11 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 func PublishFile(requestBody models.FileMetadata) {
 	fmt.Println("publishing new file")
 
-	// Retrieve the current metadata for the file, if it exists
-	var currentMetadata models.DHTMetadata
-	existingData, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+requestBody.Hash)
-	if err == nil { // If data exists, unmarshal it
-		err = json.Unmarshal(existingData, &currentMetadata)
-		if err != nil {
-			log.Fatal("Failed to unmarshal existing DHTMetadata:", err)
-		}
-	} else {
-		// If no existing metadata, initialize a new DHTMetadata
-		currentMetadata = models.DHTMetadata{
-			Name:              requestBody.Name,
-			Type:              requestBody.Type,
-			Size:              requestBody.Size,
-			Description:       requestBody.Description,
-			CreatedAt:         requestBody.CreatedAt,
-			Reputation:        requestBody.Reputation,
-			NameWithExtension: requestBody.NameWithExtension,
-		}
-	}
-
-	// Add the new provider to the list of current providers
-	provider := models.Provider{
-		PeerID:   dht_kad.PeerID,
-		PeerAddr: dht_kad.DHT.Host().Addrs()[0].String(),
-		IsActive: requestBody.IsPublished,
-		Fee:      requestBody.Fee,
-	}
-
-	currentMetadata.Providers = append(currentMetadata.Providers, provider)
-
-	// Marshal the updated metadata
-	dhtMetadataBytes, err := json.Marshal(currentMetadata)
+	err := dht_kad.UpdateFileInDHT(requestBody)
 	if err != nil {
-		log.Fatal("Failed to marshal updated DHTMetadata:", err)
+		fmt.Printf("unable to update file in the dht %w\n", err)
+		return
 	}
-
-	// Store the updated metadata in the DHT
-	err = dht_kad.DHT.PutValue(dht_kad.GlobalCtx, "/orcanet/"+requestBody.Hash, dhtMetadataBytes)
-	if err != nil {
-		log.Fatal("failed to register updated file to dht")
-	}
-	fmt.Println("successfully updated file to dht with new provider", requestBody.Hash)
-
-	// Begin providing ourselves as a provider for that file
-	dht_kad.ProvideKey(dht_kad.GlobalCtx, dht_kad.DHT, requestBody.Hash)
 
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -181,6 +145,8 @@ func PublishFile(requestBody models.FileMetadata) {
 	dht_kad.FileHashToPath[requestBody.Hash] = newPath
 	fmt.Println("PublishFile: fileHashToPath: ", dht_kad.FileHashToPath)
 	dht_kad.FileMapMutex.Unlock()
+
+	dht_kad.SendCloudNodeFiles(requestBody)
 }
 
 // bug
@@ -202,7 +168,7 @@ func handleGetFileByHash(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error retrieving file data: %v", err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("file data from dht:", data)
+	// fmt.Println("file data from dht:", data)
 
 	// Create an instance of FileMetadata to hold the decoded data
 	var metadata models.DHTMetadata
@@ -258,7 +224,7 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// VERY BUGGY
-	err := deleteFileContent(name)
+	err := deleteFileContent(name) // currently using file name but we should switch to hash
 	if err != nil {
 		http.Error(w, fmt.Sprint("failed to delete file from squidcoinFiles", err), http.StatusInternalServerError)
 		return
@@ -344,85 +310,31 @@ func deleteFileContent(hash string) error {
 }
 
 // functions below are used in marketplace to get all dht files
-func getAdjacentNodeFilesMetadata(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Trying to get adjacent node files in backend")
-	dht_kad.RefreshResponse = dht_kad.RefreshResponse[:0]
+func getMarketplaceFiles(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("getting marketplace files")
 
-	relayNode := "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
-	bootstrapNode := "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE"
+	err := dht_kad.SendMarketFilesRequest(dht_kad.Cloud_node_id)
+	if err != nil {
+		http.Error(w, "failed to send request to cloud node", http.StatusInternalServerError)
+		return
+	}
 
-	// Retrieve connected peers
-	adjacentNodes := dht_kad.Host.Peerstore().Peers()
-	fmt.Println("Connected peers:", adjacentNodes)
-
-	var sendWG sync.WaitGroup
-	var responseWG sync.WaitGroup
-
-	// Convert PeerID to strings
-	// var peers []string
-	for _, peer := range adjacentNodes {
-		peerID := peer.String()
-		if peerID != relayNode && peerID != bootstrapNode && peerID != dht_kad.PeerID && nodeSupportRefreshStreams(peer) {
-			sendWG.Add(1)
-			responseWG.Add(1)
-			go func(peerID string) {
-				defer responseWG.Done()
-				go dht_kad.SendRefreshFilesRequest(peerID, &sendWG)
-			}(peerID)
-			// peers = append(peers, peer.String())
+	// Wait for the response on the channel
+	fmt.Println("Waiting for marketplace files response...")
+	select {
+	case receivedFiles := <-dht_kad.MarketplaceFilesSignal:
+		fmt.Println(receivedFiles)
+		fmt.Printf("getMarketplaceFiles: RECEIVED FILES: \n\n %v \n", dht_kad.MarketplaceFiles)
+		// Send response to the frontend
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(dht_kad.MarketplaceFiles); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		}
+	case <-time.After(5 * time.Second): // Timeout to avoid blocking indefinitely
+		http.Error(w, "Timed out waiting for response", http.StatusGatewayTimeout)
 	}
-
-	sendWG.Wait()
-	responseWG.Wait()
-
-	// // create stream to every adjacent node
-	// for _, peer := range peers {
-	// 	if peer != "12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN" &&
-	// 		peer != "12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE" &&
-	// 		peer != dht_kad.PeerID { // cannot connect to relay node, bootstrap node, or self
-	// 		dht_kad.SendRefreshFilesRequest(peer)
-	// 	}
-	// }
-
-	// dht_kad.SendRefreshFilesRequest("12D3KooWFZ8nwUD3cxtqLHvord4cXU1M7vcoUoEwrouADQskxsVJ")
-	<-time.After(3 * time.Second)
-
-	fmt.Println("getAdjacentNodeFilesMetadata: received everyone's uploaded files: ", dht_kad.RefreshResponse)
-	// Set response headers
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // Make sure the status is OK
-	fmt.Println("getAdjacentNodeFilesMetadata: back to frontend...")
-
-	// Encode response
-	/**
-	if err := json.NewEncoder(w).Encode(peers); err != nil {
-		http.Error(w, "Failed to encode adjacent nodes", http.StatusInternalServerError)
-	}
-	*/
-
-	if err := json.NewEncoder(w).Encode(dht_kad.RefreshResponse); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-	}
-	fmt.Println("getAdjacentNodeFilesMetadata: back to frontend...")
-
-}
-
-func nodeSupportRefreshStreams(peerID peer.ID) bool {
-	supportSendRefreshRequest := false
-	supportSendRefreshResponse := false
-
-	protocols, _ := dht_kad.Host.Peerstore().GetProtocols(peerID)
-	fmt.Printf("protocols supported by peer %v: %v\n", peerID, protocols)
-
-	for _, protocol := range protocols {
-		if protocol == "/sendRefreshRequest/p2p" {
-			supportSendRefreshRequest = true
-		} else if protocol == "/sendRefreshResponse/p2p" {
-			supportSendRefreshResponse = true
-		}
-	}
-	return supportSendRefreshRequest && supportSendRefreshResponse
+	fmt.Println("getMarketplaceFiles: Finished processing")
 }
 
 // republish files in the dht incase the TTL expired - called upon successful login

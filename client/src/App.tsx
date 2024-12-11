@@ -55,7 +55,7 @@ const App: React.FC = () => {
 
   const darkTheme = createTheme({
     palette: {
-      mode: "dark",
+      mode: 'dark',
       background: {
         default: "#202d45", //darker gray
       },

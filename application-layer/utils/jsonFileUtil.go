@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 var (
@@ -15,10 +16,14 @@ var (
 	transactionFilePath = filepath.Join(dirPath, "transactionFiles.json")
 
 	fileCopyPath = filepath.Join("..", "squidcoinFiles")
+	fileMutex    sync.Mutex // used by cloud-node
 )
 
 // use for user uploaded files and user downlaoded files
 func SaveOrUpdateFile(newFileData models.FileMetadata, dirPath, filePath string) (string, error) {
+	fileMutex.Lock()
+	defer fileMutex.Unlock()
+	
 	// check if directory and file exist
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.Mkdir(dirPath, os.ModePerm); err != nil {

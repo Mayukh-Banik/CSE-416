@@ -6,6 +6,7 @@ import (
 	dht_kad "application-layer/dht"
 	"application-layer/download"
 	"application-layer/files"
+	proxyService "application-layer/proxy"
 	"application-layer/routes"
 	"application-layer/services"
 	"application-layer/websocket"
@@ -44,6 +45,7 @@ func main() {
 	fileRouter := files.InitFileRoutes()
 	downloadRouter := download.InitDownloadRoutes()
 
+	proxyRouter := proxyService.InitProxyRoutes()
 	go dht_kad.StartDHTService()
 
 	// CORS handler
@@ -57,6 +59,12 @@ func main() {
 	// Combine both routers on the same port
 	http.Handle("/files/", c.Handler(fileRouter))        // File routes under /files
 	http.Handle("/download/", c.Handler(downloadRouter)) // Download routes under /download
+	http.Handle("/proxy-data/", c.Handler(proxyRouter))
+	http.Handle("/connect-proxy/", c.Handler(proxyRouter))
+	http.Handle("/proxy-history/", c.Handler(proxyRouter))
+	http.Handle("/disconnect-from-proxy/", c.Handler(proxyRouter))
+	http.Handle("/stop-hosting/", c.Handler(proxyRouter))
+
 	http.Handle("/ws", http.HandlerFunc(websocket.WsHandler))
 
 	port := ":8080"

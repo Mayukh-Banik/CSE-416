@@ -11,8 +11,9 @@ type FileMetadata struct {
 	IsPublished       bool   `json:"IsPublished"`
 	Fee               int64  `json:"Fee"`
 	CreatedAt         string `json:"CreatedAt"`
-	Reputation        int64  `json:"Reputation"`
 	OriginalUploader  bool   `json:"OriginalUploader"`
+	Rating            int64  `json:"Rating"`
+	HasVoted          bool   `json:"HasVoted"`
 }
 
 type DHTMetadata struct {
@@ -22,15 +23,19 @@ type DHTMetadata struct {
 	Size              int64
 	Description       string
 	CreatedAt         string
-	Reputation        int64
-	Providers         []Provider
+	Rating            int64               //
+	Providers         map[string]Provider // use PeerID as key
+	NumRaters         int64
+	Upvote            int64
+	Downvote          int64
+	Hash              string
 }
 
 type Provider struct {
-	PeerID   string
 	PeerAddr string
 	IsActive bool
 	Fee      int64
+	Rating   string // upvote, downvote, no vote
 }
 
 type Transaction struct {

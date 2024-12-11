@@ -1,10 +1,12 @@
 package dht_kad
 
 import (
+	"application-layer/models"
 	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -31,14 +33,24 @@ import (
 )
 
 var (
-	Node_id             string
-	Relay_node_addr     = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
-	Bootstrap_node_addr = "/ip4/130.245.173.222/tcp/61000/p2p/12D3KooWQd1K1k8XA9xVEzSAu7HUCodC7LJB6uW5Kw4VwkRdstPE"
-	GlobalCtx           context.Context
-	PeerID              string
-	DHT                 *dht.IpfsDHT
-	ProviderStore       providers.ProviderStore
-	Host                host.Host
+	Node_id         string
+	Relay_node_addr = "/ip4/130.245.173.221/tcp/4001/p2p/12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTN"
+	// Bootstrap_node_addr = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
+	// Bootstrap_node_addr = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
+
+	Bootstrap_node_addr = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+	Cloud_node_addr     = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+	Cloud_node_id       = "12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+	// Bootstrap_node_addr = "/ip4/192.168.86.218/tcp/61000/p2p/12D3KooWPs4FtjU4YmGoFgnd225gj3XKBD6QZpWFK5Pq1yEp87kx"
+	// Bootstrap_node_addr = "/ip4/10.1.163.195/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+	// Bootstrap_node_addr = "/ip4/192.168.86.218/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
+
+	GlobalCtx     context.Context
+	PeerID        string
+	DHT           *dht.IpfsDHT
+	ProviderStore providers.ProviderStore
+	Host          host.Host
+	// bootstrap_seed      = "BOOTSTRAP1"
 )
 
 func generatePrivateKeyFromSeed(seed []byte) (crypto.PrivKey, error) {
@@ -318,4 +330,71 @@ func getNodeId() {
 		fmt.Println("Your SBUID is:", Node_id)
 		break // Exit the loop on valid input
 	}
+}
+
+// move to files package?
+func UpdateFileInDHT(currentInfo models.FileMetadata) error {
+	// Retrieve the current metadata for the file, if it exists
+	var currentMetadata models.DHTMetadata
+	existingData, err := DHT.GetValue(GlobalCtx, "/orcanet/"+currentInfo.Hash)
+	if err == nil { // If data exists, unmarshal it
+		err = json.Unmarshal(existingData, &currentMetadata)
+		if err != nil {
+			log.Fatal("Failed to unmarshal existing DHTMetadata:", err)
+		}
+	} else {
+		// If no existing metadata, initialize a new DHTMetadata
+		currentMetadata = models.DHTMetadata{
+			Name:              currentInfo.Name,
+			Type:              currentInfo.Type,
+			Size:              currentInfo.Size,
+			Description:       currentInfo.Description,
+			CreatedAt:         currentInfo.CreatedAt,
+			NameWithExtension: currentInfo.NameWithExtension,
+			Rating:            0,
+			Hash:              currentInfo.Hash,
+		}
+	}
+
+	currentMetadata.Providers = make(map[string]models.Provider)
+	// Add the new provider to the list of current providers
+	provider := models.Provider{
+		PeerAddr: DHT.Host().Addrs()[0].String(),
+		IsActive: currentInfo.IsPublished,
+		Fee:      currentInfo.Fee,
+		// leave Rating empty -> no vote
+		// this will be updated when handling upvoting/downvoting
+	}
+
+	// Check if the provider already exists in the metadata by PeerID
+	if existingProvider, exists := currentMetadata.Providers[PeerID]; exists {
+		// Update the IsActive field
+		existingProvider.IsActive = provider.IsActive
+		// Update the provider in the map
+		currentMetadata.Providers[PeerID] = existingProvider
+	} else {
+		// If provider does not exist, add the new provider
+		currentMetadata.Providers[PeerID] = provider
+	}
+
+	// Marshal the updated metadata
+	dhtMetadataBytes, err := json.Marshal(currentMetadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated DHTMetadata: %w", err)
+	}
+
+	// Begin providing ourselves as a provider for that file
+	err = ProvideKey(GlobalCtx, DHT, currentInfo.Hash)
+	if err != nil {
+		return fmt.Errorf("failed to register updated file to dht: %w", err)
+	}
+
+	// Store the updated metadata in the DHT
+	err = DHT.PutValue(GlobalCtx, "/orcanet/"+currentInfo.Hash, dhtMetadataBytes)
+	if err != nil {
+		fmt.Errorf("failed to updated file in dht: %w\n", err)
+	}
+	fmt.Println("successfully updated file to dht with new provider", currentInfo.Hash)
+
+	return nil
 }

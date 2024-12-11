@@ -19,9 +19,11 @@ const MarketplacePage: React.FC = () => {
   const [fileHash, setFileHash] = useState('');
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [loadingRequest, setLoadingRequest] = useState(false)
-  const [loadingSearch, setLoadingSearch] = useState(false)
-
+  const [loadingRequest, setLoadingRequest] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [refresh, setRefresh] = useState(false);
+  const [ratings, setRatings] = useState<{ [key: string]: number }>({}); // Store ratings by file hash
+  const [marketResults, setMarketResults] = useState<FileMetadata[]>([])
   // const socket = new WebSocket("ws://localhost:8081/ws")
   // socket.onmessage = (event) => {
   //     const message = JSON.parse(event.data);
@@ -32,31 +34,64 @@ const MarketplacePage: React.FC = () => {
   // };
 
   useEffect(() => {
-    handleRefresh();
-  }, []);
+    const hasLoaded = localStorage.getItem("marketplaceLoaded");
+    if (!hasLoaded) {
+      handleRefresh();
+      localStorage.setItem("marketplaceLoaded", "true");
+    }
+  }, []);  
+
+  useEffect(() => {
+    const fetchRatings = async () => {
+      setRatings({})
+      const updatedRatings: { [key: string]: number } = { ...ratings };
+      console.log('search results: ', searchResults)
+      for (const file of searchResults) {
+        console.log("getting rating of file: ", file)
+        if (file.Rating != null) {
+          updatedRatings[file.Hash] = file.Rating
+        }
+      }
+      setRatings(updatedRatings); // Batch update once all ratings are fetched
+      console.log("all file ratings: ", ratings)
+    };
+  
+    if (searchResults != null) {
+    fetchRatings();
+  }
+  }, [searchResults]); // Runs when search results change
+  
 
   const resetStates = async () => {
     setFileHash("");
     setProviders([]);
     setSelectedFile(null);
-    // setSearchTerm("");
+    setSearchTerm("");
     setLoadingRequest(false);
     setLoadingSearch(false);
     setSearchResults([])
+    setRatings({})
   }
 
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
   };
   
-  
+
   const handleDownloadRequest = async (file: FileMetadata) => {
-    setSelectedFile(file);
+    if (refresh) {
+      console.log('handling download request for file', file.Hash)
+      setFileHash(file.Hash)
+      await getFileByHash(file.Hash)
+    } else {
+      setSelectedFile(file)
+    }
     setOpen(true); // Open the modal for provider selection
+    setRefresh(false);
   };
 
   const handleProviderSelect = async (provider: string) => {
-    console.log("requesting file from provider: ", provider)
+    console.log(`requesting file ${fileHash} from provider ${provider}: `)
     setLoadingRequest(true)
     try {
       let request: Transaction = {
@@ -93,6 +128,7 @@ const MarketplacePage: React.FC = () => {
   };
 
   const handleRefresh = async () => {
+    setRefresh(true);
     resetStates();
     setLoadingSearch(true);
     console.log("Refreshing marketplace");
@@ -113,6 +149,7 @@ const MarketplacePage: React.FC = () => {
       const data = await response.json();
       console.log("Data received:", data);
       setSearchResults(data);
+      setMarketResults(data)
       setNotification({ open: true, message: "Marketplace refreshed successfully.", severity: "success" });
     } catch (error) {
       console.error("Error refreshing marketplace:", error);
@@ -122,22 +159,13 @@ const MarketplacePage: React.FC = () => {
     }
   };
   
-
-  // const handleDownloadByHash = async () => {
-  //   console.log("HI");
-  //   const hash = prompt("Enter the file hash");
-  //   console.log('you entered:', hash)
-  //   if (hash == null || hash.length==0) return;
-  //   setFileHash(hash);
-  //   getFileByHash(hash);
-  //   setOpen(true);
-  // }
-
-  
   // only works for complete file hashes
   const handleSearchRequest = async (searchTerm: string) => {
     await resetStates();
-    if (!searchTerm || searchTerm.length === 0) return;
+    if (!searchTerm || searchTerm.length === 0) {
+      setSearchResults(marketResults);
+      return;
+    }
     setFileHash(searchTerm);
     await getFileByHash(searchTerm);
 
@@ -172,7 +200,12 @@ const MarketplacePage: React.FC = () => {
 
         setSelectedFile(data);
         setProviders(data.Providers);
+        console.log("getFileByHash: providers for file ", hash, data.Providers)
         setSearchResults([data])
+
+        const updatedRatings: { [key: string]: number } = {};
+        updatedRatings[hash] = data.Rating
+        setRatings(updatedRatings)
     } catch (error) {
         console.error("Error:", error);
         setNotification({ open: true, message: "File not found", severity: "error" });
@@ -180,11 +213,6 @@ const MarketplacePage: React.FC = () => {
       setLoadingSearch(false)
     }
   };
-
-
-  // const handleDownload = (fileHash:string) => {
-  //   getFile(fileHash);
-  // };
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -220,6 +248,7 @@ const MarketplacePage: React.FC = () => {
       <Button 
         variant="contained" 
         onClick={() => {handleRefresh()}}
+        disabled={loadingRequest || loadingSearch}
         sx={{marginBottom:2}}
         >
         Refresh
@@ -227,22 +256,23 @@ const MarketplacePage: React.FC = () => {
 
       {/* {loadingSearch && <LinearProgress sx={{ marginBottom: 2 }} />} */}
 
-      {/* <Button variant="contained" onClick={() => handleDownloadByHash()}>
-        Download by Hash
-      </Button> */}
-
       <TextField
         label="Search Files"
         variant="outlined"
         fullWidth
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={(e) => {
+          if (!loadingRequest || !loadingSearch) {
+            setSearchTerm(e.target.value)
+          }
+        }}
         onKeyDown={(e) => {
-          if (e.key === "Enter"){
+          if (e.key === "Enter" && (!loadingRequest || !loadingSearch)){
             handleSearchRequest(searchTerm);
           }
         }}
         sx={{ marginBottom: 2, background: "white" }}
+        disabled={loadingRequest || loadingSearch}
       />
 
       {loadingSearch && <LinearProgress sx={{ width: '100%', marginTop: 2 }} />} {/* Progress bar when loading is true */}
@@ -253,8 +283,8 @@ const MarketplacePage: React.FC = () => {
             <TableRow>
               <TableCell>File Name</TableCell>
               <TableCell>File Size (KB)</TableCell>
-              <TableCell>Reputation</TableCell>
-              <TableCell>Created At</TableCell>
+              <TableCell>Rating</TableCell>
+              {/* <TableCell>Created At</TableCell> */}
               <TableCell></TableCell>
             </TableRow>
           </TableHead>
@@ -264,9 +294,9 @@ const MarketplacePage: React.FC = () => {
                 <TableCell>{file.Name}</TableCell>
                 <TableCell>{(file.Size / 1024).toFixed(2)}</TableCell>
                 {/* <TableCell>{file.Reputation}</TableCell> */}
-                <TableCell>3/5</TableCell>
+                <TableCell>{ratings[file.Hash] !== undefined ? ratings[file.Hash] : "0"}</TableCell> {/* Use ratings */}
                 {/* <TableCell>{file.createdAt.toLocaleDateString()}</TableCell> */}
-                <TableCell>2023-09-15</TableCell>
+                {/* <TableCell>2023-09-15</TableCell> */}
 
                 <TableCell>
                   <Button variant="contained" onClick={() => handleDownloadRequest(file)}>
@@ -303,18 +333,14 @@ const MarketplacePage: React.FC = () => {
           </Box>
         )}
   
-          {providers.length ? (
-            providers
-              .filter((value, index, self) =>
-                index === self.findIndex((t) => (
-                  t.PeerID === value.PeerID && t.IsActive // only display peer if currently providing
-                ))
-              )
-              .map((provider) => (
+          {Object.entries(providers).length ? (
+            Object.entries(providers)
+              .filter(([peerID, provider]) => provider.IsActive)
+              .map(([peerID, provider]) => (
                 <Button
-                  key={provider.PeerID} // Ensure this is unique for the key
+                  key={peerID} // Ensure this is unique for the key
                   variant="outlined"
-                  onClick={() => handleProviderSelect(provider.PeerID)}
+                  onClick={() => handleProviderSelect(peerID)}
                   sx={{
                     margin: 1,
                     display: 'flex',
@@ -322,7 +348,9 @@ const MarketplacePage: React.FC = () => {
                     width: '100%',
                   }}
                 >
-                  <span>{provider.PeerID.substring(0,7)}...{provider.PeerID.substring(provider.PeerID.length - 7)}</span> 
+                  <span style={{ wordBreak: 'break-all', whiteSpace: 'normal' }}>
+                    {peerID}
+                  </span>
                   <span>{provider.Fee} SQD/MB</span>
                 </Button>
               ))

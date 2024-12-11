@@ -30,7 +30,8 @@ import {
 } from "@mui/material";
 import { useTheme } from '@mui/material/styles';
 import { FileMetadata } from "../models/fileMetadata";
-//import { FileMetadata } from '../../local_server/models/file';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 
 declare global {
   interface Window {
@@ -68,54 +69,69 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   const [names, setNames] = useState<{ [key: string]: string }>({}); // Track names of to be uploaded files
   const theme = useTheme();
   const [loading, setLoading] = useState(false); // Loading state for file upload
+  const [ratings, setRatings] = useState<{ [key: string]: number }>({});
 
-  // initial fetch of uploaded data
   useEffect(() => {
-    if (!initialFetch) {
-      const fetchFiles = async () => {
-        try {
-          console.log("Getting local user's uploaded files");
-          let fileType = "uploaded"
-          const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
-            method: "GET",
-          });
-          if (!response.ok) throw new Error("Failed to load uploaded file data");
-  
-          const data = await response.json();
-          console.log("Fetched data", data);
-  
-          setUploadedFiles(data); // Set the state with the loaded data
-          setInitialFetch(true); // Set initialFetch to true to prevent further calls
-        } catch (error) {
-          console.error("Error fetching uploaded files:", error);
-        }
-      };
-  
-      fetchFiles();
-    }
-  }, [initialFetch, setUploadedFiles, setInitialFetch]);
-  
-  // called every time page loads to refresh downloaded files
-  useEffect(()=> {
-    const fetchDownloadedFiles = async () => {
-      try {
-        console.log("Getting local user's downloaded files");
-        let fileType = "downloaded"
-        const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
-          method: "GET",
-        });
-        if (!response.ok) throw new Error("Failed to load downloaded file data");
-
-        const data = await response.json();
-        console.log("Fetched data", data);
-
-        setDownloadedFiles(data); // Set the state with the loaded data
-      } catch (error) {
-        console.error("Error fetching downloaded files:", error);
-      }
-    }; 
-    fetchDownloadedFiles();
+    const fetchAllFiles = async() => {
+      await fetchFiles("uploaded");
+      await fetchFiles("downloaded");
+      localStorage.setItem('filesFetched','true')
+    };
+    fetchAllFiles(); 
   }, [])
+
+  const fetchFiles = async (fileType: string) => {
+    try {
+      console.log(`Getting local user's ${fileType} files`);
+      const response = await fetch(`http://localhost:8081/files/fetch?file=${fileType}`, {
+        method: "GET",
+      });
+      if (!response.ok) throw new Error(`Failed to load ${fileType} file data`);
+
+      const data = await response.json();
+      console.log("Fetched data", data);
+
+      if (fileType === "uploaded") {
+        setUploadedFiles(data); // Set the state with the loaded data
+      } else {
+        setDownloadedFiles(data)
+      }
+    } catch (error) {
+      console.error("Error fetching uploaded files:", error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchRatings = async () => {
+      const updatedRatings: { [key: string]: number } = { ...ratings };
+  
+      for (const file of downloadedFiles) {
+        if (!updatedRatings[file.Hash]) {
+          try {
+            const ratingData = await getRating(file.Hash);
+            console.log("ratingData: ", ratingData)
+
+            if (ratingData) {
+              console.log(`file hash: ${file.Hash} | rating: ${ratingData}`)
+              updatedRatings[file.Hash] = ratingData;
+            }
+          } catch (error) {
+            console.error("Failed to fetch rating:", error);
+          }
+        }
+      }
+  
+      // After fetching all ratings, update the state
+      setRatings(updatedRatings);
+    };
+  
+    fetchRatings(); // Call the async function
+  }, [downloadedFiles]); // Depend only on downloadedFiles
+  
+  
+  useEffect(() => {
+    console.log("Updated ratings:", ratings);
+  }, [ratings]); // This will run whenever ratings change
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -201,6 +217,8 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
         Fee: fees[file.name] || 0,
         OriginalUploader: true,
         NameWithExtension: fileExtension,
+        Rating: 0,
+        HasVoted: false,
       };
   
       // Save file locally using Electron API
@@ -366,7 +384,52 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
     setSelectedFiles((prev) => prev.filter((file) => file.name !== hash));
   }
 
+  const handleVote = async (fileHash: string, voteType: 'upvote' | 'downvote') => { 
+    try {
+      const response = await fetch(`http://localhost:8081/files/vote?fileHash=${fileHash}&voteType=${voteType}`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
+      if (response.ok) {
+        setRatings(prevRatings => {
+          const currentRating = prevRatings[fileHash] || 0;
+          const newRating =
+            voteType === 'upvote' ? currentRating + 1 : currentRating - 1;
+      
+          return { ...prevRatings, [fileHash]: newRating };
+        });
+      } else {
+        throw new Error("Failed to update vote");
+      }
+    } catch (error) {
+      console.error("Error updating vote:", error);
+    }
+  };
+  
+  
+  const getRating = async (fileHash: string) => {
+    console.log("getting rating for file: ", fileHash);
+    try {
+      const response = await fetch((`http://localhost:8081/files/getRating?fileHash=${fileHash}`), {
+        method: "GET",
+      });
+      if (!response.ok) throw new Error(`Failed to get rating for ${fileHash}`);
+      let data = await response.json()
+      console.log("file rating: ", data)
+      return data
+    } catch (error) {
+      console.error('error: failed to get file rating: ', error);
+    }
+  }
+
+  /*
+  will modularize later 
+  its a mess rn ...
+  */
+ 
   return (
       <Box
         sx={{
@@ -496,7 +559,6 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
           </Box>
         )}
 
-
         {uploadedFiles.length > 0 && (
           <Box sx={{ marginTop: 2 }}>
             <Typography variant="h6">Uploaded Files</Typography>
@@ -568,6 +630,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 {/* Table Header */}
                 <TableHead>
                   <TableRow>
+                    <TableCell>Rating</TableCell>
                     <TableCell>Name</TableCell>
                     <TableCell>Hash</TableCell>
                     <TableCell>Size</TableCell>
@@ -580,6 +643,28 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                 <TableBody>
                   {downloadedFiles.map((file, index) => (
                     <TableRow key={index}>
+                      <TableCell>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <IconButton color="success" onClick={() => handleVote(file.Hash, 'upvote')}>
+                            <ArrowUpwardIcon />
+                          </IconButton>
+
+                          <Typography variant="body2" sx={{ marginY: 0.5 }}>
+                            {ratings[file.Hash] !== undefined ? ratings[file.Hash] : '0'}
+                          </Typography>
+
+                          <IconButton color="error" onClick={() => handleVote(file.Hash, 'downvote')}>
+                            <ArrowDownwardIcon />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
                       <TableCell>{file.Name}</TableCell>
                       <TableCell
                         sx={{

@@ -692,8 +692,11 @@ func getMainnetPath() string {
 	} else if runtime.GOOS == "darwin" {
 		homeDir, _ := os.UserHomeDir()
 		mainnetPath = filepath.Join(homeDir, "Library", "Application Support", "Btcd", "data", "mainnet")
+	} else if runtime.GOOS == "linux" {
+		homeDir, _ := os.UserHomeDir()
+		mainnetPath = filepath.Join(homeDir, ".btcd", "data", "mainnet")
 	} else {
-		mainnetPath = "/var/lib/Btcd/mainnet"
+		mainnetPath = "/var/lib/Btcd/mainnet" // Default system-wide path for unsupported OSes
 	}
 	return mainnetPath
 }
