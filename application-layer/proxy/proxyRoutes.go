@@ -13,14 +13,22 @@ func InitProxyRoutes() *mux.Router {
 	r.HandleFunc("/proxy-data/", handleProxyData).Methods("POST")
 
 	r.HandleFunc("/disconnect-from-proxy/", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Recieved request for /disconnect-proxy/")
+		log.Println("\n\n\nRecieved request for /disconnect-proxy/")
 		handleDisconnectFromProxy(w, r)
 	}).Methods("GET")
+	r.HandleFunc("/disconnect-from-proxy/", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("\n\n\nRecieved request for /disconnect-proxy/")
+		handleDisconnectFromProxy(w, r)
+	}).Methods("POST")
 
 	r.HandleFunc("/stop-hosting/", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Recieved request for /disconnect-proxy/")
+		log.Println("\n\n\nRecieved request for /disconnect-proxy/")
 		stopHosting(w, r)
 	}).Methods("GET")
+	r.HandleFunc("/stop-hosting/", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("\n\n\nRecieved request for /disconnect-proxy/")
+		stopHosting(w, r)
+	}).Methods("POST")
 
 	r.HandleFunc("/proxy-history/", handleGetProxyHistory).Methods("GET")
 	r.HandleFunc("/connect-proxy/", func(w http.ResponseWriter, r *http.Request) {

@@ -166,7 +166,13 @@ func pollPeerAddresses(ProxyIsHost bool, ip string) {
 	node := dht_kad.Host
 	if ProxyIsHost {
 		fmt.Println("IN HOST", ip)
-		httpHostToClient(node)
+		for {
+			if hosting {
+				httpHostToClient(node)
+			}
+			time.Sleep(5 * time.Second)
+		}
+		// httpHostToClient(node)
 	} else {
 		fmt.Println("IN CLIENT")
 		fmt.Println("IP: ", ip)
@@ -310,6 +316,7 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	globalCtx = context.Background()
 	if r.Method == "POST" {
 		isHost = true
+		hosting = true
 		var newProxy models.Proxy
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&newProxy)
@@ -783,7 +790,6 @@ func httpHostToClient(node host.Host) {
 		for {
 			if !hosting {
 				cancel()
-				hosting = true
 				break
 			}
 			time.Sleep(10 * time.Second)
