@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import { useTheme } from '@mui/material/styles';
 import { Provider, DHTMetadata } from "../models/fileMetadata"
 import { Transaction } from '../models/transactions';
-import WebSocketComponent from './Websocket';
+// import WebSocketComponent from './Websocket';
 
 const drawerWidth = 300;
 const collapsedDrawerWidth = 100;
