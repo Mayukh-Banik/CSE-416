@@ -16,7 +16,7 @@ interface ProxyHost {
   isEnabled: boolean;
   price: string;
   isHost: boolean;
-
+  WalletAddressToSend: string; // New field
 
 }
 
@@ -67,7 +67,8 @@ const ProxyHosts: React.FC = () => {
     peer_id: '',
     isEnabled: false,
     price: '',
-    isHost: false
+    isHost: false,
+    WalletAddressToSend: '',
   });
   const styles = useProxyHostsStyles();
 
@@ -108,7 +109,8 @@ const ProxyHosts: React.FC = () => {
         logs: proxy.logs,
         isEnabled: false,
         isHost: proxy.isHost || false,
-        peer_id: proxy.peer_id || ''
+        peer_id: proxy.peer_id || '',
+        WalletAddressToSend: proxy.WalletAddressToSend || ''
       })));
       getPrivateIP((privateIP) => {
         if (privateIP) {
@@ -231,7 +233,7 @@ const ProxyHosts: React.FC = () => {
           timestamp: new Date().toLocaleString(),
           passphrase: input1,
           transactionID: input2,
-          destinationAddress: input3,
+          destinationAddress: host.WalletAddressToSend,
           amount: input4
         }),
       });
@@ -275,6 +277,7 @@ const ProxyHosts: React.FC = () => {
       isEnabled: false,
       price: '',
       isHost: false,
+      WalletAddressToSend: '',
     });
 
     setShowForm(false);
@@ -375,7 +378,7 @@ const ProxyHosts: React.FC = () => {
                         <TableHead>
                           <TableRow>
                             <TableCell>Name</TableCell>
-                            <TableCell>Location</TableCell>
+                            {/* <TableCell>Location</TableCell> */}
                             <TableCell>Connected At</TableCell>
                           </TableRow>
                         </TableHead>
@@ -383,7 +386,7 @@ const ProxyHosts: React.FC = () => {
                           {proxyHistory.map((entry, index) => (
                             <TableRow key={index}>
                               <TableCell>{entry.name}</TableCell>
-                              <TableCell>{entry.location}</TableCell>
+                              {/* <TableCell>{entry.location}</TableCell> */}
                               <TableCell>{entry.timestamp}</TableCell>
                               <TableCell>
                                 <Button
@@ -425,9 +428,9 @@ const ProxyHosts: React.FC = () => {
                     </Button>
                     {/* Sort Buttons */}
                     <Box sx={{ display: 'flex', gap: '10px' }}>
-                      <Button variant="outlined" onClick={handleSortByLocation}>
+                      {/* <Button variant="outlined" onClick={handleSortByLocation}>
                         Sort by Location
-                      </Button>
+                      </Button> */}
                       <Button variant="outlined" onClick={handleSortByPrice}>
                         Sort by Price
                       </Button>
@@ -503,12 +506,12 @@ const ProxyHosts: React.FC = () => {
                       <TableHead>
                         <TableRow>
                           <TableCell>Name</TableCell>
-                          <TableCell>Location</TableCell>
+                          {/* <TableCell>Location</TableCell> */}
                           <TableCell>Price</TableCell>
-                          <TableCell>Uptime</TableCell>
-                          <TableCell>Bandwidth</TableCell>
-                          <TableCell>Logs</TableCell>
-                          <TableCell>Action</TableCell>
+                          {/* <TableCell>Uptime</TableCell> */}
+                          {/* <TableCell>Bandwidth</TableCell> */}
+                          {/* <TableCell>Logs</TableCell> */}
+                          <TableCell>Actions</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -543,12 +546,6 @@ const ProxyHosts: React.FC = () => {
                                 variant="outlined"
                                 value={input2}
                                 onChange={(e) => setInput2(e.target.value)}
-                              />
-                              <TextField
-                                label="Destination Address"
-                                variant="outlined"
-                                value={input3}
-                                onChange={(e) => setInput3(e.target.value)}
                               />
                               <TextField
                                 label="Amount"

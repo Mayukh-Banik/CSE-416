@@ -199,7 +199,6 @@ func pollPeerAddresses(ProxyIsHost bool, ip string) {
 			for {
 				if !clientconnect {
 					cancel()
-					clientconnect = true
 					break
 				}
 				time.Sleep(10 * time.Second)
@@ -497,7 +496,7 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Passphrase: %s", data.Passphrase)
 	log.Printf("Transaction ID: %s", data.TransactionID)
 	log.Printf("Destination Address: %s", data.DestinationAddress)
-	log.Printf("Amount: %s", data.Amount)
+	log.Printf("Amount: %f", data.Amount)
 
 	log.Println("Relaying data between client and peer...")
 	go pollPeerAddresses(false, data.ProxyIP)
@@ -708,6 +707,7 @@ func saveProxyToDHT(proxy models.Proxy) error {
 			existingProxy.Statistics = proxy.Statistics
 			existingProxy.Bandwidth = proxy.Bandwidth
 			existingProxy.IsEnabled = proxy.IsEnabled
+			existingProxy.WalletAddressToSend = proxy.WalletAddressToSend
 
 			// Serialize and update the proxy as needed
 			updatedProxyJSON, err := json.Marshal(existingProxy)
@@ -726,6 +726,9 @@ func saveProxyToDHT(proxy models.Proxy) error {
 		// Proxy doesn't exist, add it as a new entry
 		proxy.IsHost = isHost
 		proxy.Address, _ = getPrivateIP()
+		proxy.WalletAddressToSend, _ = services.NewBtcService().GetMiningAddressFromTempMayukh()
+		fmt.Println("Proxy wallet address", proxy.WalletAddressToSend)
+
 		fmt.Println("PRXOYS PRIVATE IP:", proxy.Address)
 		proxyJSON, err := json.Marshal(proxy)
 		if err != nil {

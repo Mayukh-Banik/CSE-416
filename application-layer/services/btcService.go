@@ -198,6 +198,49 @@ func isProcessRunning(processName string) bool {
 	return strings.TrimSpace(output.String()) != ""
 }
 
+func (bs *BtcService) getMiningAddressMay() string {
+	content, err := ioutil.ReadFile(tempFilePath)
+	if err != nil {
+		return ""
+	}
+
+	// Parsing JSON
+	var data map[string]string
+	if err := json.Unmarshal(content, &data); err != nil {
+		return ""
+	}
+
+	// Retrieve mining address
+	miningAddress, exists := data["miningaddr"]
+	if !exists || miningAddress == "" {
+		return ""
+	}
+
+	return miningAddress
+}
+
+func (bs *BtcService) GetMiningAddressFromTempMayukh() (string, error) {
+	// Read temp file
+	content, err := ioutil.ReadFile(tempFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read temp file: %w", err)
+	}
+
+	// Parsing JSON
+	var data map[string]string
+	if err := json.Unmarshal(content, &data); err != nil {
+		return "", fmt.Errorf("failed to unmarshal temp file content: %w", err)
+	}
+
+	// Retrieve mining address
+	miningAddress, exists := data["miningaddr"]
+	if !exists || miningAddress == "" {
+		return "", fmt.Errorf("mining address not found in temp file")
+	}
+
+	return miningAddress, nil
+}
+
 // getMiningAddressFromTemp is a helper function to retrieve the mining address from the temp file
 func getMiningAddressFromTemp() (string, error) {
 	// Read temp file
