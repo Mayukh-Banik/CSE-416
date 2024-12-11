@@ -211,7 +211,7 @@ const ProxyHosts: React.FC = () => {
       timestamp: new Date().toLocaleString()
     };
 
-    fetch('http://localhost:8081/update-history/', {
+    fetch('http://localhost:8081/proxy-history/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -400,8 +400,7 @@ const ProxyHosts: React.FC = () => {
                       <Table>
                         <TableHead>
                           <TableRow>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Location</TableCell>
+                            <TableCell>PeerID</TableCell>
                             <TableCell>Connected At</TableCell>
                           </TableRow>
                         </TableHead>
@@ -409,21 +408,7 @@ const ProxyHosts: React.FC = () => {
                           {proxyHistory.map((entry, index) => (
                             <TableRow key={index}>
                               <TableCell>{entry.name}</TableCell>
-                              <TableCell>{entry.location}</TableCell>
                               <TableCell>{entry.timestamp}</TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="contained"
-                                  onClick={() => {
-                                    const host = proxyHosts.find(
-                                      (h) => h.location === entry.location
-                                    );
-                                    if (host) handleConnect(host);
-                                  }}
-                                >
-                                  Connect
-                                </Button>
-                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
