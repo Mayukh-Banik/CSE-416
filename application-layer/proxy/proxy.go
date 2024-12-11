@@ -495,38 +495,64 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
+	// Debug: Log the incoming request method
+	fmt.Println("Received request method:", r.Method)
+
 	// Ensure the method is GET
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
+	// Debug: Log checking for the proxy history file
+	fmt.Println("Checking if proxy history file exists:", proxyHistoryFilePath)
+
 	// Check if the proxyHistory file exists
 	if _, err := os.Stat(proxyHistoryFilePath); os.IsNotExist(err) {
 		http.Error(w, "Proxy history file not found", http.StatusNotFound)
+		// Debug: Log when the file is not found
+		fmt.Println("Proxy history file not found:", proxyHistoryFilePath)
 		return
 	}
+
+	// Debug: Log that we are about to read the proxy history file
+	fmt.Println("Reading proxy history file:", proxyHistoryFilePath)
 
 	// Read the proxyHistory file
 	data, err := os.ReadFile(proxyHistoryFilePath)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error reading proxy history file: %v", err), http.StatusInternalServerError)
+		// Debug: Log the error encountered while reading the file
+		fmt.Println("Error reading proxy history file:", err)
 		return
 	}
+
+	// Debug: Log the size of the data read from the file
+	fmt.Println("Data read from proxy history file, length:", len(data))
 
 	// Unmarshal the data into a slice of ProxyHistoryEntry
 	var proxyHistory []models.ProxyHistoryEntry
 	if err := json.Unmarshal(data, &proxyHistory); err != nil {
 		http.Error(w, fmt.Sprintf("Error unmarshalling proxy history: %v", err), http.StatusInternalServerError)
+		// Debug: Log the error encountered while unmarshalling
+		fmt.Println("Error unmarshalling proxy history:", err)
 		return
 	}
+
+	// Debug: Log the number of history entries retrieved
+	fmt.Printf("Successfully unmarshalled proxy history, number of entries: %d\n", len(proxyHistory))
 
 	// Set the response header to application/json
 	w.Header().Set("Content-Type", "application/json")
 
+	// Debug: Log before sending the response
+	fmt.Println("Sending proxy history as JSON response")
+
 	// Return the proxy history as a JSON response
 	if err := json.NewEncoder(w).Encode(proxyHistory); err != nil {
 		http.Error(w, fmt.Sprintf("Error encoding proxy history to JSON: %v", err), http.StatusInternalServerError)
+		// Debug: Log the error encountered while encoding
+		fmt.Println("Error encoding proxy history to JSON:", err)
 	}
 }
 
