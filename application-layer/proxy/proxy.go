@@ -360,12 +360,12 @@ func handleProxyData(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func updateProxyConnections(clientPeerID string) {
+func updateProxyConnections(hostPeerID string, clientPeerID string) {
 	proxyUpdateMutex.Lock()
 	defer proxyUpdateMutex.Unlock()
 
 	// Retrieve the current proxy information for the host
-	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
+	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, peer.ID(hostPeerID))
 	if err != nil {
 		log.Printf("Error retrieving proxy info: %v", err)
 		return
@@ -390,7 +390,7 @@ func updateProxyConnections(clientPeerID string) {
 		return
 	}
 
-	err = dht_kad.DHT.PutValue(context.Background(), "/orcanet/proxy/"+proxy.PeerID, updatedProxyJSON)
+	err = dht_kad.DHT.PutValue(context.Background(), "/orcanet/proxy/"+hostPeerID, updatedProxyJSON)
 	if err != nil {
 		log.Printf("Error saving updated proxy info to DHT: %v", err)
 		return
@@ -480,7 +480,7 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		log.Println("Relaying data between client and peer...")
 		pollPeerAddresses(false, proxyIP)
-		updateProxyConnections(host_peerid)
+		updateProxyConnections(dht_kad.Host.ID().String(), host_peerid)
 		log.Println("Successfully connected to the peer.")
 
 		// Respond with 200 OK to indicate the connection has been established
@@ -499,33 +499,21 @@ func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve the host's proxy information from the DHT
 	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
 	if err != nil {
-		log.Printf("Error retrieving proxy info: %v", err)
-		http.Error(w, "Failed to retrieve proxy information", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error retrieving proxy info: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	var proxy models.Proxy
 	err = json.Unmarshal([]byte(proxyInfo), &proxy)
 	if err != nil {
-		log.Printf("Error unmarshalling proxy info: %v", err)
-		http.Error(w, "Failed to parse proxy information", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error unmarshalling proxy info: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
-
-	// Encode the connected peers to JSON and write to the response
-	if err := json.NewEncoder(w).Encode(proxy.ConnectedPeers); err != nil {
-		log.Printf("Failed to encode connected peers: %v", err)
-		http.Error(w, "Failed to encode connected peers", http.StatusInternalServerError)
-		return
-	}
-
-	log.Println("Proxy connection history successfully sent.")
+	json.NewEncoder(w).Encode(proxy.ConnectedPeers)
 }
 
 func getPrivateIP() (string, error) {
