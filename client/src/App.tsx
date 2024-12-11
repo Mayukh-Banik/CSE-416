@@ -74,7 +74,7 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
-      <CssBaseline /> 
+      <CssBaseline />
       <Router>
         <Routes>
           <Route path="/" element={<InitPage />} />

@@ -6,7 +6,6 @@ import (
 	"application-layer/websocket"
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,6 +25,7 @@ var (
 	FileHashToPath  = make(map[string]string)             // file paths of files uploaded by host node
 	Mutex           = &sync.Mutex{}
 	FileMapMutex    = &sync.Mutex{}
+
 	dir             = filepath.Join("..", "squidcoinFiles")
 	RefreshResponse []models.FileMetadata
 	ProxyResponse   []models.Proxy
@@ -286,15 +286,15 @@ func sendSuccessConfirmation(transaction models.Transaction) {
 func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	// Convert string peerID to libp2p PeerID
-	peerIDObj, err := peer.Decode(peerID)
-	if err != nil {
-		fmt.Printf("SendProxyRequest: Failed to decode PeerID %s: %v\n", peerID, err)
-		return
-	}
+	// // Convert string peerID to libp2p PeerID
+	// peerIDObj, err := peer.Decode(peerID)
+	// if err != nil {
+	// 	fmt.Printf("SendProxyRequest: Failed to decode PeerID %s: %v\n", peerID, err)
+	// 	return
+	// }
 
 	// Open a new stream to the peer
-	stream, err := Host.NewStream(context.Background(), peerIDObj, "/proxy/metadata/1.0.0")
+	stream, err := CreateNewStream(DHT.Host(), peerID, "/proxy/metadata/1.0.0")
 	if err != nil {
 		fmt.Printf("SendProxyRequest: Failed to create stream to peer %s: %v\n", peerID, err)
 		return
@@ -342,8 +342,56 @@ func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
 	fmt.Printf("SendProxyRequest: Successfully received proxy metadata from peer %s\n", peerID)
 }
 
-// RECEIVING FUNCTIONS
+func SendHistoryToHost(hostPeerIDStr string, proxyHistory models.ProxyHistoryEntry) error {
+	// Decode the peer ID
+	hostPeerID, err := peer.Decode(hostPeerIDStr)
+	if err != nil {
+		return fmt.Errorf("failed to decode peer ID: %v", err)
+	}
+	fmt.Printf("DECODED PEER ID: %s\n", hostPeerID)
 
+	// Attempt to create a stream
+	fmt.Printf("Attempting to create a stream to peer %s using protocol %s\n", hostPeerID, "/history/p2p")
+	stream, err := CreateNewStream(DHT.Host(), hostPeerIDStr, "/history/p2p")
+	if err != nil {
+		fmt.Printf("ERROR: Failed to create stream to peer %s: %v\n", hostPeerID, err)
+		return fmt.Errorf("failed to create stream: %v", err)
+	}
+	defer stream.Close()
+	fmt.Printf("Stream successfully opened to peer %s\n", hostPeerID)
+
+	// Send the proxy history
+	fmt.Printf("Sending proxy history to peer %s\n", hostPeerID)
+	encoder := json.NewEncoder(stream)
+	fmt.Printf("Sending data: %+v\n", proxyHistory)
+
+	if err := encoder.Encode(proxyHistory); err != nil {
+		fmt.Printf("ERROR: Failed to encode and send history: %v\n", err)
+		return fmt.Errorf("failed to encode and send history: %v", err)
+	}
+	fmt.Println("Proxy history sent successfully")
+
+	return nil
+}
+
+// RECEIVING FUNCTIONS
+func receivedHistory(node host.Host) {
+	node.SetStreamHandler("/history/p2p", func(stream network.Stream) {
+		fmt.Println("Received a stream for /history/p2p")
+		defer stream.Close()
+
+		decoder := json.NewDecoder(stream)
+		var receivedHistory models.ProxyHistoryEntry // Update YourHistoryType accordingly
+		if err := decoder.Decode(&receivedHistory); err != nil {
+			fmt.Printf("Error decoding received history: %v\n", err)
+			return
+		}
+
+		fmt.Println("Received history:", receivedHistory)
+		utils.AddOrUpdateProxyHistory(receivedHistory)
+		fmt.Println("added")
+	})
+}
 func receiveDownloadRequest(node host.Host) {
 	fmt.Println("listening for download requests")
 	// listen for streams on "/sendRequest/p2p"
@@ -602,12 +650,53 @@ func receiveSuccessConfirmation(node host.Host) {
 		utils.AddOrUpdateTransaction(successMessage)
 	})
 }
+func receiveProxies(node host.Host) {
+	fmt.Println("Listening for proxy data")
+
+	node.SetStreamHandler("/proxies/p2p", func(s network.Stream) {
+		defer s.Close()
+
+		// Use a buffer to read the incoming data
+		var receivedData bytes.Buffer
+		buf := make([]byte, 4096) // Chunk size should match sender's buffer
+
+		for {
+			n, err := s.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					fmt.Println("All data received from sender")
+					break
+				}
+				log.Fatalf("Failed to read data: %v", err)
+			}
+			receivedData.Write(buf[:n])
+		}
+
+		// Assuming proxies are serialized as JSON, we will parse them
+		var proxies []models.Proxy // Replace ProxyData with the actual struct type for proxies
+		err := json.Unmarshal(receivedData.Bytes(), &proxies)
+		fmt.Println("Proxy data received:", proxies)
+		if err != nil {
+			log.Fatalf("Error unmarshaling received proxy data: %v", err)
+		}
+
+		// Assuming you have a global variable to store proxies
+		Mutex.Lock()
+		Proxies = append(Proxies[:0], proxies...) // Clear and update proxies
+		Mutex.Unlock()
+
+		// Notify other parts of your system that proxies have been received
+		ProxiesSignal <- struct{}{}
+		fmt.Println("Received proxies:", Proxies)
+	})
+}
 
 // listen on streams
 func setupStreams(node host.Host) {
 	receiveDownloadRequest(node)
 	receiveDecline(node)
 	receiveFile(node)
+	receivedHistory(node)
 	receiveMarketplaceFiles(node)
 	receiveSuccessConfirmation(node)
 }

@@ -47,7 +47,7 @@ const ProxyHosts: React.FC = () => {
   const [proxyHosts, setProxyHosts] = useState<ProxyHost[]>([]); // State to store proxy hosts
   const [currentIP, setCurrentIP] = useState<string>('');
   const [connectedProxy, setConnectedProxy] = useState<ProxyHost | null>(null);
-  const [proxyHistory, setProxyHistory] = useState<{ name: string; location: string; timestamp: string }[]>([]);
+  const [proxyHistory, setProxyHistory] = useState<{ client_peer_id: string; timestamp: Date }[]>([]);
   const [showHistoryOnly, setShowHistoryOnly] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false); // Track loading state
@@ -57,7 +57,7 @@ const ProxyHosts: React.FC = () => {
     name: '',
     location: '',
     logs: [],
-    address:  '',
+    address: '',
     Statistics: { uptime: '' },
     bandwidth: '',
     peer_id: '',
@@ -149,7 +149,7 @@ const ProxyHosts: React.FC = () => {
         console.error('Unable to retrieve private IP');
       }
     });
-    
+
 
     fetchData()
   }, []);
@@ -157,7 +157,7 @@ const ProxyHosts: React.FC = () => {
   const handleDisconnect = (host: ProxyHost) => {
     setConnectedProxy(host);
     notifyDisConnectionToBackend(host);
-    const newHistoryEntry = { name: host.name, location: host.location, timestamp: new Date().toLocaleString() };
+    const newHistoryEntry = { client_peer_id: host.peer_id, timestamp: new Date() };
     setProxyHistory([...proxyHistory, newHistoryEntry]);
   }
 
@@ -174,7 +174,7 @@ const ProxyHosts: React.FC = () => {
           hostLocation: host.location,
           hostPeerID: host.peer_id,
 
-          timestamp: new Date().toLocaleString(),
+          timestamp: new Date()
         }),
       });
 
@@ -198,13 +198,32 @@ const ProxyHosts: React.FC = () => {
       isEnabled: h.location === host.location ? true : h.isEnabled,
     }));
 
+
     setProxyHosts(updatedHosts);
     setConnectedProxy(host);
     notifyConnectionToBackend(host);
 
 
     // Update proxy history
-    const newHistoryEntry = { name: host.name, location: host.location, timestamp: new Date().toLocaleString() };
+    const newHistoryEntry = {
+      client_peer_id: host.peer_id,
+      location: host.location,
+      timestamp: new Date()
+    };
+
+    fetch('http://localhost:8081/update-history/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(newHistoryEntry)
+    }).then(response => {
+      if (!response.ok) {
+        console.error('Failed to update history on host');
+      }
+    }).catch(error => {
+      console.error('Error updating history:', error);
+    });
     setProxyHistory([...proxyHistory, newHistoryEntry]);
 
   }
@@ -222,7 +241,7 @@ const ProxyHosts: React.FC = () => {
           hostLocation: host.location,
           hostPeerID: host.peer_id,
 
-          timestamp: new Date().toLocaleString(),
+          timestamp: new Date(),
         }),
       });
 
@@ -232,13 +251,33 @@ const ProxyHosts: React.FC = () => {
       alert(`Connected to ${host.location}`);
       if (response.ok) {
         setCurrentIP(host.address);
-      }      if (response.ok) {
+        await updateHistoryOnHost(host.peer_id);
+      } if (response.ok) {
         setCurrentIP(host.address);
       }
       console.log(`Successfully notified backend about the connection to ${host.location}`);
     } catch (error) {
       window.alert("ERROR CONNECTING TO PROXY")
       console.error('Error notifying backend:', error);
+    }
+  };
+  const updateHistoryOnHost = async (hostPeerID: string) => {
+    try {
+      const response = await fetch(`http://localhost:8081/update-history?host=${hostPeerID}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(proxyHistory),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update history on host');
+      }
+
+      console.log('Successfully updated history on host');
+    } catch (error) {
+      console.error('Error updating history on host:', error);
     }
   };
 
@@ -269,10 +308,7 @@ const ProxyHosts: React.FC = () => {
     window.location.reload();
   };
 
-  const handleSortByLocation = () => {
-    const sortedHosts = [...proxyHosts].sort((a, b) => a.location.localeCompare(b.location));
-    setProxyHosts(sortedHosts);
-  };
+
 
   const handleSortByPrice = () => {
     const sortedHosts = [...proxyHosts].sort((a, b) => {
@@ -290,14 +326,18 @@ const ProxyHosts: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      console.log(response.json());
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
       const history = await response.json();
-      setProxyHistory(history); // Assuming setProxyHistory is defined elsewhere
+      const updatedHistory = history.map((entry: { client_peer_id: string; timestamp: string }) => ({
+        ...entry,
+        timestamp: new Date(entry.timestamp).toLocaleString(), // Convert to a readable format
+      }));
+      
+      setProxyHistory(updatedHistory); 
     } catch (error) {
       console.error("Failed to fetch proxy history:", error);
     }
@@ -361,30 +401,15 @@ const ProxyHosts: React.FC = () => {
                       <Table>
                         <TableHead>
                           <TableRow>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Location</TableCell>
+                            <TableCell>PeerID</TableCell>
                             <TableCell>Connected At</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {proxyHistory.map((entry, index) => (
                             <TableRow key={index}>
-                              <TableCell>{entry.name}</TableCell>
-                              <TableCell>{entry.location}</TableCell>
-                              <TableCell>{entry.timestamp}</TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="contained"
-                                  onClick={() => {
-                                    const host = proxyHosts.find(
-                                      (h) => h.location === entry.location
-                                    );
-                                    if (host) handleConnect(host);
-                                  }}
-                                >
-                                  Connect
-                                </Button>
-                              </TableCell>
+                              <TableCell>{entry.client_peer_id}</TableCell>
+                              <TableCell>{entry.timestamp.toLocaleString()}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -412,9 +437,6 @@ const ProxyHosts: React.FC = () => {
                     </Button>
                     {/* Sort Buttons */}
                     <Box sx={{ display: 'flex', gap: '10px' }}>
-                      <Button variant="outlined" onClick={handleSortByLocation}>
-                        Sort by Location
-                      </Button>
                       <Button variant="outlined" onClick={handleSortByPrice}>
                         Sort by Price
                       </Button>

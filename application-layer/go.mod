@@ -6,14 +6,12 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/libp2p/go-libp2p v0.37.2
-	github.com/libp2p/go-libp2p-kad-dht v0.28.1
+	github.com/libp2p/go-libp2p-kad-dht v0.27.0
 	github.com/libp2p/go-libp2p-record v0.2.0
 	github.com/multiformats/go-multiaddr v0.14.0
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/rs/cors v1.11.1
 )
-
-require github.com/libp2p/go-libp2p-core v0.20.1
 
 require (
 	github.com/benbjohnson/clock v1.3.5 // indirect
@@ -35,7 +33,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/pprof v0.0.0-20241017200806-017d972448fc // indirect
+	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db // indirect
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/errwrap v1.1.0 // indirect

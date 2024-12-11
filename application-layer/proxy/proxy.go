@@ -3,42 +3,41 @@ package proxyService
 import (
 	dht_kad "application-layer/dht"
 	"application-layer/models"
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
-	"strings"
+	"path/filepath"
+
 	"sync"
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
 var (
-	node_id          = ""
-	peer_id          = ""
-	globalCtx        context.Context
-	Peer_Addresses   []ma.Multiaddr
-	isHost           = true
-	connectedPeers   sync.Map
-	proxyUpdateMutex sync.Mutex
-	proxyHistory     []models.ProxyHistoryEntry
-	historyMutex     sync.Mutex
-	hosting          bool
-	clientconnect    bool
-	globalCtxC       context.Context
-	contextCancel    context.CancelFunc
+	node_id              = ""
+	peer_id              = ""
+	globalCtx            context.Context
+	Peer_Addresses       []ma.Multiaddr
+	isHost               = true
+	connectedPeers       sync.Map
+	proxyUpdateMutex     sync.Mutex
+	proxyHistory         []models.ProxyHistoryEntry
+	historyMutex         sync.Mutex
+	hosting              bool
+	clientconnect        bool
+	globalCtxC           context.Context
+	contextCancel        context.CancelFunc
+	dirPath              = filepath.Join("..", "utils")
+	proxyHistoryFilePath = filepath.Join(dirPath, "proxyHistory.json")
 )
 
 const (
@@ -275,39 +274,6 @@ func nodeSupportRefreshStreams(peerID peer.ID) bool {
 	return supportSendRefreshRequest && supportSendRefreshResponse
 }
 
-func handlePeerExchange(node host.Host) {
-	bootstrap_node_info, _ := peer.AddrInfoFromString(dht_kad.Bootstrap_node_addr)
-	node.SetStreamHandler("/orcanet/p2p", func(s network.Stream) {
-		defer s.Close()
-
-		buf := bufio.NewReader(s)
-		peerAddr, err := buf.ReadString('\n')
-		if err != nil {
-			if err != io.EOF {
-				fmt.Printf("error reading from stream: %v", err)
-			}
-		}
-		peerAddr = strings.TrimSpace(peerAddr)
-		var data map[string]interface{}
-		err = json.Unmarshal([]byte(peerAddr), &data)
-		if err != nil {
-			fmt.Printf("error unmarshaling JSON: %v", err)
-		}
-		if knownPeers, ok := data["known_peers"].([]interface{}); ok {
-			for _, peer := range knownPeers {
-				fmt.Println("Peer:")
-				if peerMap, ok := peer.(map[string]interface{}); ok {
-					if peerID, ok := peerMap["peer_id"].(string); ok {
-						if string(peerID) != string(bootstrap_node_info.ID) {
-							dht_kad.ConnectToPeer(node, peerID)
-						}
-					}
-				}
-			}
-		}
-	})
-}
-
 // Retrieveing proxies data, and adding yourself as host
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
@@ -454,84 +420,20 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-func updateHostProxyInfo(clientPeerID string) {
-	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
-	if err != nil {
-		log.Printf("Error retrieving proxy info: %v", err)
-		return
-	}
-
-	var proxy models.Proxy
-	err = json.Unmarshal([]byte(proxyInfo), &proxy)
-	if err != nil {
-		log.Printf("Error unmarshalling proxy info: %v", err)
-		return
-	}
-
-	// Add the new client to the connected peers list
-	proxy.ConnectedPeers = append(proxy.ConnectedPeers, clientPeerID)
-
-	// Save the updated proxy information back to the DHT
-	updatedProxyJSON, err := json.Marshal(proxy)
-	if err != nil {
-		log.Printf("Error marshalling updated proxy info: %v", err)
-		return
-	}
-
-	err = dht_kad.DHT.PutValue(context.Background(), "/orcanet/proxy/"+proxy.PeerID, updatedProxyJSON)
-	if err != nil {
-		log.Printf("Error saving updated proxy info to DHT: %v", err)
-		return
-	}
-
-	log.Printf("Updated host proxy info with new connected peer: %s", clientPeerID)
-}
-
 // Function to add a new history entry
 func addProxyHistoryEntry(hostPeerID, proxyIP string) {
 	historyMutex.Lock()
 	defer historyMutex.Unlock()
 
 	newEntry := models.ProxyHistoryEntry{
-		HostPeerID: hostPeerID,
-		ProxyIP:    proxyIP,
-		Timestamp:  time.Now(),
+		ClientPeerID: hostPeerID,
+		Timestamp:    time.Now(),
 	}
 
 	proxyHistory = append(proxyHistory, newEntry)
 }
 
 // Function to send the history to the host
-func sendHistoryToHost(hostAddress string) error {
-	historyMutex.Lock()
-	defer historyMutex.Unlock()
-
-	historyData, err := json.Marshal(proxyHistory)
-	if err != nil {
-		return fmt.Errorf("failed to marshal history data: %v", err)
-	}
-
-	req, err := http.NewRequest("POST", hostAddress+"/update-history", bytes.NewReader(historyData))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %v", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	// Sending the request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send history to host: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to update history on host, status: %d", resp.StatusCode)
-	}
-
-	return nil
-}
 func handleUpdateHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -566,10 +468,18 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == "GET" {
 		log.Println("Relaying data between client and peer...")
-		pollPeerAddresses(false, proxyIP)
+		go pollPeerAddresses(false, proxyIP)
+		fmt.Println("BEFORE addProxyHistory Entry HISTORY", host_peerid)
 
 		addProxyHistoryEntry(host_peerid, proxyIP)
-		err := sendHistoryToHost("http://host-address") // Use actual host address here
+		fmt.Println("BEFORE SENDING HISTORY", host_peerid)
+		historyMutex.Lock()
+		defer historyMutex.Unlock()
+		newEntry := models.ProxyHistoryEntry{
+			ClientPeerID: dht_kad.PeerID,
+			Timestamp:    time.Now(),
+		}
+		err := dht_kad.SendHistoryToHost(host_peerid, newEntry)
 		if err != nil {
 			log.Printf("Error sending history to host: %v", err)
 			http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)
@@ -586,26 +496,65 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
+	// Debug: Log the incoming request method
+	fmt.Println("Received request method:", r.Method)
+
+	// Ensure the method is GET
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	proxyInfo, err := getProxyFromDHT(dht_kad.DHT, dht_kad.Host.ID())
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error retrieving proxy info: %v", err), http.StatusInternalServerError)
+	// Debug: Log checking for the proxy history file
+	fmt.Println("Checking if proxy history file exists:", proxyHistoryFilePath)
+
+	// Check if the proxyHistory file exists
+	if _, err := os.Stat(proxyHistoryFilePath); os.IsNotExist(err) {
+		http.Error(w, "Proxy history file not found", http.StatusNotFound)
+		// Debug: Log when the file is not found
+		fmt.Println("Proxy history file not found:", proxyHistoryFilePath)
 		return
 	}
 
-	var proxy models.Proxy
-	err = json.Unmarshal([]byte(proxyInfo), &proxy)
+	// Debug: Log that we are about to read the proxy history file
+	fmt.Println("Reading proxy history file:", proxyHistoryFilePath)
+
+	// Read the proxyHistory file
+	data, err := os.ReadFile(proxyHistoryFilePath)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error unmarshalling proxy info: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error reading proxy history file: %v", err), http.StatusInternalServerError)
+		// Debug: Log the error encountered while reading the file
+		fmt.Println("Error reading proxy history file:", err)
 		return
 	}
 
+	// Debug: Log the size of the data read from the file
+	fmt.Println("Data read from proxy history file, length:", len(data))
+
+	// Unmarshal the data into a slice of ProxyHistoryEntry
+	var proxyHistory []models.ProxyHistoryEntry
+	if err := json.Unmarshal(data, &proxyHistory); err != nil {
+		http.Error(w, fmt.Sprintf("Error unmarshalling proxy history: %v", err), http.StatusInternalServerError)
+		// Debug: Log the error encountered while unmarshalling
+		fmt.Println("Error unmarshalling proxy history:", err)
+		return
+	}
+
+	// Debug: Log the number of history entries retrieved
+	fmt.Printf("Successfully unmarshalled proxy history, number of entries: %d\n", len(proxyHistory))
+
+	// Set the response header to application/json
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(proxy.ConnectedPeers)
+
+	// Debug: Log before sending the response
+	fmt.Println("Sending proxy history as JSON response")
+
+	// Return the proxy history as a JSON response
+	if err := json.NewEncoder(w).Encode(proxyHistory); err != nil {
+		http.Error(w, fmt.Sprintf("Error encoding proxy history to JSON: %v", err), http.StatusInternalServerError)
+		// Debug: Log the error encountered while encoding
+		fmt.Println("Error encoding proxy history to JSON:", err)
+	}
 }
 
 func getPrivateIP() (string, error) {
@@ -694,80 +643,6 @@ func saveProxyToDHT(proxy models.Proxy) error {
 		fmt.Printf("New proxy added successfully to DHT for PeerID: %s\n", proxy.PeerID)
 	}
 	return nil
-}
-
-func clientHTTPRequestToHost(node host.Host, targetpeerid string, req *http.Request, w http.ResponseWriter) {
-	fmt.Println("In client http request to host")
-	var ctx = context.Background()
-	targetPeerID := strings.TrimSpace(targetpeerid)
-	bootstrapAddr, err := ma.NewMultiaddr(dht_kad.Bootstrap_node_addr)
-	if err != nil {
-		log.Printf("Failed to create bootstrapAddr multiaddr: %v", err)
-		return
-	}
-	peerMultiaddr := bootstrapAddr.Encapsulate(ma.StringCast("/p2p-circuit/p2p/" + targetPeerID))
-
-	peerinfo, err := peer.AddrInfoFromP2pAddr(peerMultiaddr)
-	if err != nil {
-		log.Fatalf("Failed to parse peer address: %s", err)
-		return
-	}
-	if err := node.Connect(ctx, *peerinfo); err != nil {
-		log.Printf("Failed to connect to peer %s via relay: %v", peerinfo.ID, err)
-		return
-	}
-
-	s, err := node.NewStream(network.WithAllowLimitedConn(ctx, "/http-temp-protocol"), peerinfo.ID, "/http-temp-protocol")
-	if err != nil {
-		log.Printf("Failed to open stream to %s: %s", peerinfo.ID, err)
-		return
-	}
-	defer s.Close()
-
-	// Serialize the HTTP request
-	var buf bytes.Buffer
-	if err := req.Write(&buf); err != nil {
-		log.Printf("Failed to serialize HTTP request: %v", err)
-		return
-	}
-	httpData := buf.Bytes()
-
-	// Write serialized HTTP request to the stream
-	_, err = s.Write(httpData)
-	if err != nil {
-		log.Printf("Failed to write to stream: %s", err)
-		return
-	}
-	s.CloseWrite() // Close the write side to signal EOF
-	fmt.Printf("Sent HTTP request to peer %s: %s\n", targetPeerID, req.URL.String())
-
-	// Wait for a response
-	responseBuf := new(bytes.Buffer)
-	_, err = responseBuf.ReadFrom(s)
-	if err != nil {
-		log.Printf("Failed to read response from stream: %v", err)
-		return
-	}
-
-	// Parse the HTTP response
-	responseReader := bufio.NewReader(responseBuf) // Wrap the buffer in a bufio.Reader
-	resp, err := http.ReadResponse(responseReader, req)
-	if err != nil {
-		log.Printf("Failed to parse HTTP response: %v", err)
-		return
-	}
-
-	// Write the response to the ResponseWriter
-	for k, v := range resp.Header {
-		for _, h := range v {
-			w.Header().Add(k, h)
-		}
-	}
-	w.WriteHeader(resp.StatusCode)
-	_, err = io.Copy(w, resp.Body)
-	if err != nil {
-		log.Printf("Failed to relay response body: %v", err)
-	}
 }
 
 func httpHostToClient(node host.Host) {
