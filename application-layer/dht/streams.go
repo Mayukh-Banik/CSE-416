@@ -5,7 +5,6 @@ import (
 	"application-layer/utils"
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,11 +24,13 @@ var (
 	FileHashToPath  = make(map[string]string)             // file paths of files uploaded by host node
 	Mutex           = &sync.Mutex{}
 	FileMapMutex    = &sync.Mutex{}
+
 	dir             = filepath.Join("..", "squidcoinFiles")
 	RefreshResponse []models.FileMetadata
 	ProxyResponse   []models.Proxy
 
 	MarketplaceFiles []models.FileMetadata
+	proxyHistory     []models.ProxyHistoryEntry
 
 	MarketplaceFilesSignal = make(chan struct{})
 	ProxiesSignal          = make(chan struct{}, 1)
@@ -285,15 +286,15 @@ func sendSuccessConfirmation(transaction models.Transaction) {
 func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	// Convert string peerID to libp2p PeerID
-	peerIDObj, err := peer.Decode(peerID)
-	if err != nil {
-		fmt.Printf("SendProxyRequest: Failed to decode PeerID %s: %v\n", peerID, err)
-		return
-	}
+	// // Convert string peerID to libp2p PeerID
+	// peerIDObj, err := peer.Decode(peerID)
+	// if err != nil {
+	// 	fmt.Printf("SendProxyRequest: Failed to decode PeerID %s: %v\n", peerID, err)
+	// 	return
+	// }
 
 	// Open a new stream to the peer
-	stream, err := Host.NewStream(context.Background(), peerIDObj, "/proxy/metadata/1.0.0")
+	stream, err := CreateNewStream(DHT.Host(), peerID, "/proxy/metadata/1.0.0")
 	if err != nil {
 		fmt.Printf("SendProxyRequest: Failed to create stream to peer %s: %v\n", peerID, err)
 		return
@@ -339,6 +340,54 @@ func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
 	// Append the proxy metadata to ProxyResponse
 	ProxyResponse = append(ProxyResponse, proxy)
 	fmt.Printf("SendProxyRequest: Successfully received proxy metadata from peer %s\n", peerID)
+}
+
+func handleHistoryStream(stream network.Stream) {
+	defer stream.Close()
+
+	var history []models.ProxyHistoryEntry
+	decoder := json.NewDecoder(stream)
+	if err := decoder.Decode(&history); err != nil {
+		log.Printf("Error decoding history: %v", err)
+		return
+	}
+
+	// Process the received history
+	fmt.Printf("Received proxy history: %v\n", history)
+	// Add your logic to store or process the history
+}
+func setupHistoryStreamHandler(host host.Host) {
+	host.SetStreamHandler("/orcanet/p2p", handleHistoryStream)
+}
+func SendHistoryToHost(hostPeerIDStr string) error {
+
+	// Decode the peer ID
+	hostPeerID, err := peer.Decode(hostPeerIDStr)
+	if err != nil {
+		return fmt.Errorf("failed to decode peer ID: %v", err)
+	}
+	fmt.Printf("DECODED PEER ID: %s\n", hostPeerID)
+
+	// Attempt to create a stream
+	fmt.Printf("Attempting to create a stream to peer %s using protocol %s\n", hostPeerID, "/orcanet/p2p")
+	stream, err := CreateNewStream(DHT.Host(), hostPeerIDStr, "/orcanet/p2p")
+	if err != nil {
+		fmt.Printf("ERROR: Failed to create stream to peer %s: %v\n", hostPeerID, err)
+		return fmt.Errorf("failed to create stream: %v", err)
+	}
+	defer stream.Close()
+	fmt.Printf("Stream successfully opened to peer %s\n", hostPeerID)
+
+	// Send the proxy history
+	fmt.Printf("Sending proxy history to peer %s\n", hostPeerID)
+	encoder := json.NewEncoder(stream)
+	if err := encoder.Encode(proxyHistory); err != nil {
+		fmt.Printf("ERROR: Failed to encode and send history: %v\n", err)
+		return fmt.Errorf("failed to encode and send history: %v", err)
+	}
+	fmt.Println("Proxy history sent successfully")
+
+	return nil
 }
 
 // RECEIVING FUNCTIONS

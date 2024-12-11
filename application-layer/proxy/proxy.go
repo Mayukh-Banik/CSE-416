@@ -3,24 +3,19 @@ package proxyService
 import (
 	dht_kad "application-layer/dht"
 	"application-layer/models"
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -275,39 +270,6 @@ func nodeSupportRefreshStreams(peerID peer.ID) bool {
 	return supportSendRefreshRequest && supportSendRefreshResponse
 }
 
-func handlePeerExchange(node host.Host) {
-	bootstrap_node_info, _ := peer.AddrInfoFromString(dht_kad.Bootstrap_node_addr)
-	node.SetStreamHandler("/orcanet/p2p", func(s network.Stream) {
-		defer s.Close()
-
-		buf := bufio.NewReader(s)
-		peerAddr, err := buf.ReadString('\n')
-		if err != nil {
-			if err != io.EOF {
-				fmt.Printf("error reading from stream: %v", err)
-			}
-		}
-		peerAddr = strings.TrimSpace(peerAddr)
-		var data map[string]interface{}
-		err = json.Unmarshal([]byte(peerAddr), &data)
-		if err != nil {
-			fmt.Printf("error unmarshaling JSON: %v", err)
-		}
-		if knownPeers, ok := data["known_peers"].([]interface{}); ok {
-			for _, peer := range knownPeers {
-				fmt.Println("Peer:")
-				if peerMap, ok := peer.(map[string]interface{}); ok {
-					if peerID, ok := peerMap["peer_id"].(string); ok {
-						if string(peerID) != string(bootstrap_node_info.ID) {
-							dht_kad.ConnectToPeer(node, peerID)
-						}
-					}
-				}
-			}
-		}
-	})
-}
-
 // Retrieveing proxies data, and adding yourself as host
 func handleProxyData(w http.ResponseWriter, r *http.Request) {
 	node := dht_kad.Host
@@ -502,36 +464,7 @@ func addProxyHistoryEntry(hostPeerID, proxyIP string) {
 }
 
 // Function to send the history to the host
-func sendHistoryToHost(hostAddress string) error {
-	historyMutex.Lock()
-	defer historyMutex.Unlock()
 
-	historyData, err := json.Marshal(proxyHistory)
-	if err != nil {
-		return fmt.Errorf("failed to marshal history data: %v", err)
-	}
-
-	req, err := http.NewRequest("POST", hostAddress+"/update-history", bytes.NewReader(historyData))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %v", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	// Sending the request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send history to host: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to update history on host, status: %d", resp.StatusCode)
-	}
-
-	return nil
-}
 func handleUpdateHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -567,9 +500,13 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		log.Println("Relaying data between client and peer...")
 		pollPeerAddresses(false, proxyIP)
+		fmt.Println("BEFORE addProxyHistory Entry HISTORY", host_peerid)
 
 		addProxyHistoryEntry(host_peerid, proxyIP)
-		err := sendHistoryToHost("http://host-address") // Use actual host address here
+		fmt.Println("BEFORE SENDING HISTORY", host_peerid)
+		historyMutex.Lock()
+		defer historyMutex.Unlock()
+		err := dht_kad.SendHistoryToHost(host_peerid)
 		if err != nil {
 			log.Printf("Error sending history to host: %v", err)
 			http.Error(w, "Failed to send history to host.", http.StatusInternalServerError)
@@ -694,80 +631,6 @@ func saveProxyToDHT(proxy models.Proxy) error {
 		fmt.Printf("New proxy added successfully to DHT for PeerID: %s\n", proxy.PeerID)
 	}
 	return nil
-}
-
-func clientHTTPRequestToHost(node host.Host, targetpeerid string, req *http.Request, w http.ResponseWriter) {
-	fmt.Println("In client http request to host")
-	var ctx = context.Background()
-	targetPeerID := strings.TrimSpace(targetpeerid)
-	bootstrapAddr, err := ma.NewMultiaddr(dht_kad.Bootstrap_node_addr)
-	if err != nil {
-		log.Printf("Failed to create bootstrapAddr multiaddr: %v", err)
-		return
-	}
-	peerMultiaddr := bootstrapAddr.Encapsulate(ma.StringCast("/p2p-circuit/p2p/" + targetPeerID))
-
-	peerinfo, err := peer.AddrInfoFromP2pAddr(peerMultiaddr)
-	if err != nil {
-		log.Fatalf("Failed to parse peer address: %s", err)
-		return
-	}
-	if err := node.Connect(ctx, *peerinfo); err != nil {
-		log.Printf("Failed to connect to peer %s via relay: %v", peerinfo.ID, err)
-		return
-	}
-
-	s, err := node.NewStream(network.WithAllowLimitedConn(ctx, "/http-temp-protocol"), peerinfo.ID, "/http-temp-protocol")
-	if err != nil {
-		log.Printf("Failed to open stream to %s: %s", peerinfo.ID, err)
-		return
-	}
-	defer s.Close()
-
-	// Serialize the HTTP request
-	var buf bytes.Buffer
-	if err := req.Write(&buf); err != nil {
-		log.Printf("Failed to serialize HTTP request: %v", err)
-		return
-	}
-	httpData := buf.Bytes()
-
-	// Write serialized HTTP request to the stream
-	_, err = s.Write(httpData)
-	if err != nil {
-		log.Printf("Failed to write to stream: %s", err)
-		return
-	}
-	s.CloseWrite() // Close the write side to signal EOF
-	fmt.Printf("Sent HTTP request to peer %s: %s\n", targetPeerID, req.URL.String())
-
-	// Wait for a response
-	responseBuf := new(bytes.Buffer)
-	_, err = responseBuf.ReadFrom(s)
-	if err != nil {
-		log.Printf("Failed to read response from stream: %v", err)
-		return
-	}
-
-	// Parse the HTTP response
-	responseReader := bufio.NewReader(responseBuf) // Wrap the buffer in a bufio.Reader
-	resp, err := http.ReadResponse(responseReader, req)
-	if err != nil {
-		log.Printf("Failed to parse HTTP response: %v", err)
-		return
-	}
-
-	// Write the response to the ResponseWriter
-	for k, v := range resp.Header {
-		for _, h := range v {
-			w.Header().Add(k, h)
-		}
-	}
-	w.WriteHeader(resp.StatusCode)
-	_, err = io.Copy(w, resp.Body)
-	if err != nil {
-		log.Printf("Failed to relay response body: %v", err)
-	}
 }
 
 func httpHostToClient(node host.Host) {
