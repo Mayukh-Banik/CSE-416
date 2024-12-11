@@ -179,6 +179,7 @@ const ProxyHosts: React.FC = () => {
           hostName: host.name,
           hostLocation: host.location,
           hostPeerID: host.peer_id,
+          hostAddress: host.address,
 
           timestamp: new Date().toLocaleString(),
         }),
