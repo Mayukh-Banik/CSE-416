@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"sync"
 	"time"
@@ -22,25 +23,26 @@ import (
 )
 
 var (
-	node_id          = ""
-	peer_id          = ""
-	globalCtx        context.Context
-	Peer_Addresses   []ma.Multiaddr
-	isHost           = true
-	connectedPeers   sync.Map
-	proxyUpdateMutex sync.Mutex
-	proxyHistory     []models.ProxyHistoryEntry
-	historyMutex     sync.Mutex
-	hosting          bool
-	clientconnect    bool
-	globalCtxC       context.Context
-	contextCancel    context.CancelFunc
+	dirPath              = filepath.Join("..", "utils")
+	proxyHistoryFilePath = filepath.Join(dirPath, "proxyHistory.json")
+	node_id              = ""
+	peer_id              = ""
+	globalCtx            context.Context
+	Peer_Addresses       []ma.Multiaddr
+	isHost               = true
+	connectedPeers       sync.Map
+	proxyUpdateMutex     sync.Mutex
+	proxyHistory         []models.ProxyHistoryEntry
+	historyMutex         sync.Mutex
+	hosting              bool
+	clientconnect        bool
+	globalCtxC           context.Context
+	contextCancel        context.CancelFunc
 )
 
 const (
 	bootstrapNode = "/ip4/35.222.31.85/tcp/61000/p2p/12D3KooWAZv5dC3xtzos2KiJm2wDqiLGJ5y4gwC7WSKU5DvmCLEL"
 
-	proxyHistoryFilePath = "..utils/proxyHistory.json"
 	// bootstrapNode = "/ip4/130.245.173.221/tcp/6001/p2p/12D3KooWE1xpVccUXZJWZLVWPxXzUJQ7kMqN8UQ2WLn9uQVytmdA"
 	// bootstrapNode   = "/ip4/130.245.173.222/tcp/61020/p2p/12D3KooWM8uovScE5NPihSCKhXe8sbgdJAi88i2aXT2MmwjGWoSX"
 	proxyKeyPrefix  = "/orcanet/proxy/"
