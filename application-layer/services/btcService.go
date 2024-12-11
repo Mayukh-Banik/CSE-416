@@ -1854,7 +1854,7 @@ func (bs *BtcService) Transaction(passphrase, txid, dst string, amount float64) 
 	fmt.Println("[DEBUG] Step 3: Unlocking the wallet...")
 	if _, err := bs.UnlockWallet(passphrase); err != nil {
 		fmt.Printf("[ERROR] Failed to unlock wallet: %v\n", err)
-		return "", fmt.Errorf("failed to unlock wallet: %w", err)
+		return "", fmt.Errorf("failed to unlock wallet. Please check passphrase: %w", err)
 	}
 	time.Sleep(1 * time.Second)
 
