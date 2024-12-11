@@ -73,6 +73,17 @@ const useProxyHostsStyles = makeStyles((theme: Theme) => ({
     justifyContent: 'space-between',
     marginBottom: 1,
   },
+  popup: {
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    backgroundColor: theme.palette.background.paper,
+    padding: theme.spacing(2),
+    boxShadow: theme.shadows[5],
+    borderRadius: theme.shape.borderRadius,
+    zIndex: 1000,
+  },
   historyContainer: {
     marginTop: 2,
   },
