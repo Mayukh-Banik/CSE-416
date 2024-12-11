@@ -235,7 +235,7 @@ const ProxyHosts: React.FC = () => {
           passphrase: input1,
           transactionID: input2,
           destinationAddress: host.WalletAddressToSend,
-          amount: input4
+          amount: host.price
         }),
       });
 
