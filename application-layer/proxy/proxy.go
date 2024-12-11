@@ -409,6 +409,7 @@ func handleGetProxyHistory(w http.ResponseWriter, r *http.Request) {
 
 	// Log the history retrieval
 	log.Println("Retrieving proxy connection history...")
+	log.Printf("Current Proxy History: %+v\n", proxyHistory)
 
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
