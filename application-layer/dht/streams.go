@@ -16,7 +16,6 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var (
@@ -30,7 +29,6 @@ var (
 	ProxyResponse   []models.Proxy
 
 	MarketplaceFiles []models.FileMetadata
-	proxyHistory     []models.ProxyHistoryEntry
 
 	MarketplaceFilesSignal = make(chan struct{})
 	ProxiesSignal          = make(chan struct{}, 1)
@@ -342,69 +340,8 @@ func SendProxyRequest(peerID string, wg *sync.WaitGroup) {
 	fmt.Printf("SendProxyRequest: Successfully received proxy metadata from peer %s\n", peerID)
 }
 
-func handleHistoryStream(stream network.Stream) {
-	defer stream.Close()
-
-	var history []models.ProxyHistoryEntry
-	decoder := json.NewDecoder(stream)
-	if err := decoder.Decode(&history); err != nil {
-		log.Printf("Error decoding history: %v", err)
-		return
-	}
-
-	// Process the received history
-	fmt.Printf("Received proxy history: %v\n", history)
-	// Add your logic to store or process the history
-}
-
-func SendHistoryToHost(hostPeerIDStr string) error {
-
-	// Decode the peer ID
-	hostPeerID, err := peer.Decode(hostPeerIDStr)
-	if err != nil {
-		return fmt.Errorf("failed to decode peer ID: %v", err)
-	}
-	fmt.Printf("DECODED PEER ID: %s\n", hostPeerID)
-
-	// Attempt to create a stream
-	fmt.Printf("Attempting to create a stream to peer %s using protocol %s\n", hostPeerID, "/orcanet/p2p")
-	stream, err := CreateNewStream(DHT.Host(), hostPeerIDStr, "/orcanet/p2p")
-	if err != nil {
-		fmt.Printf("ERROR: Failed to create stream to peer %s: %v\n", hostPeerID, err)
-		return fmt.Errorf("failed to create stream: %v", err)
-	}
-	defer stream.Close()
-	fmt.Printf("Stream successfully opened to peer %s\n", hostPeerID)
-
-	// Send the proxy history
-	fmt.Printf("Sending proxy history to peer %s\n", hostPeerID)
-	encoder := json.NewEncoder(stream)
-	fmt.Printf("Sending data: %+v\n", proxyHistory)
-
-	if err := encoder.Encode(proxyHistory); err != nil {
-		fmt.Printf("ERROR: Failed to encode and send history: %v\n", err)
-		return fmt.Errorf("failed to encode and send history: %v", err)
-	}
-	fmt.Println("Proxy history sent successfully")
-
-	return nil
-}
-
 // RECEIVING FUNCTIONS
-func receivedHistory(node host.Host) {
-	node.SetStreamHandler("/orcanet/p2p", func(stream network.Stream) {
-		fmt.Println("Received a stream for /orcanet/p2p")
-		defer stream.Close()
 
-		decoder := json.NewDecoder(stream)
-		var history []models.ProxyHistoryEntry // Update YourHistoryType accordingly
-		if err := decoder.Decode(&history); err != nil {
-			fmt.Printf("Error decoding received history: %v\n", err)
-			return
-		}
-		fmt.Println("Received history:", history)
-	})
-}
 func receiveDownloadRequest(node host.Host) {
 	fmt.Println("listening for download requests")
 	// listen for streams on "/sendRequest/p2p"
@@ -693,7 +630,6 @@ func setupStreams(node host.Host) {
 	receiveDownloadRequest(node)
 	receiveDecline(node)
 	receiveFile(node)
-	receivedHistory(node)
 	receiveMarketplaceFiles(node)
 	receiveSuccessConfirmation(node)
 }
