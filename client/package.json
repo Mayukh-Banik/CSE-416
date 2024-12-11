@@ -62,7 +62,8 @@
         "build": "DISABLE_ESLINT_PLUGIN=true react-app-rewired build",
         "test": "react-app-rewired test",
         "eject": "react-scripts eject",
-        "run-build": "DISABLE_ESLINT_PLUGIN=true react-app-rewired build && electron ./main.js"
+        "run-build": "DISABLE_ESLINT_PLUGIN=true react-app-rewired build && electron ./main.js",
+        "run-build-test": "cross-env DISABLE_ESLINT_PLUGIN=true react-app-rewired build && electron ./main.js"
     },
     "eslintConfig": {
         "extends": [

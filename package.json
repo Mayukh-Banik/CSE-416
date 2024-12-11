@@ -13,7 +13,7 @@
         "build:btcd": "node scripts/run-os-script.js buildBtcd",
         "build:btcwallet": "node scripts/run-os-script.js buildBtcwallet",
         "build:btcctl": "node scripts/run-os-script.js buildBtcctl",
-        "build": "npm run build:btcd && npm run build:btcwallet && npm run build:btcctl",
+        "build": "npm run build:btcd && npm run build:btcwallet && npm run build:btcctl && cd client && npm run run-build-test",
         "init:config": "node scripts/run-os-script.js initConfig",
         "delete:config": "node scripts/run-os-script.js deleteConfig",
         "create:btcwallet:testnet": "node scripts/run-os-script.js createBtcwalletTestnet",

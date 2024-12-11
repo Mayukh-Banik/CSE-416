@@ -422,7 +422,7 @@ function deleteAddressByIndex(index) {
 const scripts = {
     buildBtcd: {
         windows: () => {
-            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdDir = path.resolve("btcd");
             console.log(`Changing directory to: ${btcdDir}`);
             try {
                 process.chdir(btcdDir);
@@ -443,7 +443,7 @@ const scripts = {
             }
         },
         macos: () => {
-            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdDir = path.resolve("btcd");
             console.log(`Changing directory to: ${btcdDir}`);
             try {
                 process.chdir(btcdDir);
@@ -464,7 +464,7 @@ const scripts = {
             }
         },
         linux: () => {
-            const btcdDir = path.resolve("application-layer", "btcd");
+            const btcdDir = path.resolve("btcd");
             console.log(`Changing directory to: ${btcdDir}`);
             try {
                 process.chdir(btcdDir);
@@ -610,7 +610,7 @@ const scripts = {
     },
     buildBtcwallet: {
         windows: () => {
-            const walletDir = path.resolve("application-layer", "btcwallet");
+            const walletDir = path.resolve("btcwallet");
             console.log(`Changing directory to: ${walletDir}`);
             try {
                 process.chdir(walletDir);
@@ -631,7 +631,7 @@ const scripts = {
             }
         },
         macos: () => {
-            const walletDir = path.resolve("application-layer", "btcwallet");
+            const walletDir = path.resolve("btcwallet");
             console.log(`Changing directory to: ${walletDir}`);
             try {
                 process.chdir(walletDir);
@@ -652,7 +652,7 @@ const scripts = {
             }
         },
         linux: () => {
-            const walletDir = path.resolve("application-layer", "btcwallet");
+            const walletDir = path.resolve("btcwallet");
             console.log(`Changing directory to: ${walletDir}`);
             try {
                 process.chdir(walletDir);
@@ -746,7 +746,7 @@ const scripts = {
     },
     buildBtcctl: {
         windows: () => {
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlDir = path.resolve("btcd", "cmd", "btcctl");
             console.log(`Changing directory to: ${ctlDir}`);
             try {
                 process.chdir(ctlDir);
@@ -767,7 +767,7 @@ const scripts = {
             }
         },
         macos: () => {
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlDir = path.resolve("btcd", "cmd", "btcctl");
             console.log(`Changing directory to: ${ctlDir}`);
             try {
                 process.chdir(ctlDir);
@@ -788,7 +788,7 @@ const scripts = {
             }
         },
         linux: () => {
-            const ctlDir = path.resolve("application-layer", "btcd", "cmd", "btcctl");
+            const ctlDir = path.resolve("btcd", "cmd", "btcctl");
             console.log(`Changing directory to: ${ctlDir}`);
             try {
                 process.chdir(ctlDir);
