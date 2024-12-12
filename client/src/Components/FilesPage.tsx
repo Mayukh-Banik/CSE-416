@@ -420,17 +420,20 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
       });
 
       if (response.ok) {
+        console.log("voting: ", response.text())
         setDownloadedRatings(prevRatings => {
           const currentRating = prevRatings[fileHash] || 0;
           const newRating =
             voteType === 'upvote' ? currentRating + 1 : currentRating - 1;
-      
+          setNotification({ open: true, message: `Successfully ${voteType}d`, severity: "success" });
           return { ...prevRatings, [fileHash]: newRating };
         });
       } else {
+        setNotification({ open: true, message: `Failed to ${voteType}`, severity: "error" });
         throw new Error("Failed to update vote");
       }
     } catch (error) {
+      setNotification({ open: true, message: `Failed to ${voteType}`, severity: "error" });
       console.error("Error updating vote:", error);
     }
   };

@@ -4,7 +4,6 @@ import (
 	"application-layer/models"
 	"application-layer/services"
 	"application-layer/utils"
-	"application-layer/websocket"
 	"bufio"
 	"bytes"
 	"encoding/json"
@@ -268,8 +267,7 @@ func SendCloudNodeFiles(fileMetadata models.DHTMetadata) error {
 	return nil
 }
 
-func sendSuccessConfirmation(transaction models.Transaction) {
-	// Send decline to the target peer
+func sendMessageConfirmation(transaction models.Transaction) {
 	confirmationStream, err := CreateNewStream(DHT.Host(), transaction.TargetID, "/requestResponse/p2p")
 	if err != nil {
 		log.Printf("Error creating stream to target peer %s: %v", transaction.TargetID, err)
@@ -478,8 +476,10 @@ func receiveDecline(node host.Host) {
 
 		utils.AddOrUpdateTransaction(declineMessage)
 
-		message := "Failed to download file from" + declineMessage.TargetID
-		websocket.SendMessage(message)
+		// message := "Failed to download file from" + declineMessage.TargetID
+		// websocket.SendMessage(message)
+		sendMessageConfirmation(declineMessage)
+
 	})
 }
 
@@ -587,9 +587,9 @@ func receiveFile(node host.Host) error {
 			return
 		}
 
-		sendSuccessConfirmation(transaction)
-		message := "Successfully downloaded file from " + transaction.TargetID
-		websocket.SendMessage(message)
+		sendMessageConfirmation(transaction)
+		// message := "Successfully downloaded file from " + transaction.TargetID
+		// websocket.SendMessage(message)
 
 		err = SendCloudNodeFiles(updatedMetadata)
 		if err != nil {
@@ -638,7 +638,7 @@ func receiveMarketplaceFiles(node host.Host) {
 	})
 }
 
-func receiveSuccessConfirmation(node host.Host) {
+func receiveMessageConfirmation(node host.Host) {
 	node.SetStreamHandler("/requestResponse/p2p", func(s network.Stream) {
 		defer s.Close()
 		buf := bufio.NewReader(s)
@@ -655,15 +655,16 @@ func receiveSuccessConfirmation(node host.Host) {
 		}
 		log.Printf("Raw data received: %s", data)
 
-		var successMessage models.Transaction
-		err = json.Unmarshal(data, &successMessage)
+		var message models.Transaction
+		err = json.Unmarshal(data, &message)
 		if err != nil {
 			fmt.Printf("error unmarshalling file request: %v", err)
 			return
 		}
-		utils.AddOrUpdateTransaction(successMessage)
+		utils.AddOrUpdateTransaction(message)
 	})
 }
+
 func receiveProxies(node host.Host) {
 	fmt.Println("Listening for proxy data")
 
@@ -712,5 +713,5 @@ func setupStreams(node host.Host) {
 	receiveFile(node)
 	receivedHistory(node)
 	receiveMarketplaceFiles(node)
-	receiveSuccessConfirmation(node)
+	receiveMessageConfirmation(node)
 }

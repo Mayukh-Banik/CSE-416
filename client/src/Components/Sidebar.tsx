@@ -199,26 +199,6 @@ const Sidebar: React.FC = () => {
       <AppBar position="fixed" sx={{ backgroundColor: 'primary.main' }}>
         <Toolbar>
           <Box sx={{ flexGrow: 1 }} />
-          <TextField
-            variant="outlined"
-            placeholder="Search…"
-            size="small"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)} // Update search query state
-            onKeyPress={handleSearchKeyPress} // Handle Enter key press
-            sx={{
-              width: '250px',
-              ml: 4,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '4px',
-                borderColor: 'grey',
-                backgroundColor: 'background.default',
-                color: 'secondary.main',
-                '& fieldset': { borderColor: 'white' },
-                '&:hover fieldset': { borderColor: 'darkgrey' }
-              },
-            }}
-          />
         </Toolbar>
       </AppBar>
 
