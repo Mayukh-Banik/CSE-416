@@ -16,7 +16,15 @@ This will handle all builds and start Electron. Please note that this process ma
 npm run start:server
 ```
 
-3.If you encounter issues running npm run start on macOS, navigate to the client directory and run:
+3.If you encounter issues running npm run start on macOS run:
 ```bash
+cd client
 npm run run-build-test
 ```
+4. If the server does not start, navigate to the application-layer directory and run the following commands:
+```
+cd application-layer
+go run main.go
+go run fileAndProxy/testMain.go
+```
+
