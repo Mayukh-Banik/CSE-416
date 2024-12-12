@@ -48,6 +48,7 @@ var (
 	Host          host.Host
 	RoutingTable  *kbucket.RoutingTable
 	My_node_addr  string
+	
 	// bootstrap_seed      = "BOOTSTRAP1"
 
 	// testing

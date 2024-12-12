@@ -23,6 +23,7 @@ const MarketplacePage: React.FC = () => {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [refresh, setRefresh] = useState(false);
   const [marketResults, setMarketResults] = useState<DHTMetadata[]>([])
+  const [providerFee, setProviderFee] = useState(0)
 
   useEffect(() => {
     const initializeMarketplace = async () => {
@@ -73,6 +74,7 @@ const MarketplacePage: React.FC = () => {
         FileName: selectedFile?.Name || "" ,
         Size: selectedFile?.Size || 0,
         TransactionID: "",
+        Fee: providerFee,
         // CreatedAt: Date.now().toLocaleString(),
       }
       console.log("Request data being sent:", request);
@@ -359,7 +361,7 @@ const MarketplacePage: React.FC = () => {
               <Button
                 key={peerID} // Ensure this is unique for the key
                 variant="outlined"
-                onClick={() => handleProviderSelect(peerID)}
+                onClick={() => {setProviderFee(provider.Fee), handleProviderSelect(peerID)}}
                 sx={{
                   margin: 1,
                   display: 'flex',

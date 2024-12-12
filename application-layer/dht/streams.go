@@ -2,6 +2,7 @@ package dht_kad
 
 import (
 	"application-layer/models"
+	"application-layer/services"
 	"application-layer/utils"
 	"application-layer/websocket"
 	"bufio"
@@ -51,6 +52,12 @@ func SendDownloadRequest(requestMetadata models.Transaction) error {
 		return fmt.Errorf("error sending download request: %v", err)
 	}
 	defer requestStream.Close()
+
+	walletAddr, err := services.NewBtcService().GetMiningAddressFromTempMayukh()
+	if err != nil {
+		fmt.Println("error getting wallet address")
+	}
+	requestMetadata.RequesterWallet = walletAddr
 
 	// Marshal the request metadata to JSON
 	requestData, err := json.Marshal(requestMetadata)
@@ -417,7 +424,14 @@ func receiveDownloadRequest(node host.Host) {
 			fmt.Printf("error unmarshalling file request: %v", err)
 			return
 		}
-		log.Printf("Received data: %s", data)
+
+		walletAddr, err := services.NewBtcService().GetMiningAddressFromTempMayukh()
+		if err != nil {
+			fmt.Println("error getting wallet address")
+			return
+		}
+		request.TargetWallet = walletAddr
+
 		log.Println("receieveDownloadRequest: files in FileHashToPath: ", FileHashToPath)
 		fmt.Print("FILEHASHTOPATH", FileHashToPath)
 		fmt.Print("Request.FileHash", request.FileHash)

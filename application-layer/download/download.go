@@ -24,7 +24,6 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("handling download request for", request.FileHash)
 	request.RequesterID = dht_kad.PeerID
-	request.RequesterAddr = dht_kad.My_node_addr
 	request.TransactionID = uuid.New().String()
 	// Log the requester and provider IDs
 	fmt.Printf("Requesting file download: Requester: %v | Provider: %v\n", request.RequesterID, request.TargetID)

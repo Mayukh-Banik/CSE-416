@@ -64,16 +64,16 @@ const FileTransactions : React.FC = () => {
             <TableCell>{transaction.CreatedAt}</TableCell>
             <TableCell>{transaction.TransactionID}</TableCell>
             <TableCell>{transaction.FileName}</TableCell>
+            <TableCell>{transaction.FileHash}</TableCell>
             <TableCell>
-              <Button onClick={() => navigate(`/fileview/${transaction.FileHash}`)}>{transaction.FileHash}</Button>
+              {transaction.RequesterID}
+              {transaction.RequesterWallet}
             </TableCell>
             <TableCell>
-              <Button onClick={() => navigate(`/account/${transaction.RequesterID}`)}>{transaction.RequesterID}</Button>
+              {transaction.TargetID}
+              {transaction.TargetWallet}
             </TableCell>
-            <TableCell>
-              <Button onClick={() => navigate(`/account/${transaction.TargetID}`)}>{transaction.TargetID}</Button>
-            </TableCell>
-            <TableCell>{transaction.Fee}</TableCell>
+            <TableCell>{transaction.Fee*transaction.Size}</TableCell>
             <TableCell>{transaction.Status}</TableCell>
           </TableRow>
         ))}

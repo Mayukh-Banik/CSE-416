@@ -3,17 +3,11 @@ export interface Transaction {
     FileName: string | "";
     FileHash: string;
     RequesterID: string | "";
+    RequesterWallet?: string | "";
     TargetID: string;
+    TargetWallet?: string;
     Status?: 'pending' | 'accepted' | 'declined' | 'completed';
-    Fee?:  number;
+    Fee:  number;
     Size: number;
     TransactionID: string;
-}
-
-export interface PendingRequest {
-    CreatedAt: string;
-    FileName: string;
-    FileHash: string;
-    RequesterID: string;
-    Fee:  number;
 }
