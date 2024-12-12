@@ -31,12 +31,8 @@
         "get:miningAddressIndex": "node scripts/run-os-script.js getMiningAddressIndex",
         "delete:addressByIndex": "node scripts/run-os-script.js getMiningAddressIndex && node scripts/run-os-script.js getReceivedByAddress && node scripts/run-os-script.js getGenerate && node scripts/run-os-script.js getMiningInfo && node scripts/run-os-script.js getMiningAddressIndex",
         "start:client": "cd client && npm start",
-<<<<<<< HEAD
-        "start:server": "cd application-layer && go run main.go && go run fileAndProxy/testMain.go",
-=======
-        "start:server": "node scripts/run-os-script.js startServer",
+        "start:server": "node scripts/run-os-script.js startServer && go run fileAndProxy/testMain.go",
         "start:server-win": "cd application-layer && start /B go run main.go",
->>>>>>> jungsoo
         "start:btcwallet": "node scripts/run-os-script.js startBtcwallet",
         "test:wallet": "node scripts/run-os-script.js testWallet",
         "stop:btcd": "node scripts/run-os-script.js stopBtcd",
