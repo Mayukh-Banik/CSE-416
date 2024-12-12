@@ -26,5 +26,6 @@ npm run run-build-test
 cd application-layer
 go run main.go
 go run fileAndProxy/testMain.go
+go run proxyMain.go
 ```
 
