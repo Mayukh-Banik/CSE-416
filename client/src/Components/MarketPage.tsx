@@ -361,7 +361,7 @@ const MarketplacePage: React.FC = () => {
               <Button
                 key={peerID} // Ensure this is unique for the key
                 variant="outlined"
-                onClick={() => {setProviderFee(provider.Fee), handleProviderSelect(peerID)}}
+                onClick={() => {setProviderFee(provider.Fee); handleProviderSelect(peerID);}}
                 sx={{
                   margin: 1,
                   display: 'flex',
@@ -381,7 +381,10 @@ const MarketplacePage: React.FC = () => {
 
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {setOpen(false), setSearchResults(marketResults)}}>Cancel</Button>
+          <Button onClick={() => {
+            setOpen(false); 
+            setSearchResults(marketResults);
+            }}>Cancel</Button>
         </DialogActions>
       </Dialog>
 
