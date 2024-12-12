@@ -245,30 +245,30 @@ const ProxyHosts: React.FC = () => {
     setShowPopup(false);
     if (!selectedHost) return;
     console.log("Is this being checked");
-    try {
-        // Check user's balance
-        const response = await fetch('http://localhost:8082/check-balance/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                hostPrice: selectedHost.price
-            }),
-        });
+    // try {
+    //     // Check user's balance
+    //     const response = await fetch('http://localhost:8082/check-balance/', {
+    //         method: 'POST',
+    //         headers: { 'Content-Type': 'application/json' },
+    //         body: JSON.stringify({
+    //             hostPrice: selectedHost.price
+    //         }),
+    //     });
 
-        if (response.ok) {
+        // if (response.ok) {
             // Ask for password
             const passphrase = prompt("Please enter your passphrase:");
             if (passphrase) {
                 // Proceed with connection
                 notifyConnectionToBackend(selectedHost);
             }
-        } else {
-            alert("Your balance is not enough to connect to this proxy.");
-        }
-    } catch (error) {
-        console.error('Error checking balance:', error);
-        alert('An error occurred while checking your balance.');
-    }
+    //     } else {
+    //         alert("Your balance is not enough to connect to this proxy.");
+    //     }
+    // } catch (error) {
+    //     console.error('Error checking balance:', error);
+    //     alert('An error occurred while checking your balance.');
+    // }
 };
 
 
