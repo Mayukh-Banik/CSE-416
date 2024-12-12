@@ -22,7 +22,7 @@ cd client
 npm run run-build-test
 ```
 4. If the server does not start, navigate to the application-layer directory and run the following commands:
-```
+```bash
 cd application-layer
 go run main.go
 go run fileAndProxy/testMain.go
