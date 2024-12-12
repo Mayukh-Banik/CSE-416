@@ -628,7 +628,7 @@ const scripts = {
                 process.exit(1);
             }
         },
-        mac: () => {
+        macos: () => {
             const clientDir = path.resolve("client");
             console.log(`Changing directory to: ${clientDir}`);
             try {
@@ -715,7 +715,7 @@ const scripts = {
         }
     },
     startServer: {
-        unix: () => {
+        macos: () => {
             const serverDir = path.resolve("application-layer");
             console.log(`Changing directory to: ${serverDir}`);
             try {
