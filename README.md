@@ -3,9 +3,8 @@
 Requirements:
 go, node, and python must be installed to PATH
 
-## Installation Instructions:
+## Steps to Install and Run:
 
-###Steps to Install and Run
 1. From the root directory, run the following command:
 ```bash
 npm run start
