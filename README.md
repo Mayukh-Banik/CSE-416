@@ -9,8 +9,8 @@ go, node, and python must be installed to PATH
 ```bash
 npm run start
 ```
-
 This will handle all builds and start Electron. Please note that this process may take some time.
+
 2. To start the server separately, use:
 ```bash
 npm run start:server
