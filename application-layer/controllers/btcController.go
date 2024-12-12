@@ -151,39 +151,37 @@ type LoginResponse struct {
 
 // LoginHandler handles the login process for users.
 func (bc *BtcController) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("LoginHandler called")
+    fmt.Println("LoginHandler called")
 
-	// Decode the incoming JSON request payload.
-	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
+    // Decode JSON request payload
+    var req LoginRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        fmt.Printf("Failed to decode request payload: %v\n", err)
+        respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+        return
+    }
 
-	// Validate the input fields.
-	if req.WalletAddress == "" {
-		respondWithError(w, http.StatusBadRequest, "Wallet address is required")
-		return
-	}
-	if req.Passphrase == "" {
-		respondWithError(w, http.StatusBadRequest, "Passphrase is required")
-		return
-	}
+    fmt.Printf("Login request received for wallet address: %s\n", req.WalletAddress)
 
-	// Call the Login method of BtcService to attempt a login.
-	result, err := bc.Service.Login(req.WalletAddress, req.Passphrase)
-	if err != nil {
-		// Respond with an error if login fails.
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
+    // Validate input fields
+    if req.WalletAddress == "" || req.Passphrase == "" {
+        fmt.Println("Wallet address or passphrase missing")
+        respondWithError(w, http.StatusBadRequest, "Both wallet address and passphrase are required")
+        return
+    }
 
-	// Respond with a success message if login is successful.
-	response := LoginResponse{
-		Message: result,
-	}
-	respondWithJSON(w, http.StatusOK, response)
+    // Call the Login method
+    result, err := bc.Service.Login(req.WalletAddress, req.Passphrase)
+    if err != nil {
+        fmt.Printf("Login error: %v\n", err)
+        respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Login failed: %v", err))
+        return
+    }
+
+    fmt.Println("Login successful.")
+    respondWithJSON(w, http.StatusOK, LoginResponse{Message: result})
 }
+
 
 // LogoutResponse represents the structure of the logout response payload.
 type LogoutResponse struct {
