@@ -42,7 +42,7 @@ func handleDownloadRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Update the request status to "pending"
 	request.Status = "pending"
-	request.CreatedAt = time.Now().Format(time.RFC3339)
+	request.CreatedAt = time.Now().Format("2006-01-02 15:04:05")
 
 	// Connect to the target peer and send the download request via P2P
 	if err := dht_kad.ConnectToPeerUsingRelay(dht_kad.DHT.Host(), request.TargetID); err != nil {

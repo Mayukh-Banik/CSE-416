@@ -50,8 +50,8 @@ const FileTransactions : React.FC = () => {
           <TableCell>Transaction ID</TableCell>
           <TableCell>File Name</TableCell>
           <TableCell>File Hash</TableCell>
-          <TableCell>Sender</TableCell>
-          <TableCell>Receiver</TableCell>
+          <TableCell>Sender Wallet</TableCell>
+          <TableCell>Receiver Wallet</TableCell>
           <TableCell>Total Fee</TableCell>
           <TableCell>Status</TableCell>
         </TableRow>
@@ -66,11 +66,11 @@ const FileTransactions : React.FC = () => {
             <TableCell>{transaction.FileName}</TableCell>
             <TableCell>{transaction.FileHash}</TableCell>
             <TableCell>
-              {transaction.RequesterID}
+              {/* {transaction.RequesterID} */}
               {transaction.RequesterWallet}
             </TableCell>
             <TableCell>
-              {transaction.TargetID}
+              {/* {transaction.TargetID} */}
               {transaction.TargetWallet}
             </TableCell>
             <TableCell>{transaction.Fee*transaction.Size}</TableCell>

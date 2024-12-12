@@ -50,6 +50,8 @@ type Transaction struct {
 	CreatedAt       string `json:"CreatedAt"`
 	FileName        string `json:"FileName"`
 	TransactionID   string `json:"TransactionID"`
+	Size            int64  `json:"Size"`
+	Fee             int64  `json:"Fee"`
 }
 
 type RefreshRequest struct {
