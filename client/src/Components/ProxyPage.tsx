@@ -81,7 +81,7 @@ const ProxyHosts: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8081/proxy-data/', {
+      const response = await fetch('http://localhost:8082/proxy-data/', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ const ProxyHosts: React.FC = () => {
   };
   const sendData = async () => {
     try {
-      const response = await fetch('http://localhost:8081/proxy-data/', {
+      const response = await fetch('http://localhost:8082/proxy-data/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newProxy),
@@ -178,7 +178,7 @@ const ProxyHosts: React.FC = () => {
     try {
       console.log(host.peer_id)
       console.log(host.address)
-      const response = await fetch(`http://localhost:8081/disconnect-from-proxy?val=${host.peer_id}&ip=${host.address}`, {
+      const response = await fetch(`http://localhost:8082/disconnect-from-proxy?val=${host.peer_id}&ip=${host.address}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -247,7 +247,7 @@ const ProxyHosts: React.FC = () => {
     console.log("Is this being checked");
     try {
         // Check user's balance
-        const response = await fetch('http://localhost:8081/check-balance/', {
+        const response = await fetch('http://localhost:8082/check-balance/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -277,7 +277,7 @@ const ProxyHosts: React.FC = () => {
     try {
       console.log(host.address)
       console.log(host.address)
-      const response = await fetch(`http://localhost:8081/connect-proxy/`, {
+      const response = await fetch(`http://localhost:8082/connect-proxy/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -356,7 +356,7 @@ const ProxyHosts: React.FC = () => {
 
   const fetchHistory = async () => {
     try {
-      const response = await fetch('http://localhost:8081/proxy-history/', {
+      const response = await fetch('http://localhost:8082/proxy-history/', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -385,7 +385,7 @@ const ProxyHosts: React.FC = () => {
 
   const handleStopHosting = async () => {
     try {
-      const response = await fetch('http://localhost:8081/stop-hosting/', {
+      const response = await fetch('http://localhost:8082/stop-hosting/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
