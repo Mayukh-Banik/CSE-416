@@ -281,7 +281,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
   };
 
 // have to fix deleting file
-  const handleDeleteUploadedFile = async (selectedFile: FileMetadata) => {
+  const handleDeleteFile = async (selectedFile: FileMetadata) => {
     console.log("attempting to delete file ", selectedFile.Name)
     try {
       const response = await fetch(`http://localhost:8081/files/delete?hash=${selectedFile.Hash}&originalUploader=${selectedFile.OriginalUploader}&name=${selectedFile.NameWithExtension}`, {
@@ -646,7 +646,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                           <IconButton
                             edge="end"
                             aria-label="delete"
-                            onClick={() => handleDeleteUploadedFile(file)}
+                            onClick={() => handleDeleteFile(file)}
                           >
                             <DeleteIcon />
                           </IconButton>
@@ -769,7 +769,7 @@ const FilesPage: React.FC<FilesProp> = ({uploadedFiles, setUploadedFiles, initia
                           <IconButton
                             edge="end"
                             aria-label="delete"
-                            onClick={() => handleDeleteUploadedFile(file)}
+                            onClick={() => handleDeleteFile(file)}
                           >
                             <DeleteIcon />
                           </IconButton>

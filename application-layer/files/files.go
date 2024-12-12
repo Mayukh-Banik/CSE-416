@@ -150,7 +150,7 @@ func PublishFile(requestBody models.FileMetadata) {
 		return
 	}
 
-	newPath := filepath.Join(currentDir, "../squidcoinFiles", requestBody.NameWithExtension)
+	newPath := filepath.Join(currentDir, "../../squidcoinFiles", requestBody.NameWithExtension)
 	dht_kad.FileMapMutex.Lock()
 	dht_kad.FileHashToPath[requestBody.Hash] = newPath
 	fmt.Println("PublishFile: fileHashToPath: ", dht_kad.FileHashToPath)
@@ -235,6 +235,7 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprint("failed to delete file from squidcoinFiles", err), http.StatusInternalServerError)
 		return
 	}
+	fmt.Println("successfully deleted file content from squidcoin files")
 
 	dht_kad.FileMapMutex.Lock()
 	delete(dht_kad.FileHashToPath, hash) // delete from map of file hash to file path
@@ -247,6 +248,7 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// remove provider bc we deleted file
 	err = removeProvider(hash, true)
 	if err != nil {
 		http.Error(w, fmt.Sprint("failed to remove node as file provider", err), http.StatusInternalServerError)
@@ -264,10 +266,10 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func removeProvider(hash string, isDelete bool) error {
-	fmt.Println("removing provider from dht - deleting from dht", isDelete)
+	fmt.Println("removing provider from dht - deleting from dht: ", isDelete)
 	var metadata models.DHTMetadata
 
-	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, hash)
+	data, err := dht_kad.DHT.GetValue(dht_kad.GlobalCtx, "/orcanet/"+hash)
 	fmt.Println("removeProvider: data after dht getvalue:", data)
 	if err != nil {
 		fmt.Println("dht error: ", err)
