@@ -608,6 +608,47 @@ const scripts = {
             }
         }
     },
+    startElectron: {
+        windows: () => {
+            const clientDir = path.resolve("client");
+            console.log(`Changing directory to: ${clientDir}`);
+            try {
+                process.chdir(clientDir);
+            } catch (err) {
+                console.error(`Failed to change directory: ${err.message}`);
+                process.exit(1);
+            }
+
+            console.log(`Executing: npx cross-env DISABLE_ESLINT_PLUGIN=true react-app-rewired build && electron ./main.js`);
+            try {
+                execSync(`npx cross-env DISABLE_ESLINT_PLUGIN=true react-app-rewired build && electron ./main.js`, { stdio: "inherit" });
+                console.log("Electron started successfully.");
+            } catch (err) {
+                console.error(`Failed to start Electron: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        mac: () => {
+            const clientDir = path.resolve("client");
+            console.log(`Changing directory to: ${clientDir}`);
+            try {
+                process.chdir(clientDir);
+            } catch (err) {
+                console.error(`Failed to change directory: ${err.message}`);
+                process.exit(1);
+            }
+
+            console.log(`Executing: DISABLE_ESLINT_PLUGIN=true react-app-rewired build && electron ./main.js`);
+            try {
+                execSync(`DISABLE_ESLINT_PLUGIN=true react-app-rewired build && electron ./main.js`, { stdio: "inherit" });
+                console.log("Electron started successfully.");
+            } catch (err) {
+                console.error(`Failed to start Electron: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+
     buildBtcwallet: {
         windows: () => {
             const walletDir = path.resolve("btcwallet");
@@ -669,6 +710,46 @@ const scripts = {
                 console.log("BTCWallet built successfully.");
             } catch (err) {
                 console.error(`Failed to build btcwallet: ${err.message}`);
+                process.exit(1);
+            }
+        }
+    },
+    startServer: {
+        unix: () => {
+            const serverDir = path.resolve("application-layer");
+            console.log(`Changing directory to: ${serverDir}`);
+            try {
+                process.chdir(serverDir);
+            } catch (err) {
+                console.error(`Failed to change directory: ${err.message}`);
+                process.exit(1);
+            }
+
+            console.log(`Executing: nohup go run main.go &`);
+            try {
+                execSync(`nohup go run main.go &`, { stdio: "ignore", detached: true });
+                console.log("Server started successfully in detached mode.");
+            } catch (err) {
+                console.error(`Failed to start server: ${err.message}`);
+                process.exit(1);
+            }
+        },
+        windows: () => {
+            const serverDir = path.resolve("application-layer");
+            console.log(`Changing directory to: ${serverDir}`);
+            try {
+                process.chdir(serverDir);
+            } catch (err) {
+                console.error(`Failed to change directory: ${err.message}`);
+                process.exit(1);
+            }
+
+            console.log(`Executing: start /B go run main.go`);
+            try {
+                execSync(`start /B go run main.go`, { stdio: "ignore", detached: true });
+                console.log("Server started successfully in detached mode.");
+            } catch (err) {
+                console.error(`Failed to start server: ${err.message}`);
                 process.exit(1);
             }
         }
