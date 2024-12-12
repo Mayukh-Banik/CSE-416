@@ -182,7 +182,7 @@ func pollPeerAddresses(ProxyIsHost bool, ip string) {
 		fmt.Println("IP", ip)
 		var script string
 		var args []string
-		script = "../proxy/client.py"
+		script = "proxy/client.py"
 		args = []string{"--remote-host", ip}
 
 		clientconnect = true
@@ -579,10 +579,8 @@ func handleConnectMethod(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	clientconnect = true
 
-	_, err = services.NewBtcService().Transaction(data.Passphrase, b, data.DestinationAddress, data.Amount)
-	if err != nil {
-		clientconnect = false
-	}
+	services.NewBtcService().Transaction(data.Passphrase, b, data.DestinationAddress, data.Amount)
+
 	// Log the incoming request method and URL
 	// fmt.Print("INSIDE THE CONNECT METHOD")
 	// host_peerid := r.URL.Query().Get("val")
@@ -810,7 +808,7 @@ func saveProxyToDHT(proxy models.Proxy) error {
 func httpHostToClient(node host.Host) {
 	var script string
 	var args []string
-	script = "../proxy/server.py"
+	script = "proxy/server.py"
 	args = []string{}
 	// hosting = true
 	if !hosting {
